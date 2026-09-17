@@ -21,6 +21,14 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
+  "$comment-exclude": [
+    "next build type-checkea todo lo que entre en `include`. Los tests, los",
+    "scripts y el seed NO se despliegan, asi que un roce de tipos ahi no debe",
+    "poder tumbar un despliegue de la aplicacion.",
+    "",
+    "No quedan sin comprobar: `npm run typecheck` pasa los dos tsconfig, y los",
+    "tests se ejecutan con tsconfig.test.json."
+  ],
+  "exclude": ["node_modules", "src/**/__tests__/**", "scripts/**", "prisma/**"]
 }

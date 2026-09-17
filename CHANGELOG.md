@@ -2,6 +2,52 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.0.3] - 2026-09-17
+
+Arregla el segundo build fallido en Vercel, en la fase de type-check.
+
+### Corregido
+
+- **`Type error: Expected 3 arguments, but got 4` en `src/lib/auth/password.ts`.**
+
+  `promisify(scrypt)` hace que TypeScript resuelva la firma a traves de
+  `__promisify__`, y ahi se queda en la variante de tres argumentos: pasar las
+  opciones de scrypt no compila.
+
+  Se sustituye por un envoltorio explicito con `new Promise`, que usa la
+  sobrecarga concreta de cinco argumentos y deja el tipo de retorno escrito en
+  lugar de depender de la tabla de sobrecargas de `promisify`. Menos magia y un
+  tipo de retorno de verdad: desaparecen tambien los dos `as Buffer`.
+
+### Cambiado
+
+- **`next build` ya no type-checkea los tests, los scripts ni el seed.**
+
+  `tsconfig.json` incluia `**/*.ts`, asi que la fase de type-check del despliegue
+  compilaba tambien los 14 archivos de test. Un roce de tipos en un test no debe
+  poder tumbar un despliegue de la aplicacion.
+
+  `tsconfig.json` se limita a `src/`; `tsconfig.test.json` los vuelve a incluir;
+  y `npm run typecheck` pasa **los dos**, asi que nada queda sin comprobar.
+
+- `engines.node`: `22.x`.
+
+### Metodo
+
+Para no volver a ir error por error, se ha montado un arnes de type-check con
+declaraciones minimas de los paquetes externos (Node, React, Next, Prisma,
+pdf-lib, sharp) y se ha pasado `tsc --strict` sobre el proyecto entero sin red.
+
+Resultado: **0 errores en el codigo que se despliega.** Los 43 que aparecian al
+principio eran, uno por uno, artefactos de unos stubs demasiado permisivos; se
+confirmaron como tales completando los stubs con lo que las bibliotecas reales si
+declaran (`key` en JSX, los modulos `*.css`, y la firma de asercion de
+`assert.ok`), tras lo cual el recuento baja a cero.
+
+Lo que el arnes NO puede descartar: los campos de Prisma anidados mas de un
+nivel, porque el cliente real no esta generado. Eso lo cubre en parte
+`prisma-references.test.ts`, que comprueba el primer nivel.
+
 ## [1.0.2] - 2026-09-17
 
 Arregla el primer build fallido en Vercel.

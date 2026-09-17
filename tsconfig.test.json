@@ -1,8 +1,24 @@
 {
-  "$comment": "Config SOLO para el runner de tests. Next exige jsx=preserve en tsconfig.json y reescribe el archivo si lo cambias; el runner necesita el runtime automatico para poder renderizar en Node. De ahi los dos archivos.",
+  "$comment": [
+    "Config del runner de tests y del type-check completo.",
+    "",
+    "Dos motivos para que exista aparte:",
+    "  1. Next exige jsx=preserve en tsconfig.json y reescribe el archivo si se",
+    "     cambia; el runner necesita el runtime automatico para renderizar en Node.",
+    "  2. tsconfig.json excluye tests, scripts y seed para que no puedan tumbar un",
+    "     despliegue. Aqui se vuelven a incluir, porque comprobarlos si interesa."
+  ],
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "noEmit": true
-  }
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "prisma/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
 }
