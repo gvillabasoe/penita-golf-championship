@@ -27,9 +27,41 @@
  */
 
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
-import { promisify } from 'node:util';
 
-const scrypt = promisify(scryptCb);
+/** Parametros de scrypt. Forma estructural, sin depender de `ScryptOptions`. */
+interface ScryptParams {
+  N: number;
+  r: number;
+  p: number;
+  maxmem: number;
+}
+
+/**
+ * scrypt como promesa, envuelto a mano.
+ *
+ * NO se usa `promisify`. Con `promisify(scrypt)`, TypeScript resuelve la firma
+ * a traves de `__promisify__` y en @types/node se queda en la variante de tres
+ * argumentos, asi que pasar las opciones falla en compilacion:
+ *
+ *   Type error: Expected 3 arguments, but got 4.
+ *
+ * Envolverlo a mano usa la sobrecarga concreta de cinco argumentos, que existe
+ * siempre, y deja el tipo explicito en lugar de depender de la tabla de
+ * sobrecargas de `promisify`.
+ */
+function scrypt(
+  password: string,
+  salt: Buffer,
+  keylen: number,
+  options: ScryptParams,
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCb(password, salt, keylen, options, (error, derivedKey) => {
+      if (error) reject(error);
+      else resolve(derivedKey);
+    });
+  });
+}
 
 export type HashAlgorithm = 'scrypt' | 'argon2id';
 
@@ -65,12 +97,12 @@ export async function hashPassword(
 
   if (algorithm === 'scrypt') {
     const salt = randomBytes(SCRYPT_PARAMS.saltLength);
-    const derived = (await scrypt(password.normalize('NFKC'), salt, SCRYPT_PARAMS.keyLength, {
+    const derived = await scrypt(password.normalize('NFKC'), salt, SCRYPT_PARAMS.keyLength, {
       N: SCRYPT_PARAMS.N,
       r: SCRYPT_PARAMS.r,
       p: SCRYPT_PARAMS.p,
       maxmem: 256 * 1024 * 1024,
-    })) as Buffer;
+    });
     const params = `N=${SCRYPT_PARAMS.N},r=${SCRYPT_PARAMS.r},p=${SCRYPT_PARAMS.p}`;
     return `$scrypt$${params}$${salt.toString('base64')}$${derived.toString('base64')}`;
   }
@@ -107,12 +139,12 @@ export async function verifyPassword(password: string, storedHash: string): Prom
       const expected = Buffer.from(parts[4], 'base64');
       if (salt.length === 0 || expected.length === 0) return false;
 
-      const derived = (await scrypt(password.normalize('NFKC'), salt, expected.length, {
+      const derived = await scrypt(password.normalize('NFKC'), salt, expected.length, {
         N: params.N,
         r: params.r,
         p: params.p,
         maxmem: 256 * 1024 * 1024,
-      })) as Buffer;
+      });
 
       return derived.length === expected.length && timingSafeEqual(derived, expected);
     }
