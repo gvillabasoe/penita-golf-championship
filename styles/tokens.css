@@ -1,0 +1,685 @@
+/* =============================================================================
+   Peñita Golf Championship - capa de tokens
+   Secciones 8, 9, 33, 34, 51 y 52 del pliego.
+
+   Reglas que esta hoja hace cumplir:
+   - El color nunca es el unico portador de informacion (hay formas y etiquetas).
+   - Toda superficie translucida tiene fallback solido: sin backdrop-filter la
+     app sigue siendo usable.
+   - La tarjeta de juego, los numeros y el teclado son SIEMPRE opacos.
+   ========================================================================== */
+
+:root {
+  /* --- Base pastel ------------------------------------------------------- */
+  --color-bg: #f2f6f1;
+  --color-bg-elevated: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #e9efe8;
+  --color-text: #1c2620;
+  --color-text-secondary: #55655c;
+  --color-text-inverse: #ffffff;
+  --color-border: #d3ded4;
+  --color-border-strong: #b6c6b9;
+
+  /* Verde del valle de robles: acento de la interfaz. */
+  --color-accent: #2f6b46;
+  --color-accent-soft: #cfe3d4;
+  --color-accent-contrast: #ffffff;
+
+  /* --- Marca -------------------------------------------------------------
+     Colores del escudo de la Peñita, medidos sobre assets/logo.png. Son los
+     que usa el icono, la barra de estado y la pantalla de bienvenida, para que
+     abrir la app desde el movil no parezca otra aplicacion distinta.
+
+     La interfaz sigue en verde. Si se quiere unificar, basta con poner
+     --color-accent a --color-brand y --color-accent-soft a un navy claro: hay
+     un test que comprueba que el manifest y estos tokens no se desincronizan.
+  */
+  --color-brand: #364f6e;
+  --color-brand-ink: #f4edde;
+
+  /* --- Sombras ----------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(28, 38, 32, 0.06);
+  --shadow-md: 0 4px 12px rgba(28, 38, 32, 0.08);
+  --shadow-lg: 0 12px 32px rgba(28, 38, 32, 0.12);
+
+  /* --- Liquid glass ------------------------------------------------------ */
+  /* Fallback solido primero: si no hay soporte, esto es lo que se ve. */
+  --glass-bg: #f7faf6;
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-highlight: rgba(255, 255, 255, 0.35);
+  --glass-blur: 18px;
+  --glass-saturate: 140%;
+
+  /* --- Estados de sincronizacion ---------------------------------------- */
+  --state-saved: #cfe8d8;
+  --state-saving: #dbe6f5;
+  --state-offline: #f2e6cf;
+  --state-pending: #f5ecd2;
+  --state-error: #f5d7d7;
+  --state-locked: #dcdfe3;
+
+  /* --- Resultado bruto (seccion 33) ------------------------------------- */
+  --gross-par: #1c2620;        /* numero negro, sin forma */
+  --gross-under: #4a7fb5;      /* azul pastel: birdie y eagle */
+  --gross-albatros: #c9a227;   /* dorado claro */
+  --gross-over: #6d7a72;       /* gris: bogey y peores */
+  --gross-pickup: #b4443c;     /* raya en rojo */
+
+  /* --- Puntos Stableford (seccion 34) ----------------------------------- */
+  --points-par-bg: #f5e6a8;        /* par neto: amarillo pastel */
+  --points-par-fg: #1c2620;
+  --points-birdie-bg: #f2c1bc;     /* birdie neto: rojo pastel */
+  --points-birdie-fg: #1c2620;
+  --points-eagle-bg: #bfe3c3;      /* eagle neto: verde claro */
+  --points-eagle-fg: #1c2620;
+  --points-albatros-bg: #e8cf8a;   /* albatros neto o mejor: dorado claro */
+  --points-albatros-fg: #1c2620;
+  --points-bogey-bg: #3c5570;      /* bogey neto: azul marino suavizado */
+  --points-bogey-fg: #ffffff;
+  --points-zero-bg: #1a1c1b;       /* doble bogey neto o peor */
+  --points-zero-fg: #ffffff;
+
+  /* --- Podio (seccion 51) ----------------------------------------------- */
+  --podium-gold: #d4af37;
+  --podium-silver: #aeb6bf;
+  --podium-bronze: #cd7f32;
+
+  /* --- Geometria y tipografia ------------------------------------------- */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  --tap-target: 44px;
+
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-numeric: 'Inter', system-ui, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --bottom-nav-height: 64px;
+
+  --transition-fast: 120ms ease-out;
+  --transition-base: 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* =============================================================================
+   Superficies de cristal. Aplicar SOLO a navegacion, cabeceras, tarjetas
+   resumen, paneles, modales, botones secundarios y decoracion.
+   ========================================================================== */
+
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: rgba(255, 255, 255, 0.62);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border-color: var(--glass-border);
+  }
+}
+
+/* Superficies que NUNCA son translucidas: informacion critica. */
+.solid,
+.scorecard,
+.score-keypad,
+.score-number,
+.points-cell,
+.form-surface,
+.alert,
+.confirmation {
+  background: var(--color-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* =============================================================================
+   Resultado bruto: la forma es la que informa, no el color.
+   Circulo = bajo par. Cuadrado = sobre par. Nada = par.
+   ========================================================================== */
+
+.score-number {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--gross-par);
+}
+
+.score-number--birdie,
+.score-number--eagle {
+  color: var(--gross-under);
+}
+.score-number--albatros,
+.score-number--hole-in-one {
+  color: var(--gross-albatros);
+}
+.score-number--bogey,
+.score-number--double,
+.score-number--triple {
+  color: var(--gross-over);
+}
+.score-number--pickup {
+  color: var(--gross-pickup);
+}
+
+/* Contornos: se dibujan con box-shadow concentrico para no deformar el numero
+   ni alterar el tamano del area tactil. */
+.score-number--birdie {
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+.score-number--eagle,
+.score-number--albatros,
+.score-number--hole-in-one {
+  border-radius: var(--radius-pill);
+  box-shadow:
+    inset 0 0 0 2px currentColor,
+    inset 0 0 0 6px transparent,
+    inset 0 0 0 8px currentColor;
+}
+.score-number--bogey {
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+.score-number--double {
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 2px currentColor,
+    inset 0 0 0 6px transparent,
+    inset 0 0 0 8px currentColor;
+}
+.score-number--triple {
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 2px currentColor,
+    inset 0 0 0 5px transparent,
+    inset 0 0 0 7px currentColor,
+    inset 0 0 0 10px transparent,
+    inset 0 0 0 12px currentColor;
+}
+
+/* =============================================================================
+   Puntos Stableford
+   ========================================================================== */
+
+.points-cell {
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.points-cell--2 { background: var(--points-par-bg); color: var(--points-par-fg); }
+.points-cell--3 { background: var(--points-birdie-bg); color: var(--points-birdie-fg); }
+.points-cell--4 { background: var(--points-eagle-bg); color: var(--points-eagle-fg); }
+.points-cell--5 { background: var(--points-albatros-bg); color: var(--points-albatros-fg); }
+.points-cell--1 { background: var(--points-bogey-bg); color: var(--points-bogey-fg); }
+.points-cell--0 { background: var(--points-zero-bg); color: var(--points-zero-fg); }
+
+/* La raya se distingue del 0 por un indicador adicional, no solo por color. */
+.points-cell--pickup::after {
+  content: '';
+  position: absolute;
+  inset-inline: 6px;
+  block-size: 2px;
+  background: var(--gross-pickup);
+}
+.points-cell {
+  position: relative;
+}
+
+/* =============================================================================
+   Accesibilidad y movimiento reducido
+   ========================================================================== */
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+button,
+[role='button'] {
+  min-height: var(--tap-target);
+  min-width: var(--tap-target);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* La revelacion respeta prefers-reduced-motion: misma informacion, sin
+   desplazamiento, sin escala y sin contador animado. */
+.reveal-card {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+  transition:
+    opacity var(--transition-base),
+    transform var(--transition-base);
+}
+.reveal-card[data-revealed='true'] {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-card {
+    opacity: 0;
+    transform: none;
+  }
+  .reveal-card[data-revealed='true'] {
+    opacity: 1;
+  }
+}
+
+/* =============================================================================
+   Podio
+   ========================================================================== */
+
+.podium--1 {
+  border: 2px solid var(--podium-gold);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.35), var(--shadow-lg);
+  font-size: var(--text-2xl);
+}
+.podium--2 { border: 2px solid var(--podium-silver); }
+.podium--3 { border: 2px solid var(--podium-bronze); }
+
+/* =============================================================================
+   Layout mobile-first: barra inferior fija sin tapar contenido
+   ========================================================================== */
+
+.app-shell {
+  min-height: 100dvh;
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + var(--space-4));
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+.bottom-nav {
+  position: fixed;
+  inset-inline: var(--space-3);
+  bottom: calc(var(--safe-bottom) + var(--space-3));
+  height: var(--bottom-nav-height);
+  border-radius: var(--radius-lg);
+  z-index: 40;
+}
+
+/* =============================================================================
+   Componentes de la tarjeta y la clasificacion
+   ========================================================================== */
+
+.scorecard {
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-sm);
+}
+
+.scorecard__heading {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.scorecard__holes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.scorecard__read-only {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Una fila por hoyo. Sin scroll horizontal a 320 px: el bloque de metadatos
+   encoge y los tres indicadores de resultado mantienen su tamano tactil. */
+.hole-row {
+  display: grid;
+  grid-template-columns: 2ch minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-target);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: inherit;
+  text-decoration: none;
+}
+
+.hole-row--current {
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
+.hole-row--pending {
+  opacity: 0.72;
+}
+
+.hole-row--overridden {
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.hole-row__number {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.hole-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.strokes-received {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.strokes-received--none {
+  color: var(--color-border-strong);
+}
+
+.score-number--compact {
+  min-width: 32px;
+  min-height: 32px;
+  font-size: var(--text-base);
+}
+
+.points-cell--empty {
+  background: transparent;
+  color: var(--color-border-strong);
+}
+
+.nine-summary,
+.totals-panel__total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.nine-summary {
+  background: var(--color-surface-muted);
+  font-size: var(--text-sm);
+}
+
+.nine-summary__label,
+.totals-panel__label {
+  font-weight: 600;
+  margin-inline-end: auto;
+}
+
+.totals-panel {
+  margin-top: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.totals-panel__total {
+  background: var(--color-accent-soft);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.totals-panel__incomplete {
+  flex-basis: 100%;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--gross-pickup);
+}
+
+/* Teclado: cuatro columnas, todo por encima de 44 px, usable con una mano. */
+.score-keypad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+}
+
+.score-keypad__key {
+  min-height: 56px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-keypad__key--selected {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border-color: var(--color-accent);
+}
+
+.score-keypad__key--pickup {
+  color: var(--gross-pickup);
+}
+
+.confirmation {
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.confirmation__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.confirmation__grid dt {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.confirmation__grid dd {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.confirmation__points {
+  grid-column: 1 / -1;
+}
+
+.confirmation__actions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+}
+
+.button {
+  min-height: var(--tap-target);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  font-size: var(--text-base);
+  font-weight: 600;
+  padding-inline: var(--space-4);
+}
+
+.button--primary {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border-color: var(--color-accent);
+}
+
+.button--primary:disabled {
+  opacity: 0.5;
+}
+
+.button--secondary {
+  background: var(--color-surface);
+}
+
+.alert {
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  background: var(--state-pending);
+  border: 1px solid var(--color-border-strong);
+  font-size: var(--text-sm);
+}
+
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.save-status--synced { background: var(--state-saved); }
+.save-status--saving { background: var(--state-saving); }
+.save-status--offline { background: var(--state-offline); }
+.save-status--pending { background: var(--state-pending); }
+.save-status--error { background: var(--state-error); }
+
+.leaderboard__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.leaderboard--hidden {
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.leaderboard-card {
+  display: grid;
+  grid-template-columns: 3ch 12px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.leaderboard-card__position {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: var(--text-lg);
+  text-align: right;
+}
+
+.leaderboard-card__color {
+  width: 12px;
+  height: 100%;
+  min-height: 28px;
+  border-radius: var(--radius-pill);
+}
+
+.leaderboard-card__name {
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.leaderboard-card__handicaps {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-card__points {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-card__strokes {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-card__bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+.leaderboard-card__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+}
+
+.leaderboard-card__note {
+  grid-column: 1 / -1;
+  font-size: var(--text-xs);
+}
+
+.leaderboard-card--latest {
+  box-shadow: 0 0 0 2px var(--color-accent-soft), var(--shadow-md);
+}
