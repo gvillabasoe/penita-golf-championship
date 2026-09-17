@@ -42,12 +42,40 @@ export type LoginStep =
   | 'WRITE_PATH'
   | 'HASH';
 
+/**
+ * Paso del camino que se recorre DESPUES de entrar.
+ *
+ * La primera version de la sonda solo probaba consultas planas, y todas pasaban.
+ * Pero la aplicacion usa `include` anidados: uniones entre tres y cuatro tablas
+ * que generan un SQL completamente distinto. `getCurrentUser` se ejecuta en la
+ * primera peticion despues de iniciar sesion, y no estaba cubierto.
+ *
+ * El sintoma enganaba: un fallo ahi sale por la misma pantalla de error que un
+ * fallo del login, porque los dos usan el mismo `error.tsx`.
+ */
+export type AppStep =
+  /** session -> user -> competitionPlayers -> flightMember */
+  | 'SESSION_WITH_USER'
+  /** competition -> courseSnapshots -> holes */
+  | 'COMPETITION_WITH_COURSE'
+  /** competitionPlayer -> user, flightMember -> flight, scorecard -> holes */
+  | 'SCORECARDS'
+  /** Resolucion de la clasificacion */
+  | 'RANKING';
+
 export interface LoginProbe {
   ok: boolean;
   failedAt: LoginStep | null;
   /** Codigo de error de Prisma, si lo hay. No revela datos. */
   code: string | null;
   /** Mensaje recortado y saneado. Util para arreglarlo; sin credenciales. */
+  detail: string | null;
+}
+
+export interface AppProbe {
+  ok: boolean;
+  failedAt: AppStep | null;
+  code: string | null;
   detail: string | null;
 }
 
@@ -81,6 +109,11 @@ export interface Diagnosis {
   } | null;
   /** null cuando no hay tablas o no hay jugadores: no habria nada que probar. */
   loginPath: LoginProbe | null;
+  /**
+   * El camino que se recorre justo despues de entrar. Si `loginPath` esta bien y
+   * la aplicacion sigue fallando, el problema esta aqui.
+   */
+  appPath: AppProbe | null;
   ready: boolean;
   nextStep: string;
 }
@@ -161,6 +194,70 @@ export async function probeLoginPath(): Promise<LoginProbe> {
   return ok();
 }
 
+/**
+ * Ejecuta las consultas con `include` anidado que hace la aplicacion despues de
+ * entrar, en el mismo orden, y dice en cual falla.
+ *
+ * Todo es de solo lectura: no escribe nada y no necesita transaccion.
+ *
+ * Llama a las funciones REALES de queries.ts en vez de replicar sus consultas,
+ * para que la sonda no se desincronice de lo que hace la aplicacion.
+ */
+export async function probeAppPath(): Promise<AppProbe> {
+  const ok = (): AppProbe => ({ ok: true, failedAt: null, code: null, detail: null });
+  const fail = (failedAt: AppStep, error: unknown): AppProbe => ({
+    ok: false,
+    failedAt,
+    code: errorCode(error),
+    detail: sanitizeErrorDetail(error),
+  });
+
+  // 1. Lo primero que corre tras iniciar sesion: getCurrentUser().
+  //    Con un token que no existe, la consulta se ejecuta igual y devuelve null.
+  try {
+    await prisma.session.findUnique({
+      where: { tokenHash: 'diagnostico-token-que-no-existe' },
+      include: {
+        user: {
+          include: {
+            competitionPlayers: {
+              include: { flightMember: { select: { flightId: true } } },
+              take: 1,
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        },
+      },
+    });
+  } catch (error) {
+    return fail('SESSION_WITH_USER', error);
+  }
+
+  const queries = await import('./queries');
+
+  let context: Awaited<ReturnType<typeof queries.getCompetition>>;
+  try {
+    context = await queries.getCompetition();
+  } catch (error) {
+    return fail('COMPETITION_WITH_COURSE', error);
+  }
+  if (context === null) return ok();
+
+  try {
+    await queries.getAllScorecards(context);
+  } catch (error) {
+    return fail('SCORECARDS', error);
+  }
+
+  try {
+    await queries.getRanking(context);
+  } catch (error) {
+    return fail('RANKING', error);
+  }
+
+  return ok();
+}
+
 /** Clasifica el fallo sin filtrar su contenido. */
 function classify(error: unknown): DatabaseState {
   const message = error instanceof Error ? error.message : String(error);
@@ -201,6 +298,7 @@ export async function diagnose(): Promise<Diagnosis> {
       database: { state: 'NO_URL' },
       data: null,
       loginPath: null,
+      appPath: null,
       ready: false,
       nextStep: NEXT_STEP.NO_URL,
     };
@@ -240,6 +338,7 @@ export async function diagnose(): Promise<Diagnosis> {
       database,
       data,
       loginPath: null,
+      appPath: null,
       ready: false,
       nextStep: NEXT_STEP[database.state],
     };
@@ -254,8 +353,24 @@ export async function diagnose(): Promise<Diagnosis> {
       database,
       data,
       loginPath,
+      appPath: null,
       ready: false,
       nextStep: `El inicio de sesion falla en el paso ${loginPath.failedAt}${loginPath.code ? ` (${loginPath.code})` : ''}: ${loginPath.detail ?? 'sin detalle'}`,
+    };
+  }
+
+  const appPath = data.players > 0 ? await probeAppPath() : null;
+
+  if (appPath !== null && !appPath.ok) {
+    return {
+      version: APP_VERSION,
+      environment,
+      database,
+      data,
+      loginPath,
+      appPath,
+      ready: false,
+      nextStep: `El login funciona, pero la aplicacion falla justo despues, en el paso ${appPath.failedAt}${appPath.code ? ` (${appPath.code})` : ''}: ${appPath.detail ?? 'sin detalle'}`,
     };
   }
 
@@ -266,6 +381,7 @@ export async function diagnose(): Promise<Diagnosis> {
       database,
       data,
       loginPath,
+      appPath,
       ready: false,
       nextStep: 'Las tablas existen pero no hay jugadores. Ejecuta: npm run db:seed (ver docs/seed-credentials.md).',
     };
@@ -277,6 +393,7 @@ export async function diagnose(): Promise<Diagnosis> {
       database,
       data,
       loginPath,
+      appPath,
       ready: false,
       nextStep: 'Hay jugadores pero falta la competición o la valoración confirmada. Vuelve a ejecutar npm run db:seed.',
     };
@@ -288,6 +405,7 @@ export async function diagnose(): Promise<Diagnosis> {
       database,
       data,
       loginPath,
+      appPath,
       ready: true,
       nextStep: `Todo funciona. Faltan hándicaps por introducir (${data.playersWithHandicap} de ${data.players}) en /admin/jugadores.`,
     };
@@ -299,6 +417,7 @@ export async function diagnose(): Promise<Diagnosis> {
       database,
       data,
       loginPath,
+      appPath,
       ready: true,
       nextStep: 'Todo funciona. Falta sortear los partidos en /admin/partidos.',
     };
@@ -310,6 +429,7 @@ export async function diagnose(): Promise<Diagnosis> {
     database,
     data,
     loginPath,
+    appPath,
     ready: true,
     nextStep: 'Todo listo.',
   };

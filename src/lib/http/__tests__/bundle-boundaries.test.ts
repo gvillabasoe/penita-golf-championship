@@ -382,3 +382,57 @@ describe('version de la aplicacion', () => {
     assert.equal(/^\s*import /m.test(source), false);
   });
 });
+
+/**
+ * La sonda tiene que cubrir lo que la aplicacion hace de verdad.
+ *
+ * La primera version solo probaba consultas planas y todas pasaban, mientras la
+ * aplicacion seguia fallando: usa `include` anidados, que generan un SQL
+ * distinto. El hueco existio porque nadie comprobaba que la sonda y la
+ * aplicacion hablasen de lo mismo.
+ */
+describe('cobertura de la sonda de diagnostico', () => {
+  const health = readFileSync(join(ROOT, 'src/lib/data/health.ts'), 'utf8');
+
+  test('la sonda del login cubre las cinco operaciones', () => {
+    for (const step of ['ATTEMPTS_READ', 'USER_READ', 'SESSION_READ', 'WRITE_PATH', 'HASH']) {
+      assert.match(health, new RegExp(`fail\\('${step}'`), `la sonda no prueba ${step}`);
+    }
+  });
+
+  test('la sonda posterior al login cubre las consultas con include anidado', () => {
+    for (const step of [
+      'SESSION_WITH_USER',
+      'COMPETITION_WITH_COURSE',
+      'SCORECARDS',
+      'RANKING',
+    ]) {
+      assert.match(health, new RegExp(`fail\\('${step}'`), `la sonda no prueba ${step}`);
+    }
+  });
+
+  test('la sonda llama a las funciones reales, no replica sus consultas', () => {
+    // Replicarlas dejaria que se desincronizasen: la sonda pasaria mientras la
+    // aplicacion falla, que es exactamente lo que ocurrio.
+    assert.match(health, /queries\.getCompetition\(\)/);
+    assert.match(health, /queries\.getAllScorecards\(context\)/);
+    assert.match(health, /queries\.getRanking\(context\)/);
+  });
+
+  test('la sonda posterior no escribe nada', () => {
+    const probe = health.slice(
+      health.indexOf('export async function probeAppPath'),
+      health.indexOf('export async function diagnose'),
+    );
+    for (const write of ['.create(', '.update(', '.delete(', '.upsert(', '.createMany(']) {
+      assert.equal(probe.includes(write), false, `la sonda posterior escribe: ${write}`);
+    }
+  });
+
+  test('todos los caminos de diagnose devuelven las dos sondas', () => {
+    const diagnose = health.slice(health.indexOf('export async function diagnose'));
+    const returns = (diagnose.match(/return \{/g) ?? []).length;
+    assert.equal((diagnose.match(/loginPath/g) ?? []).length >= returns, true);
+    assert.equal((diagnose.match(/appPath/g) ?? []).length >= returns, true);
+  });
+});

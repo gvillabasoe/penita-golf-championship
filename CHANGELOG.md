@@ -2,6 +2,39 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.0.10] - 2026-09-17
+
+`loginPath` salio `ok` y la aplicacion seguia fallando. La sonda tenia un hueco.
+
+### Diagnostico
+
+La sonda probaba consultas **planas**: leer intentos, leer usuario, leer sesion,
+escribir, verificar hash. Todas pasaban.
+
+Pero la aplicacion usa `include` **anidados** —uniones entre tres y cuatro
+tablas— que generan un SQL completamente distinto. En particular
+`getCurrentUser()`, que recorre `session -> user -> competitionPlayers ->
+flightMember` y se ejecuta en la **primera peticion despues de entrar**.
+
+El sintoma engañaba: un fallo ahi sale por la misma pantalla que un fallo del
+login, porque los dos usan el mismo `error.tsx`. Con la contrasena correcta se
+entra, se redirige a /tarjeta, y /tarjeta revienta.
+
+### Anadido
+
+- **`appPath` en `/api/diagnostico`**: prueba el camino posterior al login en
+  cuatro pasos —`SESSION_WITH_USER`, `COMPETITION_WITH_COURSE`, `SCORECARDS` y
+  `RANKING`— y dice en cual falla, con el codigo de Prisma.
+
+  Llama a las funciones **reales** de `queries.ts` en vez de replicar sus
+  consultas. Replicarlas es lo que permitio el hueco: la sonda pasaba mientras la
+  aplicacion fallaba.
+
+- Cinco guardianes de la cobertura de la sonda: que cubra los cinco pasos del
+  login, los cuatro del camino posterior, que llame a las funciones reales, que
+  la sonda posterior **no escriba nada**, y que todos los caminos de `diagnose()`
+  devuelvan las dos sondas.
+
 ## [1.0.9] - 2026-09-17
 
 ### Anadido
