@@ -18,7 +18,6 @@ comporta de forma errática porque necesita sesiones con estado.
 ```bash
 cp .env.example .env
 # Rellenar DATABASE_URL y DIRECT_URL desde Neon
-openssl rand -base64 32   # -> AUTH_SECRET
 ```
 
 ## 3. Instalación y migración
@@ -45,7 +44,6 @@ Dos avisos honestos sobre este bloque:
 ## 4. Vercel
 
 - Importar el repositorio.
-- Añadir `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET` y `NEXT_PUBLIC_APP_URL`.
 - El comando de build ya es `prisma generate && next build` (en `package.json`).
 - Región: Frankfurt (`fra1`) o París (`cdg1`), la que esté más cerca de la región
   de Neon. Un torneo se juega en una mañana: la latencia entre la función y la

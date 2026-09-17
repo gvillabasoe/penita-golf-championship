@@ -10,7 +10,6 @@ Dice exactamente qué falta. Devuelve algo así:
 
 ```json
 {
-  "environment": { "DATABASE_URL": true, "DIRECT_URL": true, "AUTH_SECRET": false, "NEXT_PUBLIC_APP_URL": true },
   "database": { "state": "NO_TABLES" },
   "data": null,
   "ready": false,
@@ -77,13 +76,42 @@ Lo que esos tests **no** pueden comprobar es que PostgreSQL lo acepte: no hay
 base de datos donde se generó. Pruébalo primero en una **rama de desarrollo de
 Neon** — son instantáneas y desechables.
 
-### Y después, en los dos casos
+### Poblar la base: con Node, o sin él
+
+**Con Node**, lo normal:
 
 ```bash
-npm run db:seed && rm prisma/seed-credentials.json
+cp prisma/seed-credentials.example.json prisma/seed-credentials.json
+# rellenar las 13 contraseñas
+npm run db:seed
+rm prisma/seed-credentials.json
 ```
 
-Luego abre `/api/diagnostico` para comprobar que todo está.
+**Sin Node**, pegando un tercer SQL en Neon. Las contraseñas se guardan
+hasheadas y el hash no se puede calcular en SQL, así que se calcula una vez y se
+escribe en un archivo:
+
+```bash
+npm run gen:seed-sql     # genera prisma/sql/datos-iniciales.sql
+```
+
+Ese archivo se pega en el editor de Neon después de `schema.sql` y
+`constraints.sql`. Crea los 13 jugadores con su contraseña, el campo, la
+competición, la valoración activa y confirmada, los 18 hoyos, las 13
+inscripciones y la entrada de auditoría.
+
+**Ese archivo contiene hashes de contraseñas reales.** No son las contraseñas en
+claro, pero un hash de una contraseña que sigue un patrón adivinable se puede
+atacar sin prisa y sin dejar rastro. Está en `.gitignore`, no lo mandes por
+correo ni por WhatsApp, y **bórralo en cuanto lo hayas ejecutado**.
+
+Es re-ejecutable: `ON CONFLICT DO NOTHING` en cada INSERT, así que pegarlo dos
+veces no duplica nada y, en particular, **no reescribe una contraseña que alguien
+haya cambiado después**.
+
+### Y después, en los dos casos
+
+Abre `/api/diagnostico`. Debe decir `"ready": true`.
 
 Una nota si vas por el camino B: Prisma no sabrá que las tablas existen y avisará
 de «drift» si algún día cambias el esquema. Para eso, `npx prisma db push`

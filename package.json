@@ -1,6 +1,6 @@
 {
   "name": "penita-golf-championship",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "description": "I Peñita Golf Championship - Ulzama-Bariain 2026",
   "engines": {
@@ -24,7 +24,8 @@
     "check:refs": "bash scripts/check-references.sh",
     "verify": "npm run check:refs && npm run typecheck && npm test",
     "gen:sql": "node --import tsx scripts/generate-sql.ts",
-    "db:schema": "psql \"$DIRECT_URL\" -f prisma/sql/schema.sql"
+    "db:schema": "psql \"$DIRECT_URL\" -f prisma/sql/schema.sql",
+    "gen:seed-sql": "node --import tsx scripts/generate-seed-sql.ts"
   },
   "prisma": {
     "seed": "node --import tsx prisma/seed.ts"

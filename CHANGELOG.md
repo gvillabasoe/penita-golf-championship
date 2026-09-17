@@ -2,6 +2,55 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.0.7] - 2026-09-17
+
+Las tablas ya existen en Neon; faltaba poder poblarlas sin tocar nada en local.
+
+### Anadido
+
+- **`npm run gen:seed-sql`**, que produce `prisma/sql/datos-iniciales.sql`: los 13
+  jugadores con su contrasena hasheada, el campo, la fuente RFEG, la competicion,
+  la valoracion activa y confirmada, los 18 hoyos, las 13 inscripciones y la
+  entrada de auditoria de la confirmacion. 49 filas en 8 INSERT.
+
+  Existe porque el seed normal necesita Node: las contrasenas se guardan
+  hasheadas y el hash no se puede calcular en SQL. Esto lo calcula una vez y lo
+  escribe, para poner en marcha el torneo pegandolo en el editor de Neon.
+
+  **El archivo contiene hashes de contrasenas reales.** Esta en `.gitignore`, no
+  se comparte y hay que borrarlo tras ejecutarlo. Las contrasenas en claro se
+  leen de `seed-credentials.json`, que tampoco se versiona, y no aparecen en la
+  salida por ningun sitio: comprobado.
+
+  Es re-ejecutable con `ON CONFLICT DO NOTHING`, asi que pegarlo dos veces no
+  duplica nada ni reescribe una contrasena cambiada despues.
+
+  Verificado extrayendo los 13 hashes del SQL y comprobando con el propio
+  `verifyPassword` que **cada uno valida su contrasena y rechaza otra**, que los
+  13 son distintos entre si (salt aleatorio) y que ninguna columna obligatoria
+  del esquema falta en ningun INSERT. Las columnas obligatorias se derivan del
+  esquema, no de una lista escrita a mano.
+
+### Corregido
+
+- **`AUTH_SECRET` no existia.** Estaba en `.env.example`, en tres documentos y,
+  lo peor, en el diagnostico como **bloqueante**: decia que faltaba algo para
+  arrancar cuando el codigo no la lee en ningun sitio. La puse por costumbre.
+
+  Las sesiones no necesitan secreto de firma porque no se firma nada: la cookie
+  lleva un token aleatorio opaco de 256 bits y en la base se guarda su SHA-256.
+  La validez se comprueba contra la tabla de sesiones, no descifrando la cookie.
+
+  Eliminada de todas partes. Una lista de variables con entradas fantasma hace
+  que nadie se fie de la lista, que es lo contrario de para lo que existe.
+
+- `DIRECT_URL` deja de parecer un problema en el diagnostico. Solo la usan
+  `prisma migrate` e `introspect`: si el esquema se creo con SQL, la aplicacion
+  funciona sin ella. Documentado en la propia interfaz de `Diagnosis`.
+
+- Anadido un guardian: **toda variable declarada en `.env.example` tiene que
+  leerse en el codigo**. Es la forma general del fallo anterior.
+
 ## [1.0.6] - 2026-09-17
 
 ### Corregido

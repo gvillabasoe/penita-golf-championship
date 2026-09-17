@@ -34,11 +34,9 @@ comporta de forma errática, porque necesita sesiones con estado.
 
 ```bash
 cp .env.example .env
-openssl rand -base64 32    # -> AUTH_SECRET
 ```
 
-Rellena `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET` y
-`NEXT_PUBLIC_APP_URL=http://localhost:3000`.
+Rellena `DATABASE_URL`, `DIRECT_URL` y `NEXT_PUBLIC_APP_URL`.
 
 ## 4. Instalación y primer build
 
@@ -173,7 +171,7 @@ Comprueba, en este orden:
 ## 8. Vercel
 
 - Importa el repositorio.
-- Variables: `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`
+- Variables: `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_APP_URL`
   (con la URL real del despliegue).
 - El comando de build ya es `prisma generate && next build`.
 - Región: **Frankfurt (`fra1`)** o **París (`cdg1`)**, la más cercana a la de tu
