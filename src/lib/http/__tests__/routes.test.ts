@@ -52,8 +52,21 @@ describe('rutas publicas', () => {
 
   test('la lista de rutas publicas es corta y conocida', () => {
     // Si alguien anade una ruta publica, este test le obliga a justificarlo.
+    //
+    // Las 8: login (pagina y POST), lista de participantes para el selector,
+    // pantalla sin conexion, archivos de la PWA, iconos, recursos de Next, y
+    // /api/diagnostico. Esta ultima es publica porque se necesita justo cuando
+    // la autenticacion no funciona, y no devuelve nada sensible: booleanos,
+    // recuentos y el siguiente paso.
     const publicas = ROUTES.filter((r) => r.access.kind === 'PUBLIC').map((r) => r.pattern.source);
-    assert.equal(publicas.length, 7, `hay ${publicas.length} reglas publicas: ${publicas.join(', ')}`);
+    assert.equal(publicas.length, 8, `hay ${publicas.length} reglas publicas: ${publicas.join(', ')}`);
+  });
+
+  test('el diagnostico es publico pero solo de lectura', () => {
+    const rule = ROUTES.find((r) => r.pattern.test('/api/diagnostico'));
+    assert.ok(rule);
+    assert.equal(rule.access.kind, 'PUBLIC');
+    assert.deepEqual([...rule.methods], ['GET'], 'un diagnostico no escribe nada');
   });
 });
 
@@ -164,6 +177,7 @@ describe('coherencia del manifiesto', () => {
     { path: '/manifest.webmanifest', method: 'GET', access: 'PUBLIC' },
     { path: '/icons/icon-192.png', method: 'GET', access: 'PUBLIC' },
     { path: '/_next/static/chunk.js', method: 'GET', access: 'PUBLIC' },
+    { path: '/api/diagnostico', method: 'GET', access: 'PUBLIC' },
     { path: '/api/auth/logout', method: 'POST', access: 'AUTHENTICATED' },
     { path: '/', method: 'GET', access: 'AUTHENTICATED' },
     { path: '/tarjeta/7', method: 'GET', access: 'AUTHENTICATED' },

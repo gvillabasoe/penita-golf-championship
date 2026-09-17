@@ -88,6 +88,17 @@ export const ROUTES: readonly RouteRule[] = [
     access: { kind: 'PUBLIC' },
     description: 'Recursos generados por Next',
   },
+  {
+    /**
+     * Publico a proposito: se necesita justo cuando la autenticacion no
+     * funciona. No devuelve mensajes de la base de datos ni trazas, solo
+     * booleanos, recuentos y el siguiente paso.
+     */
+    pattern: /^\/api\/diagnostico$/,
+    methods: READ_ONLY,
+    access: { kind: 'PUBLIC' },
+    description: 'Diagnostico de la instalacion, sin datos sensibles',
+  },
 
   // --- Jugador -------------------------------------------------------------
   {
