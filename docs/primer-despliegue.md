@@ -65,16 +65,58 @@ tiene red ni base de datos:
 | `src/lib/auth/server.ts` | Necesita `next/headers` y Prisma |
 | Los componentes `.tsx` | Renderizan y su marcado está verificado con 40 tests, pero `tsc` necesita `@types/react` |
 
-Dónde es más probable que aparezcan errores, por orden:
+### Lo que ya se ha arreglado del primer build
 
-1. **Nombres de campos de Prisma.** El esquema está escrito a mano y el cliente
-   se genera de él. Si `npx prisma generate` renombra algo (por ejemplo la clave
-   compuesta `scorecardId_holeNumber`), `tsc` lo dirá con precisión.
-2. **Campos `Json`.** Se pasan por `toJson()` en `src/lib/db.ts` justamente para
-   evitar esto, pero puede quedar algún sitio.
-3. **Enums.** Los valores del esquema (`ScorecardStatus`, `ClassificationStatus`)
-   y los del dominio son cadenas iguales, pero TypeScript puede pedir una
-   conversión explícita en algún punto de `queries.ts`.
+El primer intento en Vercel falló así:
+
+```
+UnhandledSchemeError: Reading from "node:crypto" is not handled by plugins
+Import trace: node:crypto <- ./src/lib/auth/session.ts
+```
+
+Causa: `src/middleware.ts` importaba el nombre de la cookie de `session.ts`, y
+con él se arrastraba `node:crypto`. **El middleware de Next corre en el runtime
+edge**, donde webpack no resuelve los módulos de Node.
+
+Arreglado moviendo el nombre y las opciones de la cookie a
+`src/lib/auth/cookie.ts`, sin dependencias de Node. Y para que no vuelva:
+
+- `bundle-boundaries.test.ts` recorre el grafo de importaciones desde el
+  middleware y desde los 14 componentes de cliente, y falla si alcanza un
+  `node:`, Prisma o `next/headers`.
+- `prisma-references.test.ts` compara cada modelo, campo, clave compuesta y
+  valor de enum contra `schema.prisma`.
+
+Los dos se han verificado reintroduciendo los errores a propósito.
+
+### El segundo build también falló, y también está arreglado
+
+```
+./src/lib/auth/password.ts:68
+Type error: Expected 3 arguments, but got 4.
+```
+
+`promisify(scrypt)` hace que TypeScript resuelva la firma por `__promisify__` y
+se quede en la variante de tres argumentos. Sustituido por un envoltorio
+explícito con `new Promise`, que usa la sobrecarga concreta de cinco argumentos.
+
+Y para no ir error por error, se pasó `tsc --strict` sobre el proyecto completo
+usando declaraciones mínimas de los paquetes externos. **Resultado: cero errores
+en el código que se despliega.**
+
+También se ha separado el type-check: `next build` ya solo compila `src/`. Los
+tests, los scripts y el seed se comprueban con `npm run typecheck`, que pasa los
+dos tsconfig. Un roce de tipos en un test no debe tumbar un despliegue.
+
+### Dónde puede seguir apareciendo algo
+
+Queda una sola cosa que no se ha podido descartar sin la base de datos:
+
+**Campos de Prisma anidados más de un nivel.** `prisma-references.test.ts`
+comprueba el primer nivel de `select`, `include` y `orderBy`; más adentro no
+puede saber a qué modelo pertenece cada clave sin resolver relaciones. El cliente
+real sí lo sabe, así que si aparece algo será ahí, y `tsc` lo dirá con archivo y
+línea.
 
 Todo eso son errores de tipos: `tsc` los señala con archivo y línea, y son de
 arreglar en minutos. No son errores de lógica, porque la lógica está probada.

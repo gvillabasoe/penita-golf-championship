@@ -2,6 +2,54 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.0.4] - 2026-09-17
+
+El build pasa y el despliegue queda Ready, pero toda peticion muere con
+"Application error: a server-side exception has occurred" y un digest.
+
+### Anadido
+
+- **`/api/diagnostico`.** Un fallo de base de datos en Next produce un mensaje
+  generico y un digest que no dicen nada: averiguar si falta una variable de
+  entorno, la migracion o el seed cuesta veinte minutos de prueba y error. Esto
+  lo convierte en una URL.
+
+  Clasifica el fallo en `NO_URL`, `NO_ENGINE`, `NO_TABLES` o `UNREACHABLE`, y
+  devuelve el siguiente paso concreto. Publico a proposito, porque se necesita
+  justo cuando la autenticacion no funciona, y sin nada sensible: booleanos,
+  recuentos y el paso siguiente. Ni mensajes de la base de datos, ni cadenas de
+  conexion, ni trazas.
+
+- **`binaryTargets = ["native", "rhel-openssl-3.0.x"]`** en el generador de
+  Prisma. Cuando el entorno de build y el de ejecucion de Vercel no coinciden, el
+  motor de consultas no viaja en el despliegue y toda peticion muere con
+  `Query engine library for current platform could not be found`. Declararlo pesa
+  unos megas mas y quita el problema de encima.
+
+- **`error.tsx`, `global-error.tsx` y `not-found.tsx`.** Sin ellos, cualquier
+  excepcion deja la pantalla generica de Next. La de error no muestra el fallo
+  —eso se queda en los logs— pero dice lo unico que un jugador necesita saber a
+  mitad de una vuelta: **que sus resultados estan guardados en el movil**. Y no
+  es un consuelo: la tarjeta se escribe en IndexedDB antes de intentar la red.
+
+- **`/login` tolera que la base de datos no este lista.** Era la primera consulta
+  que hacia la aplicacion y donde reventaba. Ahora captura el fallo y dice que
+  hacer, con enlace al diagnostico.
+
+- `docs/si-algo-falla.md`: el orden correcto de puesta en marcha, la tabla de
+  causas y el plan de respaldo para el dia del torneo.
+
+- 452 tests. Al declarar `/api/diagnostico` saltaron dos guardianes —el del
+  recuento de rutas publicas y el de la tabla de muestras— tal como debian:
+  anadir una ruta publica tiene que ser deliberado. Quedan justificados en el
+  propio test.
+
+### Nota
+
+`not-found.tsx` es tambien lo que responde `requireAdmin()` a quien no es
+administrador, asi que su texto no menciona permisos ni administracion: un 403
+confirmaria que la ruta existe.
+
 ## [1.0.3] - 2026-09-17
 
 Arregla el segundo build fallido en Vercel, en la fase de type-check.

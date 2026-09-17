@@ -10,6 +10,19 @@
 
 generator client {
   provider = "prisma-client-js"
+
+  /**
+   * `native` resuelve el motor de la maquina que ejecuta `prisma generate`. En
+   * Vercel eso basta casi siempre, pero cuando el entorno de build y el de
+   * ejecucion no coinciden el motor no viaja en el despliegue y toda peticion
+   * muere con:
+   *
+   *   PrismaClientInitializationError: Query engine library for current
+   *   platform "rhel-openssl-3.0.x" could not be found
+   *
+   * Declararlo explicitamente pesa unos megas mas y quita el problema de encima.
+   */
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
