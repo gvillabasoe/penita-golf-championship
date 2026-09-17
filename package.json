@@ -1,6 +1,6 @@
 {
   "name": "penita-golf-championship",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "I Peñita Golf Championship - Ulzama-Bariain 2026",
   "engines": {
@@ -12,8 +12,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "test": "TSX_TSCONFIG_PATH=tsconfig.test.json node --import tsx --test \"src/**/__tests__/*.test.ts\" \"src/**/__tests__/*.test.tsx\"",
-    "test:watch": "TSX_TSCONFIG_PATH=tsconfig.test.json node --import tsx --test --watch \"src/**/__tests__/*.test.ts\" \"src/**/__tests__/*.test.tsx\"",
+    "test": "TSX_TSCONFIG_PATH=tsconfig.test.json node --import tsx --test \"src/**/__tests__/*.test.ts\" \"src/**/__tests__/*.test.tsx\" \"scripts/__tests__/*.test.ts\"",
+    "test:watch": "TSX_TSCONFIG_PATH=tsconfig.test.json node --import tsx --test --watch \"src/**/__tests__/*.test.ts\" \"src/**/__tests__/*.test.tsx\" \"scripts/__tests__/*.test.ts\"",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:constraints": "psql \"$DIRECT_URL\" -f prisma/sql/constraints.sql",
@@ -22,7 +22,9 @@
     "gen:divergence": "node --import tsx scripts/generate-divergence-table.ts",
     "gen:icons": "node --import tsx scripts/generate-icons.ts",
     "check:refs": "bash scripts/check-references.sh",
-    "verify": "npm run check:refs && npm run typecheck && npm test"
+    "verify": "npm run check:refs && npm run typecheck && npm test",
+    "gen:sql": "node --import tsx scripts/generate-sql.ts",
+    "db:schema": "psql \"$DIRECT_URL\" -f prisma/sql/schema.sql"
   },
   "prisma": {
     "seed": "node --import tsx prisma/seed.ts"

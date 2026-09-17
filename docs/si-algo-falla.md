@@ -42,24 +42,52 @@ una de estas tres:
 | `NO_ENGINE` | El motor de Prisma no viajó en el despliegue | Comprobar `binaryTargets` en `prisma/schema.prisma` y volver a desplegar **sin caché** |
 | `UNREACHABLE` | No conecta | Revisar `DATABASE_URL`. Si el proyecto de Neon estaba dormido, recargar: el primer arranque tarda unos segundos |
 
-### El orden correcto de puesta en marcha
+### Crear las tablas: dos caminos
 
-Con la base de datos de producción ya creada en Neon:
+**Camino A, recomendado.** Un comando, sin SQL y sin archivos de migración:
 
 ```bash
-# 1. Variables en Vercel: DATABASE_URL, DIRECT_URL, AUTH_SECRET, NEXT_PUBLIC_APP_URL
-# 2. Migración (contra la base de PRODUCCIÓN, con DIRECT_URL en el entorno local)
-npx prisma migrate deploy
+npx prisma db push
+```
 
-# 3. Restricciones que Prisma no expresa
-psql "$DIRECT_URL" -f prisma/sql/constraints.sql
+`db push` lleva el esquema a la base de datos tal cual. No necesita shadow
+database ni migraciones previas, y es exactamente para esto. Es el camino con
+menos riesgo porque el SQL lo genera Prisma, no una persona.
 
-# 4. Seed
+(`migrate deploy` no sirve aquí: no hay archivos de migración en el repositorio,
+deliberadamente. `migrate dev` los generaría, pero necesita una shadow database
+en Neon y añade fricción que no hace falta.)
+
+**Camino B, pegar SQL en Neon.** Si prefieres no instalar nada y ver exactamente
+qué se crea:
+
+1. Abre el editor SQL de Neon.
+2. Pega **`prisma/sql/schema.sql`** entero y ejecútalo.
+3. Pega **`prisma/sql/constraints.sql`** entero y ejecútalo.
+
+Los dos van en una transacción y los dos son re-ejecutables: si algo falla no
+queda nada a medias, y pegarlos dos veces no rompe nada.
+
+`schema.sql` está **generado** desde el esquema por `npm run gen:sql`, no escrito
+a mano: son 20 tablas, 255 campos y 24 claves foráneas, y transcribir eso a mano
+es garantizar una errata. Hay 31 tests que comprueban que cubre cada modelo,
+campo, enum, índice y relación, y que no añade nada.
+
+Lo que esos tests **no** pueden comprobar es que PostgreSQL lo acepte: no hay
+base de datos donde se generó. Pruébalo primero en una **rama de desarrollo de
+Neon** — son instantáneas y desechables.
+
+### Y después, en los dos casos
+
+```bash
 npm run db:seed && rm prisma/seed-credentials.json
 ```
 
-`migrate deploy` y no `migrate dev`: en producción no se generan migraciones, se
-aplican las que ya existen.
+Luego abre `/api/diagnostico` para comprobar que todo está.
+
+Una nota si vas por el camino B: Prisma no sabrá que las tablas existen y avisará
+de «drift» si algún día cambias el esquema. Para eso, `npx prisma db push`
+reconcilia sin perder datos.
 
 ## Qué ve un jugador si algo falla a mitad de la vuelta
 

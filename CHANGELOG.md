@@ -2,6 +2,59 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.0.5] - 2026-09-17
+
+### Anadido
+
+- **`prisma/sql/schema.sql`**: creacion completa del esquema en SQL, para pegar
+  en el editor de Neon sin instalar nada.
+
+  **Generado** desde `prisma/schema.prisma` por `scripts/generate-sql.ts`, no
+  escrito a mano: son 20 tablas, 255 campos, 24 claves foraneas, 14 indices
+  unicos, 13 indices y 13 enums. Transcribir eso a mano es garantizar una
+  errata, y una columna que falta no se nota hasta que alguien intenta escribir
+  en ella.
+
+  Va en una transaccion —un esquema a medias es peor que ninguno— y es
+  re-ejecutable: enums con bloque condicional, tablas e indices con
+  `IF NOT EXISTS`. Las claves foraneas van al final, asi el orden de creacion de
+  tablas da igual.
+
+- **31 tests de verificacion del SQL.** Comprueban que cada modelo tiene tabla,
+  cada campo escalar o de enum tiene columna con la nulabilidad correcta, cada
+  enum tiene sus valores exactos, cada `@unique` y `@@index` tiene su indice,
+  cada relacion tiene su clave foranea con el borrado en cascada que declara el
+  esquema, y que los recuentos cuadran en los dos sentidos: ni falta ni sobra.
+
+  Verificado borrando una columna del SQL a mano: saltan tres tests.
+
+  Tambien comprueban `constraints.sql`, que si esta escrito a mano: que toda
+  tabla y toda columna de sus `CHECK` existan de verdad en el esquema. Una
+  errata ahi tumbaria la transaccion entera al aplicarla.
+
+- `prisma/sql/constraints.sql` pasa a ser re-ejecutable, porque se va a pegar en
+  un editor y pegarlo dos veces no debe romper nada.
+
+- `npm run gen:sql` y `npm run db:schema`.
+
+### Corregido
+
+- El generador producia `"id" TEXT NOT NULL DEFAULT 'cuid('::"String"`. La
+  expresion regular de `@default` cortaba en el primer parentesis, asi que
+  `@default(cuid())` capturaba `cuid(` y caia en la rama de los enums. Detectado
+  leyendo el SQL generado, no por los tests.
+
+  `cuid()` no debe traducirse a un DEFAULT de base de datos: lo genera el cliente
+  de Prisma. Hay un test que comprueba que la palabra `cuid` no aparece en el SQL
+  y que ninguna columna `id` lleva DEFAULT.
+
+### Nota
+
+`npx prisma db push` sigue siendo el camino recomendado: un comando, y el SQL lo
+genera Prisma en vez de una persona. El archivo existe para quien prefiera pegarlo
+en Neon, y lleva escrito en la cabecera que nunca se ha ejecutado contra un
+PostgreSQL real.
+
 ## [1.0.4] - 2026-09-17
 
 El build pasa y el despliegue queda Ready, pero toda peticion muere con
