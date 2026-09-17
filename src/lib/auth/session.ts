@@ -13,8 +13,9 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { SESSION_TTL_HOURS } from './cookie';
+
 export const SESSION_TOKEN_BYTES = 32;
-export const SESSION_TTL_HOURS = 36; // cubre una jornada de torneo y su sobremesa
 export const SESSION_IDLE_REFRESH_MINUTES = 30;
 
 export interface SessionRecord {
@@ -88,34 +89,16 @@ export function validateSession(
   };
 }
 
-export interface CookieOptions {
-  name: string;
-  httpOnly: true;
-  secure: boolean;
-  sameSite: 'lax';
-  path: string;
-  maxAge: number;
-}
-
-export const SESSION_COOKIE_NAME = 'pgc_session';
-
 /**
- * `sameSite: 'lax'` y no 'strict' a proposito: con 'strict' el jugador que abre
- * la app desde un enlace de WhatsApp en medio de la vuelta aparece desconectado.
- * 'lax' sigue bloqueando el envio en peticiones POST entre sitios.
+ * El nombre y las opciones de la cookie viven en `cookie.ts`, sin ninguna
+ * dependencia de Node, porque el middleware corre en el runtime edge y no puede
+ * importar nada que arrastre `node:crypto`. Se reexportan aqui para que el
+ * codigo de servidor siga teniendo un solo sitio del que importar.
  */
-export function sessionCookieOptions(isProduction: boolean): CookieOptions {
-  return {
-    name: SESSION_COOKIE_NAME,
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: SESSION_TTL_HOURS * 60 * 60,
-  };
-}
-
-/** Cookie de borrado para el cierre de sesion real. */
-export function clearedCookieOptions(isProduction: boolean): CookieOptions {
-  return { ...sessionCookieOptions(isProduction), maxAge: 0 };
-}
+export {
+  SESSION_COOKIE_NAME,
+  SESSION_TTL_HOURS,
+  sessionCookieOptions,
+  clearedCookieOptions,
+  type CookieOptions,
+} from './cookie';

@@ -16,7 +16,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { middlewareDecision } from '@/lib/http/routes';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
+// Desde `cookie.ts`, NO desde `session.ts`: aquel arrastra node:crypto y
+// webpack no lo resuelve en el runtime edge.
+import { SESSION_COOKIE_NAME } from '@/lib/auth/cookie';
 
 export function middleware(request: NextRequest) {
   const decision = middlewareDecision({
