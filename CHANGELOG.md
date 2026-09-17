@@ -2,6 +2,59 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.0.8] - 2026-09-17
+
+El login fallaba con la misma pantalla de error con la contrasena correcta y con
+una incorrecta.
+
+### Diagnostico
+
+Que el error fuera identico en los dos casos descarta la autenticacion: una
+contrasena mala devuelve un mensaje, no una excepcion. El fallo estaba antes de
+comprobarla, en una de cinco operaciones, y la pantalla de error no daba
+ninguna pista sobre cual.
+
+### Corregido
+
+- **`login()` ya no tumba la pagina.** Envuelto en try/catch: el detalle va a los
+  logs y el jugador ve un mensaje que dice explicitamente que el problema es del
+  servidor y no de su contrasena, con el enlace al diagnostico. Antes, cualquier
+  excepcion en ese camino sacaba la pantalla generica.
+
+- **`prisma.user.findUnique` pedia las doce columnas de User** por no llevar
+  `select`. Ahora pide las cuatro que usa. Cuanto menos se pida, menos
+  superficie para que un desajuste entre esquema y base de datos rompa el login.
+  Es tambien por lo que `getLoginRoster` funcionaba y esto no: aquel si lleva
+  `select`.
+
+- **`createMany` sustituido por dos `create`.** Son dos filas, `createMany` no
+  aporta nada ahi, y `create` es el camino mas trillado para la generacion del
+  identificador. Un sospechoso menos.
+
+### Anadido
+
+- **Sonda del camino de login en `/api/diagnostico`.** Ejecuta en orden las
+  mismas operaciones que el inicio de sesion —lectura de intentos, lectura de
+  usuario, lectura de sesion, escritura y verificacion del hash— y dice **en que
+  paso falla**, con el codigo de error de Prisma.
+
+  Las escrituras van dentro de una transaccion **que se aborta a proposito**: se
+  comprueba que el INSERT funciona sin dejar ni una fila detras.
+
+- **`src/lib/data/sanitize.ts`**, modulo puro. El diagnostico es publico, asi que
+  su salida tiene que estar limpia: los mensajes de Prisma pueden llevar la
+  cadena de conexion dentro. Oculta cadenas de conexion, contrasenas, sslmode y
+  hashes, y recorta a 300 caracteres. Deja pasar lo que si hace falta, como
+  "The column User.defaultColor does not exist".
+
+  Estaba dentro de `health.ts` y el test no podia importarlo sin arrastrar el
+  cliente de Prisma entero. Que un test no pueda alcanzar una funcion es señal de
+  que esta en el sitio equivocado.
+
+- Tests del saneado: oculta lo que debe, deja pasar lo que hace falta, nunca
+  lanza con ninguna entrada, recorta, extrae el codigo de Prisma, y no importa
+  Prisma.
+
 ## [1.0.7] - 2026-09-17
 
 Las tablas ya existen en Neon; faltaba poder poblarlas sin tocar nada en local.
