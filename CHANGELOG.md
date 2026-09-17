@@ -2,6 +2,62 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.0.2] - 2026-09-17
+
+Arregla el primer build fallido en Vercel.
+
+### Corregido
+
+- **El build fallaba con `UnhandledSchemeError: Reading from "node:crypto"`.**
+
+  `src/middleware.ts` importaba `SESSION_COOKIE_NAME` de `src/lib/auth/session.ts`,
+  y con el nombre de la cookie se arrastraba `node:crypto` al empaquetado. El
+  middleware de Next corre en el runtime EDGE, donde webpack no resuelve los
+  modulos de Node, asi que el build revento despues de compilar todo lo demas.
+
+  El nombre y las opciones de la cookie pasan a `src/lib/auth/cookie.ts`, un
+  modulo sin ninguna dependencia de Node. `session.ts` los reexporta, asi que el
+  codigo de servidor sigue importando de un solo sitio. El middleware importa de
+  `cookie.ts`.
+
+  Es una clase de error que los tests de unidad NO detectan: cada modulo
+  funcionaba perfectamente por separado; el problema era donde acababa
+  empaquetado.
+
+- `engines.node` pasa de `>=20.11.0` a `22.x`. Vercel avisaba de que el rango
+  abierto se actualizaria solo al salir un Node major nuevo. 22.x es la version
+  con la que se ejecutan los tests.
+
+### Anadido
+
+- **Guardian de fronteras de empaquetado** (`bundle-boundaries.test.ts`):
+  recorre el grafo de importaciones desde `src/middleware.ts` y desde cada uno
+  de los 14 componentes `'use client'`, y falla si alcanza un `node:`, Prisma o
+  `next/headers`. El recorrido se detiene en los archivos `'use server'`, porque
+  una server action es una frontera real.
+
+  Verificado reintroduciendo el bug exacto: el test reproduce el mismo rastro que
+  dio Vercel, `node:crypto via src/middleware.ts -> src/lib/auth/session.ts`.
+
+  Comprueba tambien que toda ruta que use pdf-lib o sharp declare
+  `runtime = 'nodejs'`: en edge no funcionan, y eso falla al desplegar, no al
+  compilar.
+
+- **Guardian de referencias a Prisma** (`prisma-references.test.ts`): compara
+  cada `prisma.<modelo>`, cada clave compuesta, cada clave de `select`,
+  `include` y `orderBy` del primer nivel, y cada literal de enum, contra
+  `schema.prisma`. Era la clase de error que quedaba mas probable, porque el
+  esquema esta escrito a mano y el cliente se genera de el.
+
+  El analisis sigue las llaves en vez de usar una expresion regular suelta: una
+  primera version atribuia los `select` anidados al modelo de fuera y daba trece
+  falsos positivos. Verificado introduciendo un campo inexistente y un modelo mal
+  escrito: los detecta los dos.
+
+  **Resultado sobre el codigo real: ninguna referencia incorrecta.**
+
+- 451 tests ejecutandose y pasando (antes 436).
+
 ## [1.0.1] - 2026-09-17
 
 ### Cambiado

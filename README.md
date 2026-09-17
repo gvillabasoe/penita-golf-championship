@@ -91,7 +91,8 @@ docs/                       Trazabilidad, proveedores, hándicap, seed, desplieg
 ## Verificación ejecutada
 
 ```
-427 tests · 427 pasando · 83 suites
+451 tests · 451 pasando · 94 suites
+Guardianes estáticos: fronteras de empaquetado y referencias a Prisma
 26 módulos de lógica · type-check estricto · 0 errores
 40 tests de render sobre React 19
 38 tests de exportación, con los PDF leídos de vuelta
