@@ -28,9 +28,14 @@ export type DatabaseState =
 
 export interface Diagnosis {
   environment: {
+    /** Imprescindible: sin ella la aplicacion no arranca. */
     DATABASE_URL: boolean;
+    /**
+     * Solo la usan `prisma migrate` e `introspect`, no el cliente en ejecucion.
+     * Si el esquema se creo con SQL, no hace falta para que la app funcione.
+     */
     DIRECT_URL: boolean;
-    AUTH_SECRET: boolean;
+    /** Cosmetica: la usa la PWA para su URL canonica. */
     NEXT_PUBLIC_APP_URL: boolean;
   };
   database: DatabaseState;
@@ -75,7 +80,6 @@ export async function diagnose(): Promise<Diagnosis> {
   const environment = {
     DATABASE_URL: Boolean(process.env.DATABASE_URL),
     DIRECT_URL: Boolean(process.env.DIRECT_URL),
-    AUTH_SECRET: Boolean(process.env.AUTH_SECRET),
     NEXT_PUBLIC_APP_URL: Boolean(process.env.NEXT_PUBLIC_APP_URL),
   };
 
@@ -136,15 +140,6 @@ export async function diagnose(): Promise<Diagnosis> {
       data,
       ready: false,
       nextStep: 'Hay jugadores pero falta la competición o la valoración confirmada. Vuelve a ejecutar npm run db:seed.',
-    };
-  }
-  if (!environment.AUTH_SECRET) {
-    return {
-      environment,
-      database,
-      data,
-      ready: false,
-      nextStep: 'Falta AUTH_SECRET. Genéralo con: openssl rand -base64 32',
     };
   }
   if (data.playersWithHandicap < data.players) {

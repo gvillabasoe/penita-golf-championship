@@ -213,3 +213,70 @@ describe('las rutas que usan pdf-lib o sharp declaran runtime nodejs', () => {
     assert.deepEqual(missing, [], 'estas rutas necesitan runtime nodejs');
   });
 });
+
+/**
+ * Variables de entorno declaradas contra variables usadas.
+ *
+ * Nace de un fallo real: `.env.example` y tres documentos pedian `AUTH_SECRET`,
+ * y el codigo no la leia en ningun sitio. Peor: el diagnostico la marcaba como
+ * bloqueante, asi que decia que faltaba algo para arrancar cuando no hacia
+ * ninguna falta.
+ *
+ * Una lista de variables con entradas fantasma hace que nadie se fie de la
+ * lista, que es justo lo contrario de para lo que existe.
+ */
+describe('variables de entorno', () => {
+  const root = ROOT;
+
+  function declaredInExample(): string[] {
+    const example = readFileSync(join(root, '.env.example'), 'utf8');
+    return [...example.matchAll(/^([A-Z][A-Z0-9_]*)=/gm)].map((match) => match[1]);
+  }
+
+  function readInCode(): Set<string> {
+    const found = new Set<string>();
+    const scan = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) {
+          scan(full);
+          continue;
+        }
+        if (!full.endsWith('.ts') && !full.endsWith('.tsx')) continue;
+        const source = readFileSync(full, 'utf8');
+        for (const match of source.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)) {
+          found.add(match[1]);
+        }
+        for (const match of source.matchAll(/env\("([A-Z][A-Z0-9_]*)"\)/g)) {
+          found.add(match[1]);
+        }
+      }
+    };
+    scan(join(root, 'src'));
+    scan(join(root, 'prisma'));
+    // El esquema de Prisma tambien declara variables con env("...").
+    const schema = readFileSync(join(root, 'prisma/schema.prisma'), 'utf8');
+    for (const match of schema.matchAll(/env\("([A-Z][A-Z0-9_]*)"\)/g)) found.add(match[1]);
+    return found;
+  }
+
+  test('hay variables declaradas que comprobar', () => {
+    assert.ok(declaredInExample().length >= 3, 'la plantilla de entorno esta vacia');
+  });
+
+  test('toda variable de .env.example se lee en el codigo', () => {
+    const used = readInCode();
+    const phantom = declaredInExample().filter((name) => !used.has(name));
+    assert.deepEqual(
+      phantom,
+      [],
+      'estas variables se piden y no se usan: pedirlas hace que nadie se fie de la lista',
+    );
+  });
+
+  test('AUTH_SECRET no ha vuelto', () => {
+    // Las sesiones no firman nada: token opaco aleatorio y SHA-256 en la base.
+    assert.equal(readInCode().has('AUTH_SECRET'), false);
+    assert.equal(declaredInExample().includes('AUTH_SECRET'), false);
+  });
+});
