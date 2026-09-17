@@ -461,3 +461,61 @@ describe('credenciales del seed', () => {
     assert.doesNotThrow(() => assertCredentialsAvailable(planParcial, validCredentials));
   });
 });
+
+describe('plantilla de credenciales', () => {
+  test('la plantilla existe y cubre los 13 slugs exactos del roster', async () => {
+    // "No me sale el seed-credentials" fue un fallo de diseno: el archivo no
+    // viene en el repositorio y no habia plantilla que copiar.
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const template = JSON.parse(
+      readFileSync(join(process.cwd(), 'prisma/seed-credentials.example.json'), 'utf8'),
+    ) as Record<string, unknown>;
+
+    const slugs = Object.keys(template).filter((key) => !key.startsWith('_'));
+    assert.deepEqual(slugs.sort(), ROSTER.map((entry) => entry.slug).sort());
+  });
+
+  test('la plantilla no lleva ninguna contrasena', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const template = JSON.parse(
+      readFileSync(join(process.cwd(), 'prisma/seed-credentials.example.json'), 'utf8'),
+    ) as Record<string, unknown>;
+
+    for (const [key, value] of Object.entries(template)) {
+      if (key.startsWith('_')) continue;
+      assert.equal(value, '', `la plantilla trae un valor para ${key}`);
+    }
+  });
+
+  test('el archivo real sigue estando en .gitignore', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const gitignore = readFileSync(join(process.cwd(), '.gitignore'), 'utf8');
+    const rules = gitignore
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith('#'));
+
+    assert.ok(
+      rules.includes('prisma/seed-credentials.json'),
+      'si esto falla, las contrasenas se pueden subir a GitHub',
+    );
+    assert.equal(
+      rules.includes('prisma/seed-credentials.example.json'),
+      false,
+      'la plantilla si debe versionarse: es lo que se copia',
+    );
+  });
+
+  test('las claves de metadatos se descartan al leer el archivo', () => {
+    // Copiar la plantilla tal cual deja una clave _INSTRUCCIONES con un array
+    // dentro. Si el seed no la descartase, daria un error confuso.
+    const plan = buildSeedPlan([], ROSTER);
+    const credentials: Record<string, string> = Object.fromEntries(
+      plan.slugsNeedingPassword.map((slug) => [slug, 'contrasena-valida']),
+    );
+    assert.doesNotThrow(() => assertCredentialsAvailable(plan, credentials));
+  });
+});
