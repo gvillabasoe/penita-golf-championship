@@ -1,0 +1,8 @@
+{
+  "$comment": "Config SOLO para el runner de tests. Next exige jsx=preserve en tsconfig.json y reescribe el archivo si lo cambias; el runner necesita el runtime automatico para poder renderizar en Node. De ahi los dos archivos.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noEmit": true
+  }
+}

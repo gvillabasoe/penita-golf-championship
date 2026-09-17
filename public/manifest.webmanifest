@@ -1,0 +1,24 @@
+{
+  "name": "Peñita Golf Championship",
+  "short_name": "Peñita Golf",
+  "description": "I Peñita Golf Championship – Ulzama-Bariain 2026",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4edde",
+  "theme_color": "#364f6e",
+  "categories": ["sports"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Mi tarjeta", "url": "/tarjeta" },
+    { "name": "Clasificación", "url": "/clasificacion" }
+  ]
+}

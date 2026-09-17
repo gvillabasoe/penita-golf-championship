@@ -1,0 +1,465 @@
+# Changelog
+
+Formato basado en Keep a Changelog. Versionado semantico.
+
+## [1.0.1] - 2026-09-17
+
+### Cambiado
+
+- **Icono de la aplicacion: el escudo de la Peñita.** Fuente unica en
+  `assets/logo.png`; los PNG se regeneran con `npm run gen:icons`.
+  - `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` (180, iOS) y
+    `icon-maskable-512.png`.
+  - Manifest y barra de estado pasan a los colores del escudo, medidos sobre el
+    logo: navy `#364f6e` y crema `#f4edde`. La interfaz sigue en verde a
+    proposito: se ha cambiado solo lo que continua el icono al abrir la app.
+  - `appleWebApp.statusBarStyle` pasa a `black-translucent`: con el navy detras,
+    una barra blanca cortaba el icono al abrir.
+
+### Corregido, sobre el logo tal como venia
+
+- **Doble redondeo.** El logo traia las esquinas ya redondeadas y margen blanco.
+  iOS y Android aplican su propia mascara, asi que se habria redondeado dos
+  veces: marco claro alrededor de un cuadrado mas pequeno. Las esquinas se
+  rellenan con el navy del borde y el icono es un cuadrado a sangre.
+- **Halo del borde.** El logo lleva un borde mas claro en su perimetro. Al
+  rellenar las esquinas quedaba dentro como un contorno redondeado fantasma,
+  como si el icono estuviera pegado encima de otro. Se recorta un 2,5 % por lado
+  antes de escalar. Detectado mirando el PNG generado.
+- **Texto recortado en Android.** "PEÑITA" y "ULZAMA-BARIAIN" van pegados al
+  borde y el recorte circular de Android se los habria comido. La version
+  maskable lleva el escudo al 70 %.
+- **Cuadrado fantasma en el maskable.** Reducir el logo entero dejaba ver su
+  cuadrado interior con degradado, como una pegatina. Ahora el escudo se separa
+  de su fondo por luminancia y va sobre navy plano.
+- **Vertices blancos colandose.** Al separar por luminancia, los vertices
+  blancos del original pasaban el umbral y aparecian como cuatro cunas de crema.
+  Se recortan con la mascara redondeada.
+
+### Anadido
+
+- 18 tests sobre los PNG generados: esquinas, navy exacto, ausencia de halo,
+  cero pixeles fuera del circulo de Android, vertices limpios y coherencia entre
+  manifest, tokens y layout. Verificados poniendo el PNG original sin procesar
+  como icono: saltan dos.
+- Los accesos directos del manifest se comprueban contra las paginas reales.
+
+## [1.0.0] - 2026-09-17
+
+Primera version completa. Lista para subir a GitHub y desplegar en Vercel.
+
+### Anadido
+
+- **Capa de aplicacion completa:** 16 pantallas y 10 rutas de API del App Router.
+  - Jugador: login con selector buscable, mi tarjeta, detalle de hoyo con
+    teclado, ver partido con revision cruzada, clasificacion con revelacion,
+    pantalla sin conexion.
+  - Administracion: resumen con incidencias enlazadas, jugadores, campo y
+    reglas, partidos con sorteo, tarjetas, clasificacion provisional,
+    revelacion, historial y exportacion.
+- `src/middleware.ts`: primera capa de autorizacion. Delega el rol al servidor a
+  proposito, porque el middleware corre en edge y no puede leer la base de
+  datos. La capa que protege es `requireAdmin()` en cada pagina y accion.
+- `src/lib/data/queries.ts`: lecturas que traducen Prisma a los tipos del
+  dominio. No decide nada deportivo.
+- `src/lib/actions/`: server actions de login, tarjeta y administracion. Cada una
+  delega la decision en el dominio ya probado.
+- `middlewareDecision` con sus tests, incluida la invariante de que el middleware
+  **nunca** concede acceso de admin por si solo.
+- El guardian de rutas ya esta activo: compara el manifiesto con los archivos
+  reales de `src/app`. Verificado anadiendo una ruta sin declarar: la suite falla.
+- `docs/primer-despliegue.md`: guia paso a paso, con los sitios donde es
+  probable que aparezcan errores de tipos en el primer build y por que.
+- 427 tests ejecutandose y pasando (antes 421).
+
+### Cambiado
+
+- **Fecha de vigencia de la valoracion registrada: julio de 2024**, confirmada
+  por el organizador. La trazabilidad del campo queda cerrada.
+- **package.json pasa a Next 15 y React 19.** El codigo usa `useActionState`,
+  `params` como Promise y `await cookies()`, que son API de Next 15 / React 19,
+  y el package.json declaraba Next 14 / React 18. La incoherencia habria
+  reventado el primer build.
+- `next.config.mjs`: `experimental.serverComponentsExternalPackages` pasa a
+  `serverExternalPackages`, que es donde vive en Next 15. Se anaden `sharp` y
+  `pdf-lib`: empaquetar sharp rompe porque lleva binario nativo.
+- `toJson()` en `src/lib/db.ts` para los campos `Json` de Prisma: el dominio
+  devuelve `unknown` porque no debe saber nada de Prisma.
+
+### Notas de verificacion
+
+Lo que esta comprobado y lo que no, con detalle, en `docs/lo-que-falta.md`.
+
+En resumen: los 26 modulos de logica estan type-checkeados con 427 tests; los
+componentes se verifican renderizando; las 26 rutas tienen su regla de
+autorizacion declarada y comprobada contra los archivos reales. Lo que **no** se
+ha compilado son las paginas, las rutas y la capa de Prisma, porque el entorno
+donde se generaron no tiene red ni base de datos.
+
+## [0.9.0] - 2026-09-17
+
+### Cambiado
+
+- **Tercer criterio de desempate: golpes numericos -> golpes AJUSTADOS.**
+  Autorizado por el organizador. El criterio del pliego favorecia a quien
+  levantaba la bola: un hoyo con raya no sumaba nada, asi que cuanto peor iba un
+  hoyo, mas convenia no terminarlo.
+
+  La correccion no se ha inventado. Los hoyos sin resultado numerico se imputan
+  con las cifras del WHS: una raya cuenta como **doble bogey neto** (par + 2 +
+  golpes recibidos) y un hoyo no jugado como **par neto**. El doble bogey neto es
+  justo el umbral a partir del cual un hoyo vale 0 puntos Stableford: quien
+  levanta la bola ha hecho al menos eso.
+
+  Caso que antes se resolvia mal y ahora no: 36 puntos y mismo hándicap, uno con
+  95 golpes y sin rayas frente a otro con 88 golpes y tres rayas. Antes ganaba el
+  segundo; ahora sus 88 se convierten en 109 y gana quien termino los hoyos.
+
+- La clasificacion muestra los golpes escritos, y el ajustado solo cuando hay
+  rayas. El PDF anade columna "Ajust." y nota al pie explicandola.
+- `tieBreakWarning` pasa a llamarse `tieBreakNote`: ya no avisa de un problema,
+  informa de sobre que base se resolvio un desempate.
+- **Valoracion del campo CONFIRMADA:** 72,6 / 139, comprobada por el organizador
+  contra el microsite oficial de RFEG el 17/09/2026. El snapshot se activa con
+  actor, fecha y entrada de auditoria con el motivo, que es exactamente lo que
+  habria quedado registrado al pulsar el boton del panel. La restriccion
+  `active_requires_confirmation` sigue vigente.
+- El test que exigia `confirmedAt: null` se sustituye por el invariante que de
+  verdad importa: una valoracion activa **nunca** sin actor y sin fecha.
+- **Contrasenas iniciales: se mantienen las del pliego.** Decidido por el
+  organizador. docs/seed-credentials.md queda como constancia del razonamiento,
+  no como propuesta pendiente.
+
+### Anadido
+
+- `netDoubleBogey` y `netPar` en el motor, con sus tests.
+- `adjustedStrokes` e `imputedHoles` en los totales de la tarjeta.
+- Un test que deja por escrito que falta la fecha de vigencia de la valoracion:
+  si alguien la consigue, le recuerda que hay que actualizar el snapshot.
+- 420 tests ejecutandose y pasando (antes 415).
+
+### Corregido
+
+- Un test de la imagen comprobaba `/1 raya</`, atado a que la linea terminase
+  justo ahi. Al anadir el ajustado dejo de cuadrar. Aflojado a `/1 raya\b/` con
+  la comprobacion negativa del plural intacta.
+
+## [0.8.0] - 2026-09-17
+
+### Anadido
+
+- **Persistencia de la cola offline**, que es la pieza con mas riesgo de todo el
+  proyecto: si falla, se pierde un hoyo, y es lo unico que el pliego prohibe de
+  forma absoluta.
+- Puerto de almacenamiento con dos implementaciones: memoria (probada) e
+  IndexedDB (fontaneria fina, sin tests porque no hay navegador aqui).
+- Escritura ATOMICA. Sin ella, dos confirmaciones de hoyo casi simultaneas leen
+  la misma cola y la segunda escritura pisa la primera: un hoyo confirmado
+  desaparece en silencio. Hay un test con nueve confirmaciones a la vez.
+- Espacio de nombres por usuario: los datos de dos jugadores no se mezclan en el
+  mismo dispositivo, y encolar la operacion de otro usuario se rechaza.
+- Cuarentena en vez de borrado: un dato ilegible o de una version desconocida se
+  aparta sin destruirlo, porque dentro puede haber hoyos que solo existan en ese
+  movil. Cerrar sesion no borra la cuarentena.
+- `requestPersistentStorage()`: sin ella, iOS y Android pueden vaciar IndexedDB
+  cuando al movil le falta espacio.
+- `docs/lo-que-falta.md`: inventario exacto de lo que queda para el 100 %.
+- 415 tests ejecutandose y pasando (antes 392).
+
+### Corregido
+
+- `load()` lanzaba una excepcion si el valor guardado era la cadena `"null"`:
+  `JSON.parse` devuelve `null` y el acceso a `.schemaVersion` reventaba. La
+  asercion `as Partial<StoredQueue>` ocultaba el fallo al compilador, que se
+  creia que siempre era un objeto. En un movil eso habria dejado la app sin poder
+  cargar la tarjeta.
+- La misma comprobacion estaba duplicada en tres sitios (`load`, `enqueue` y
+  `mutate`) y solo uno tenia el fallo. Centralizada en `readStored`.
+
+## [0.7.0] - 2026-09-17
+
+### Anadido
+
+- **Manifiesto de rutas y puerta de autorizacion** con la decision central de
+  DENEGAR POR OMISION: una ruta sin regla explicita no existe. El modelo
+  contrario (abierto salvo lista negra) falla en silencio el dia que alguien
+  anade una pantalla y se olvida del middleware.
+- A un jugador que escribe `/admin` a mano se le responde **404, no 403**. Un
+  403 confirma que la ruta existe.
+- Sin sesion: las paginas redirigen al login conservando el destino; las rutas de
+  API devuelven 401. Redirigir una peticion de datos a una pagina HTML rompe el
+  cliente.
+- Guardian a futuro: en cuanto exista `src/app`, cada `page.tsx` y cada
+  `route.ts` tendra que estar declarado en el manifiesto o la suite falla. Ahora
+  se salta con un aviso.
+- **Los tres iconos de la PWA**, generados desde un unico SVG con
+  `npm run gen:icons`. Verificados por tamano, formato y analisis de pixeles.
+- Zona de seguridad del icono maskable comprobada contando pixeles: cero pixeles
+  de la bandera caen fuera del circulo que recorta Android.
+- `scripts/check-references.sh` y `npm run check:refs`: comprueba que todos los
+  archivos mencionados en el repositorio existen, incluidos los que declara el
+  manifest de la PWA.
+- `npm run verify`: referencias, type-check y tests de una sola pasada.
+- 392 tests ejecutandose y pasando (antes 360).
+
+### Corregido
+
+- `package.json` tenia un script `gen:icons` apuntando a
+  `scripts/generate-icons.ts`, **que no existia**. Y el manifest declaraba tres
+  iconos que tampoco. La PWA no habria podido instalarse. Detectado con el
+  barrido de referencias, no por los tests.
+- El icono salia con las dos esquinas de arriba redondeadas y las de abajo
+  cuadradas: la loma del green llegaba al borde y tapaba el redondeo. Arreglado
+  con un recorte. Detectado mirando el PNG.
+- En el icono maskable la loma quedaba flotando en el centro como un bloque con
+  los lados rectos, porque se escalaba junto con la marca. Ahora la base sangra
+  siempre al borde y solo la bandera se escala a la zona segura. Detectado
+  mirando el PNG.
+- **El test de solapes de rutas no detectaba un agujero real.** Comprobaba una
+  lista de rutas escrita a mano, asi que una regla permisiva insertada antes de
+  la de administracion pasaba desapercibida si su ruta no estaba en la lista.
+  Sustituido por una tabla de muestras que tiene que cubrir todas las reglas, con
+  un test que lo comprueba. Verificado insertando el agujero a proposito: ahora
+  saltan dos tests independientes.
+
+## [0.6.0] - 2026-09-17
+
+### Anadido
+
+- **Exportaciones a PDF, SVG y PNG (seccion 63), verificadas leyendo los PDF de
+  vuelta con pdfjs-dist.** No se comprueba que el archivo exista: se comprueba
+  que dentro dice lo que tiene que decir.
+- PDF de clasificacion y PDF de tarjeta con pdf-lib: JavaScript puro, sin
+  dependencias nativas ni navegador sin cabeza. Cabe en una funcion serverless y
+  arranca al instante.
+- Imagen de la clasificacion en SVG generado sin ninguna dependencia, en formato
+  vertical 1080x1350 para que no lo recorte WhatsApp, con rasterizado opcional a
+  PNG mediante sharp.
+- `sanitizeForPdf`: saneado de texto obligatorio antes de dibujar. Las fuentes
+  estandar de PDF usan WinAnsi y **lanzan excepcion** con emojis, flechas,
+  "checks" y griego. Un pulgar arriba en una observacion escrita desde el movil
+  habria dejado sin PDF a toda la clasificacion. Translitera lo frecuente,
+  sustituye el resto y nunca lanza.
+- Permisos de exportacion: la clasificacion completa solo se exporta publicada,
+  **tambien para el administrador**. El provisional existe como tipo aparte y
+  sale marcado como provisional dentro del propio documento, con un test que lo
+  comprueba en el PDF generado.
+- El PDF de la tarjeta tampoco imprime un bruto total si hay rayas u hoyos sin
+  jugar. En papel importa mas: un PDF circula, se imprime y se compara.
+- Politica de cache del service worker como modulo puro, con regla por omision
+  cerrada: cualquier ruta de `/api/` no declarada como cacheable queda fuera.
+- `public/sw.js` y `public/manifest.webmanifest`.
+- Guardian de sincronia entre la politica del modulo y la duplicada en `sw.js`.
+  Comprobado que funciona: se modifico un patron a proposito y el test fallo.
+- docs/exports.md y docs/pwa.md.
+- 358 tests ejecutandose y pasando (antes 299).
+
+### Corregido
+
+- Tres defectos de maquetacion de la imagen de clasificacion, detectados
+  **mirando el PNG generado**, no por los tests: la barra de progreso caia sobre
+  la linea del hándicap y parecia un subrayado; el alto fijo de 1350 px dejaba
+  media imagen en blanco con pocos jugadores; y el plural de las rayas decia
+  "1 rayas".
+- El plural de las rayas tambien estaba mal en el PDF, y **el test lo daba por
+  bueno**: comprobaba `/1 rayas/`, es decir, codificaba el propio error. Test
+  corregido y anadida la comprobacion negativa.
+- Anadido un test que mide la separacion vertical entre el texto del hándicap y
+  la barra, para que el solape no pueda volver.
+
+### Notas
+
+- Las tarjetas NO se cachean en el navegador, ni la propia. Ya viven en IndexedDB
+  con su cola; duplicarlas anadiria un sitio del que no se borran al cerrar
+  sesion.
+- El PNG se rasteriza con las fuentes del sistema, que en Vercel no son las de un
+  portatil. El SVG es el formato canonico y el PDF el fiel.
+- Falta generar los tres iconos de `public/icons/`.
+
+## [0.5.0] - 2026-09-17
+
+### Anadido
+
+- **Capa de componentes de React, verificada renderizando de verdad.** React 19
+  esta disponible en el entorno de generacion, asi que los componentes no se
+  entregan a ciegas: se renderizan con `renderToStaticMarkup` y se comprueba el
+  marcado resultante. 40 tests de render.
+- Celdas de resultado bruto y de puntos Stableford donde **la forma es la que
+  informa**: circulo bajo par, cuadrado sobre par, nada en el par. Etiqueta
+  accesible completa en cada una.
+- Tarjeta de juego como lista de hoyos, no como tabla encogida: cada fila lleva
+  los seis datos que exige la seccion 11 y hay un test que comprueba que no se
+  cuela ningun `<table>`.
+- Panel de totales que NO publica un bruto total si hay una sola raya o falta un
+  hoyo. Verificado en el marcado, no solo en la logica.
+- Teclado de resultados con exactamente diez teclas (1-9 y raya), generado desde
+  `PLAYER_KEYPAD`, con un test que comprueba que no aparece ni un 0 ni un 10.
+- Hoja de confirmacion previa con los siete datos de la seccion 36, y casilla
+  extra para resultados poco habituales que avisa sin bloquear.
+- Insignia de estado de guardado con `role="status"` y `aria-live="polite"`.
+- Clasificacion con revelacion progresiva que pregunta a `visibleGroupCount` en
+  vez de decidir por su cuenta cuantas posiciones pintar.
+- Estilos de todos los componentes anteriores en la capa de tokens.
+- `tsconfig.test.json`: Next exige `jsx: preserve` y reescribe el archivo si se
+  cambia, mientras el runner necesita el runtime automatico para renderizar en
+  Node. De ahi los dos archivos.
+- 299 tests ejecutandose y pasando (antes 259).
+
+### Notas de verificacion
+
+- Los componentes **renderizan y su marcado se comprueba**, pero NO se pueden
+  type-checkear: `@types/react` no esta instalable sin red. El type-check
+  estricto sigue cubriendo los 18 modulos de logica.
+- Sigue faltando el envoltorio de Next.js (archivos de ruta del App Router,
+  server actions, middleware), el service worker y la migracion inicial. Nada de
+  eso se puede ejecutar aqui.
+
+## [0.4.0] - 2026-09-17
+
+### Cambiado
+
+- **Politica de redondeo del hándicap de juego: ROUND_ONCE -> ROUND_TWICE.**
+  Autorizada por el organizador tras ver la medicion del impacto. El pliego
+  original pedia ROUND_ONCE en su seccion 28; ROUND_TWICE es la lectura literal
+  del WHS y coincide con lo que calcula cualquier calculadora WHS y con el tablon
+  del club. Difieren en 125 de 541 hándicaps exactos, siempre por un golpe, pero
+  NO en los casos de referencia (20,7 da 25 con las dos; scratch da 1 con las
+  dos; +2,4 da -2 con las dos). Cambiado en `DEFAULT_RULE_SET`, en el valor por
+  defecto de `Competition.handicapRoundingPolicy` y en el seed. Hay un test que
+  fija la decision para que no pueda cambiarse en silencio.
+
+### Anadido
+
+- Sorteo de partidos con semilla reproducible: guardando la semilla se puede
+  volver a ejecutar el sorteo y sale exactamente lo mismo. Queda en la auditoria
+  al confirmar.
+- Distribuciones de la seccion 59 tal cual, y calculo general para cualquier otro
+  numero de jugadores sin dejar partidos de uno.
+- Asignacion de horas de salida con desplazamiento horario explicito, para no
+  depender de la zona del servidor (Vercel corre en UTC, el torneo en Madrid).
+- Validacion de partidos: duplicados, activos sin asignar, desactivados
+  asignados, tamanos, horas repetidas y ordenes repetidos.
+- Mover jugadores a mano entre partidos despues del sorteo, antes de confirmar.
+- Maquina de estados de la revelacion progresiva: sin saltos, con pausa minima
+  entre posiciones, y con bloqueo automatico si se corrige una tarjeta a mitad de
+  la presentacion.
+- `availableActions`: los botones del panel se calculan con la misma funcion que
+  aplica las acciones, asi que la interfaz no puede desviarse de las reglas.
+- 259 tests ejecutandose y pasando (antes 206).
+
+### Corregido
+
+- El hueco de la tabla EGA transcrita ya no debilita la verificacion. No se ha
+  inventado la fila que falta: se comprueba que la formula cubre 0,0-54,0 en
+  tramos contiguos, sin saltos, y que el hueco corresponde a un unico tramo con
+  valor 54.
+
+## [0.3.0] - 2026-09-17
+
+### Anadido
+
+- Logica de la pantalla de tarjeta: navegacion al siguiente hoyo pendiente con
+  vuelta al final, resumen previo a confirmar, permisos de edicion por hoyo,
+  estados de guardado con etiqueta accesible y reglas de finalizacion.
+- Reglas de visibilidad: antes de publicar, un jugador ve su tarjeta y las de su
+  propio partido; despues de publicar, todas en solo lectura.
+- Revision entre companeros de partido, con caducidad automatica de la revision
+  si la tarjeta cambia despues.
+- Cola de operaciones sin conexion: clientMutationId, orden FIFO estricto,
+  retroceso exponencial con techo, muerte tras agotar intentos.
+- Aplicacion idempotente en servidor con concurrencia optimista POR HOYO.
+  Reenviar un lote completo tras un corte de red no duplica nada.
+- Deteccion de conflictos por hoyo, distinguiendo "otro dispositivo" de
+  "correccion administrativa", y resolucion con motivo obligatorio.
+- docs/offline-sync.md, docs/stableford-rules.md y docs/acceptance-tests.md.
+- 206 tests ejecutandose y pasando (antes 128).
+
+### Corregido
+
+- La autorizacion de escritura se decidia en parte con `mutation.userId`, un campo
+  que escribe el cliente. Ahora se decide solo con el actor autenticado de la
+  sesion (seccion 66: no confiar en IDs del cliente). Anadidos tests de payload
+  falseado.
+- Una escritura del administrador sobre su PROPIA tarjeta se marcaba como
+  correccion administrativa. Afecta a Gonzalo Villabaso, que es jugador y
+  administrador a la vez: sus hoyos quedaban marcados como corregidos y no habria
+  podido corregirse a si mismo mas tarde.
+
+### Desviaciones documentadas
+
+- Un cambio de hándicap o de reparto NO bloquea la escritura de un resultado
+  bruto, en contra de la lectura literal de la seccion 43. Avisa al cliente para
+  que recargue el reparto. Motivo: bloquear un bruto por un cambio de hándicap
+  perderia el resultado del jugador sin necesidad, que es lo que prohibe la
+  seccion 41. Razonamiento completo en docs/offline-sync.md, apartado 6.
+
+## [0.2.0] - 2026-09-17
+
+### Anadido
+
+- Puerta de confirmacion de la valoracion del campo: no se puede confirmar sin
+  haber revisado TODAS las diferencias frente a la configuracion anterior, y con
+  la vuelta empezada exige motivo por escrito.
+- Congelado de reglas de calculo con vista previa del impacto: antes de aplicar
+  un cambio se muestra que jugador gana o pierde golpes y cuantos.
+- Comprobacion de arranque del campeonato, con cada incidencia enlazada a su area
+  del panel.
+- Tabla completa de divergencia entre politicas de redondeo, generada por el
+  motor (55 tramos, 125 hándicaps afectados).
+- Busqueda de jugadores insensible a mayusculas, tildes y guiones, por nombre,
+  apellido o fragmentos.
+- Hash de contrasenas con registro versionado: scrypt implementado y probado,
+  adaptador Argon2id listo para activarse cuando la dependencia este instalada.
+- Sesiones en servidor: token opaco en la cookie, SHA-256 en base de datos,
+  invalidacion de todas las sesiones al restablecer una contrasena.
+- Limitacion de intentos de login por jugador y por IP.
+- Lista de los 13 participantes sin ninguna contrasena en el repositorio, con
+  colores pastel deterministas.
+- Planificador de seed idempotente: nunca reescribe la contrasena de un usuario
+  existente, no borra a nadie fuera de la lista y reporta divergencias.
+- `prisma/sql/constraints.sql` con las restricciones CHECK que Prisma no puede
+  expresar, incluida la que impide activar una valoracion sin confirmar.
+- `package.json`, `tsconfig.json`, `next.config.mjs`, seed, guia de despliegue y
+  documentacion de credenciales.
+- 128 tests ejecutandose y pasando (antes 62).
+
+### Cambiado
+
+- Limite de intentos por IP subido de 20 a 30. Motivo: los 13 jugadores salen por
+  el WiFi de la casa club con una sola IP. Con 20, dos errores de tecleo por
+  persona bloqueaban a la peña entera antes de la primera salida.
+
+### Desviaciones documentadas
+
+- Hash con scrypt en lugar de Argon2id o bcrypt, por imposibilidad de instalar y
+  verificar una dependencia nativa sin red. El formato de hash esta versionado y
+  la migracion a Argon2id es transparente para los jugadores. Justificacion
+  completa en la cabecera de `src/lib/auth/password.ts`.
+
+## [0.1.0] - 2026-09-17
+
+### Anadido
+
+- Motor de hándicap con aritmetica entera exacta: hándicap de campo, hándicap de
+  juego, dos politicas de redondeo y calculo auditable con todos los intermedios.
+- Motor de reparto de golpes, incluidos hándicaps plus.
+- Logica Stableford, categorias de resultado bruto, totales por vuelta y estados
+  de tarjeta.
+- Clasificacion con los tres criterios de desempate, posiciones compartidas,
+  orden de revelacion y huella de snapshot.
+- Datos del campo de Ulzama (amarillas caballeros) verificados contra tres
+  fuentes independientes, con validacion en tiempo de ejecucion.
+- Esquema Prisma completo para PostgreSQL/Neon.
+- Capa de tokens de diseno (paleta pastel, liquid glass con fallback solido).
+- 62 tests ejecutandose y pasando, incluida la verificacion de la formula de
+  hándicap contra la Tabla de Equivalencias EGA oficial de Ulzama.
+- Documentacion de trazabilidad de fuentes e investigacion de proveedores.
+
+### Corregido
+
+- `roundDiv` devolvia `-0` cuando la magnitud era cero y el signo negativo.
+- El reparto de golpes para hándicaps plus devolvia `-0` por el mismo motivo.
+
+### Pendiente
+
+Ver `docs/build-plan.md`.

@@ -1,0 +1,492 @@
+// Peñita Golf Championship - esquema de datos
+// PostgreSQL (Neon) + Prisma. Seccion 64 del pliego, con las adaptaciones
+// minimas que exige la integridad deportiva (documentadas en cada caso).
+//
+// Decisiones de tipos:
+//  - Los hándicaps NO se almacenan como Float. `handicapIndexTenths` es Int en
+//    decimas. La coma flotante no puede decidir una clasificacion.
+//  - `courseRatingTenths` es Int en decimas por el mismo motivo.
+//  - Se usa `Decimal` solo donde el valor es informativo y no decide nada.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  PLAYER
+  ADMIN
+}
+
+enum CompetitionStatus {
+  DRAFT
+  CONFIGURED
+  IN_PLAY
+  CLOSED
+}
+
+enum ClassificationStatus {
+  HIDDEN
+  REVEALING
+  PUBLISHED
+}
+
+enum ScorecardStatus {
+  NOT_STARTED
+  IN_PLAY
+  FINISHED
+  REVIEWED
+  LOCKED
+}
+
+enum FlightStatus {
+  DRAFT
+  CONFIRMED
+  IN_PLAY
+  FINISHED
+}
+
+enum TeeName {
+  AMARILLAS
+  BLANCAS
+  AZULES
+  ROJAS
+}
+
+enum PlayerCategory {
+  CABALLEROS
+  DAMAS
+}
+
+enum Modality {
+  INDIVIDUAL_STABLEFORD
+}
+
+enum HandicapRoundingPolicy {
+  ROUND_ONCE
+  ROUND_TWICE
+}
+
+enum CourseSourceType {
+  WEB_OFICIAL
+  FICHA_PDF
+  CSV
+  MANUAL
+  API_PROVEEDOR
+}
+
+enum SyncStatus {
+  PENDING
+  APPLIED
+  REJECTED
+  DUPLICATE
+}
+
+enum ConflictStatus {
+  OPEN
+  RESOLVED_LOCAL
+  RESOLVED_SERVER
+  RESOLVED_MANUAL
+}
+
+enum ReviewStatus {
+  OK
+  OBJECTED
+  OUTDATED
+}
+
+model User {
+  id             String   @id @default(cuid())
+  firstName      String
+  lastName       String
+  displayName    String
+  // Nombre sin tildes ni mayusculas, para el buscador del login (seccion 13).
+  normalizedName String
+  passwordHash   String
+  role           Role     @default(PLAYER)
+  isActive       Boolean  @default(true)
+  defaultColor   String
+  // Invalida sesiones emitidas antes de un cambio de contrasena.
+  sessionEpoch   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  competitionPlayers CompetitionPlayer[]
+  sessions           Session[]
+  auditLogs          AuditLog[]          @relation("actor")
+  reviewsGiven       CardReview[]
+  syncMutations      SyncMutation[]
+
+  @@index([normalizedName])
+}
+
+// Sesiones en servidor: la cookie solo lleva el id de sesion, nunca el rol.
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  sessionEpoch Int
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  revokedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Control de intentos de login (seccion 66: rate limiting).
+model LoginAttempt {
+  id         String   @id @default(cuid())
+  identifier String
+  succeeded  Boolean
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
+}
+
+model Competition {
+  id                       String                 @id @default(cuid())
+  name                     String
+  edition                  String
+  date                     DateTime?
+  timezone                 String                 @default("Europe/Madrid")
+  modality                 Modality               @default(INDIVIDUAL_STABLEFORD)
+  teeColor                 TeeName                @default(AMARILLAS)
+  category                 PlayerCategory         @default(CABALLEROS)
+  handicapAllowancePercent Int                    @default(95)
+  handicapRoundingPolicy   HandicapRoundingPolicy @default(ROUND_TWICE)
+  // Version de regla usada, para poder reconstruir un calculo antiguo.
+  handicapRuleVersion      String
+  status                   CompetitionStatus      @default(DRAFT)
+  classificationStatus     ClassificationStatus   @default(HIDDEN)
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+
+  courseSnapshots CompetitionCourseSnapshot[]
+  players         CompetitionPlayer[]
+  flights         Flight[]
+  rankingSnapshots RankingSnapshot[]
+  reveal          ClassificationReveal?
+  auditLogs       AuditLog[]
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  clubCode    String   @unique
+  name        String
+  courseName  String
+  providerIds Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dataSources CourseDataSource[]
+}
+
+// Una fuente concreta consultada en una fecha concreta. Nunca se sobreescribe:
+// cada consulta crea una fila nueva (seccion 19, reglas 7-11).
+model CourseDataSource {
+  id               String           @id @default(cuid())
+  courseId         String
+  provider         String
+  sourceType       CourseSourceType
+  sourceReference  String
+  measurementDate  DateTime?
+  ratingDate       DateTime?
+  validFrom        DateTime?
+  fetchedAt        DateTime
+  version          Int              @default(1)
+  rawMetadata      Json?
+  isVerified       Boolean          @default(false)
+  verifiedByUserId String?
+  verifiedAt       DateTime?
+
+  course    Course                      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  snapshots CompetitionCourseSnapshot[]
+
+  @@index([courseId, fetchedAt])
+}
+
+// Configuracion del campo CONGELADA para una competicion. Es lo que se juega.
+// Si la fuente cambia, se crea otro snapshot; este no se toca nunca.
+model CompetitionCourseSnapshot {
+  id                 String         @id @default(cuid())
+  competitionId      String
+  sourceId           String
+  teeName            TeeName
+  category           PlayerCategory
+  slopeRating        Int
+  // Valor de Campo en DECIMAS: 72,6 -> 726.
+  courseRatingTenths Int
+  parTotal           Int
+  distanceTotal      Int
+  isActive           Boolean        @default(false)
+  confirmedByUserId  String?
+  confirmedAt        DateTime?
+  createdAt          DateTime       @default(now())
+
+  competition Competition         @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  source      CourseDataSource    @relation(fields: [sourceId], references: [id])
+  holes       CourseHoleSnapshot[]
+  players     CompetitionPlayer[]
+
+  @@index([competitionId, isActive])
+}
+
+model CourseHoleSnapshot {
+  id         String @id @default(cuid())
+  snapshotId String
+  holeNumber Int
+  par        Int
+  strokeIndex Int
+  distance   Int
+
+  snapshot CompetitionCourseSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  // Garantias a nivel de base de datos: ni hoyos ni stroke index repetidos.
+  @@unique([snapshotId, holeNumber])
+  @@unique([snapshotId, strokeIndex])
+}
+
+model CompetitionPlayer {
+  id            String  @id @default(cuid())
+  competitionId String
+  userId        String
+  snapshotId    String?
+  // Hándicap exacto en DECIMAS. 20,7 -> 207. Plus +2,4 -> -24.
+  handicapIndexTenths Int?
+  // Intermedios del calculo, en CENTESIMAS, para auditoria.
+  courseHandicapRawHundredths  Int?
+  courseHandicap               Int?
+  playingHandicapRawHundredths Int?
+  playingHandicap              Int?
+  // Marca un hándicap de juego fijado a mano por el administrador.
+  isPlayingHandicapOverridden  Boolean @default(false)
+  calculationVersion           String?
+  color         String
+  isActive      Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  competition   Competition                @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user          User                       @relation(fields: [userId], references: [id])
+  snapshot      CompetitionCourseSnapshot? @relation(fields: [snapshotId], references: [id])
+  scorecard     Scorecard?
+  flightMember  FlightMember?
+  rankingRows   RankingSnapshotRow[]
+
+  @@unique([competitionId, userId])
+  @@index([competitionId, isActive])
+}
+
+model Flight {
+  id            String       @id @default(cuid())
+  competitionId String
+  name          String
+  order         Int
+  teeTime       DateTime?
+  status        FlightStatus @default(DRAFT)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  competition Competition    @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  members     FlightMember[]
+
+  @@unique([competitionId, order])
+}
+
+model FlightMember {
+  id                  String @id @default(cuid())
+  flightId            String
+  competitionPlayerId String @unique // un jugador solo puede estar en un partido
+  position            Int
+
+  flight Flight            @relation(fields: [flightId], references: [id], onDelete: Cascade)
+  player CompetitionPlayer @relation(fields: [competitionPlayerId], references: [id], onDelete: Cascade)
+
+  @@unique([flightId, position])
+}
+
+model Scorecard {
+  id                  String          @id @default(cuid())
+  competitionPlayerId String          @unique
+  status              ScorecardStatus @default(NOT_STARTED)
+  // Version optimista: cada escritura la incrementa. Base de la deteccion de conflictos.
+  version             Int             @default(0)
+  playerConfirmedFinish Boolean       @default(false)
+  holesCompleted      Int             @default(0)
+  pointsTotal         Int             @default(0)
+  numericStrokesTotal Int             @default(0)
+  pickupCount         Int             @default(0)
+  reviewedById        String?
+  reviewedAt          DateTime?
+  lockedAt            DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  player  CompetitionPlayer @relation(fields: [competitionPlayerId], references: [id], onDelete: Cascade)
+  holes   HoleScore[]
+  reviews CardReview[]
+  conflicts SyncConflict[]
+}
+
+model HoleScore {
+  id              String   @id @default(cuid())
+  scorecardId     String
+  holeNumber      Int
+  // null cuando hay raya o cuando el hoyo no se ha jugado (los distingue isPickup).
+  grossStrokes    Int?
+  isPickup        Boolean  @default(false)
+  strokesReceived Int
+  netStrokes      Int?
+  grossToPar      Int?
+  netToPar        Int?
+  stablefordPoints Int     @default(0)
+  isConfirmed     Boolean  @default(false)
+  // Version de la tarjeta en el momento de escribir este hoyo.
+  serverVersion   Int
+  isOverridden    Boolean  @default(false)
+  confirmedAt     DateTime?
+  updatedAt       DateTime @updatedAt
+
+  scorecard Scorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+
+  @@unique([scorecardId, holeNumber])
+}
+
+model CardReview {
+  id              String       @id @default(cuid())
+  scorecardId     String
+  reviewerId      String
+  scorecardVersion Int
+  status          ReviewStatus @default(OK)
+  notes           String?
+  createdAt       DateTime     @default(now())
+
+  scorecard Scorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+  reviewer  User      @relation(fields: [reviewerId], references: [id])
+
+  @@index([scorecardId, createdAt])
+}
+
+// Idempotencia de la sincronizacion: el mismo clientMutationId nunca se aplica dos veces.
+model SyncMutation {
+  id               String     @id @default(cuid())
+  clientMutationId String     @unique
+  userId           String
+  entityType       String
+  entityId         String
+  operation        String
+  payloadHash      String
+  status           SyncStatus @default(PENDING)
+  rejectionReason  String?
+  createdAt        DateTime   @default(now())
+  appliedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model SyncConflict {
+  id            String         @id @default(cuid())
+  scorecardId   String
+  holeNumber    Int
+  localValue    Json
+  serverValue   Json
+  baseVersion   Int
+  serverVersion Int
+  reason        String
+  status        ConflictStatus @default(OPEN)
+  resolvedById  String?
+  resolvedAt    DateTime?
+  createdAt     DateTime       @default(now())
+
+  scorecard Scorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+// Clasificacion congelada al iniciar la revelacion (seccion 48).
+model RankingSnapshot {
+  id             String   @id @default(cuid())
+  competitionId  String
+  // Huella de los datos deportivos de origen. Si cambia, el snapshot queda obsoleto.
+  sourceRevision String
+  status         String   @default("ACTIVE")
+  isOutdated     Boolean  @default(false)
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  competition Competition            @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  rows        RankingSnapshotRow[]
+  reveals     ClassificationReveal[]
+
+  @@index([competitionId, createdAt])
+}
+
+model RankingSnapshotRow {
+  id                  String @id @default(cuid())
+  snapshotId          String
+  competitionPlayerId String
+  position            Int
+  isSharedPosition    Boolean @default(false)
+  points              Int
+  handicapIndexTenths Int
+  playingHandicap     Int
+  numericStrokes      Int
+  pickups             Int
+  displayName         String
+  color               String
+  sortOrder           Int
+
+  snapshot RankingSnapshot   @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  player   CompetitionPlayer @relation(fields: [competitionPlayerId], references: [id])
+
+  @@unique([snapshotId, competitionPlayerId])
+  @@unique([snapshotId, sortOrder])
+}
+
+model ClassificationReveal {
+  id                    String               @id @default(cuid())
+  competitionId         String               @unique
+  snapshotId            String?
+  status                ClassificationStatus @default(HIDDEN)
+  revealedCount         Int                  @default(0)
+  isPaused              Boolean              @default(false)
+  currentIndex          Int                  @default(0)
+  nextActionAvailableAt DateTime?
+  publishedAt           DateTime?
+  updatedById           String?
+  updatedAt             DateTime             @updatedAt
+
+  competition Competition      @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  snapshot    RankingSnapshot? @relation(fields: [snapshotId], references: [id])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  competitionId String?
+  actorId       String?
+  action        String
+  entityType    String
+  entityId      String
+  beforeData    Json?
+  afterData     Json?
+  reason        String?
+  context       String?
+  createdAt     DateTime @default(now())
+
+  competition Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+  actor       User?        @relation("actor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([competitionId, createdAt])
+  @@index([entityType, entityId])
+}

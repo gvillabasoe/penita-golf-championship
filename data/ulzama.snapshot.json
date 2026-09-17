@@ -1,0 +1,262 @@
+{
+  "$comment": "Datos del campo verificados. NO editar a mano sin actualizar provenance.verifiedAt y provenance.notes.",
+  "course": {
+    "clubCode": "4401",
+    "clubName": "CLUB DE GOLF ULZAMA",
+    "courseName": "ULZAMA",
+    "functionalName": "Ulzama-Bariain",
+    "designer": "Javier Arana",
+    "federativeCode": "4401",
+    "rfegClubId": 211
+  },
+  "sources": [
+    {
+      "id": "rfeg-web-2026",
+      "priority": 1,
+      "provider": "RFEG",
+      "sourceType": "WEB_OFICIAL",
+      "sourceReference": "https://rfegolf.es/club/club_de_golf_ulzama?id=211",
+      "fetchedAt": "2026-09-17",
+      "measurementDate": null,
+      "validFrom": "2024-07",
+      "status": "VIGENTE_SEGUN_FUENTE",
+      "notes": "Microsite oficial del club en RFEG. Publica 8 recorridos (BLANCAS/AMARILLAS/AZULES/ROJAS x F/M) con tarjeta hoyo a hoyo, Vc y Vs. La pagina no publica la fecha de valoracion: julio de 2024, confirmada por el organizador el 17/09/2026.",
+      "ratings": {
+        "AMARILLAS_M": {
+          "courseRating": 72.6,
+          "slopeRating": 139,
+          "par": 72,
+          "distance": 6051
+        },
+        "AMARILLAS_F": {
+          "courseRating": 79.1,
+          "slopeRating": 139,
+          "par": 72,
+          "distance": 6051
+        },
+        "BLANCAS_M": {
+          "courseRating": 73.6,
+          "slopeRating": 140,
+          "par": 72,
+          "distance": 6241
+        },
+        "BLANCAS_F": {
+          "courseRating": 80.2,
+          "slopeRating": 142,
+          "par": 72,
+          "distance": 6241
+        },
+        "AZULES_M": {
+          "courseRating": 68.7,
+          "slopeRating": 128,
+          "par": 72,
+          "distance": 5354
+        },
+        "AZULES_F": {
+          "courseRating": 74.5,
+          "slopeRating": 129,
+          "par": 72,
+          "distance": 5354
+        },
+        "ROJAS_M": {
+          "courseRating": 67.8,
+          "slopeRating": 125,
+          "par": 72,
+          "distance": 5152
+        },
+        "ROJAS_F": {
+          "courseRating": 73.1,
+          "slopeRating": 126,
+          "par": 72,
+          "distance": 5152
+        }
+      },
+      "ratingDate": "2024-07"
+    },
+    {
+      "id": "rfeg-ficha-2014",
+      "priority": 5,
+      "provider": "RFEG",
+      "sourceType": "FICHA_PDF_ADJUNTA",
+      "sourceReference": "SLOPE GOLF CLUB ULZAMA.pdf",
+      "fetchedAt": "2026-09-17",
+      "measurementDate": "2005-05-15",
+      "ratingDate": "2014-10-09",
+      "signedAt": "2015-01-19",
+      "status": "HISTORICA_SUPERADA",
+      "notes": "Ficha de medicion (15/05/2005) + ficha de valoracion (09/10/2014) + tablas de equivalencias EGA. La columna HANDICAP de la ficha de medicion esta EN BLANCO: el stroke index no procede de este PDF.",
+      "ratings": {
+        "AMARILLAS_M": {
+          "courseRating": 72.2,
+          "slopeRating": 132,
+          "par": 72,
+          "distance": 6051
+        },
+        "AMARILLAS_M_IDA": {
+          "courseRating": 36.0,
+          "slopeRating": 132,
+          "par": 36
+        },
+        "AMARILLAS_M_VUELTA": {
+          "courseRating": 36.2,
+          "slopeRating": 132,
+          "par": 36
+        },
+        "BLANCAS_M": {
+          "courseRating": 73.1,
+          "slopeRating": 135,
+          "par": 72,
+          "distance": 6241
+        },
+        "AZULES_F": {
+          "courseRating": 74.1,
+          "slopeRating": 126,
+          "par": 72,
+          "distance": 5354
+        },
+        "ROJAS_F": {
+          "courseRating": 72.9,
+          "slopeRating": 123,
+          "par": 72,
+          "distance": 5152
+        }
+      }
+    }
+  ],
+  "activeSnapshot": {
+    "sourceId": "rfeg-web-2026",
+    "teeName": "AMARILLAS",
+    "category": "CABALLEROS",
+    "slopeRating": 139,
+    "courseRating": 72.6,
+    "parTotal": 72,
+    "distanceTotal": 6051,
+    "parOut": 36,
+    "parIn": 36,
+    "distanceOut": 2999,
+    "distanceIn": 3052,
+    "confirmedByUserId": "gvillabaso",
+    "confirmedAt": "2026-09-17",
+    "$comment": "CONFIRMADA por el organizador (Gonzalo Villabaso) el 17/09/2026, tras comprobar los valores contra el microsite oficial de RFEG. La confirmacion se registro aqui y en el seed porque el panel de administracion todavia no existe; el flujo de confirmCourseSnapshot sigue vigente para cualquier cambio posterior.",
+    "holes": [
+      {
+        "holeNumber": 1,
+        "par": 4,
+        "strokeIndex": 5,
+        "distance": 348
+      },
+      {
+        "holeNumber": 2,
+        "par": 3,
+        "strokeIndex": 17,
+        "distance": 117
+      },
+      {
+        "holeNumber": 3,
+        "par": 4,
+        "strokeIndex": 7,
+        "distance": 337
+      },
+      {
+        "holeNumber": 4,
+        "par": 4,
+        "strokeIndex": 13,
+        "distance": 297
+      },
+      {
+        "holeNumber": 5,
+        "par": 5,
+        "strokeIndex": 1,
+        "distance": 523
+      },
+      {
+        "holeNumber": 6,
+        "par": 3,
+        "strokeIndex": 15,
+        "distance": 167
+      },
+      {
+        "holeNumber": 7,
+        "par": 4,
+        "strokeIndex": 3,
+        "distance": 400
+      },
+      {
+        "holeNumber": 8,
+        "par": 4,
+        "strokeIndex": 9,
+        "distance": 332
+      },
+      {
+        "holeNumber": 9,
+        "par": 5,
+        "strokeIndex": 11,
+        "distance": 478
+      },
+      {
+        "holeNumber": 10,
+        "par": 5,
+        "strokeIndex": 16,
+        "distance": 486
+      },
+      {
+        "holeNumber": 11,
+        "par": 4,
+        "strokeIndex": 8,
+        "distance": 344
+      },
+      {
+        "holeNumber": 12,
+        "par": 3,
+        "strokeIndex": 14,
+        "distance": 203
+      },
+      {
+        "holeNumber": 13,
+        "par": 4,
+        "strokeIndex": 4,
+        "distance": 338
+      },
+      {
+        "holeNumber": 14,
+        "par": 4,
+        "strokeIndex": 2,
+        "distance": 359
+      },
+      {
+        "holeNumber": 15,
+        "par": 3,
+        "strokeIndex": 12,
+        "distance": 169
+      },
+      {
+        "holeNumber": 16,
+        "par": 4,
+        "strokeIndex": 10,
+        "distance": 356
+      },
+      {
+        "holeNumber": 17,
+        "par": 4,
+        "strokeIndex": 6,
+        "distance": 350
+      },
+      {
+        "holeNumber": 18,
+        "par": 5,
+        "strokeIndex": 18,
+        "distance": 447
+      }
+    ],
+    "confirmationNote": "Vc 72,6 / Slope 139 para AMARILLAS (M), valoracion de julio de 2024. Valores y fecha confirmados por el organizador el 17/09/2026. Trazabilidad cerrada.",
+    "ratingDate": "2024-07"
+  },
+  "crossChecks": {
+    "holeData": "Par, stroke index y distancias amarillas coinciden en las TRES fuentes independientes: ficha PDF adjunta (par + distancias), imagen de tarjeta adjunta (par + SI) y microsite RFEG (par + SI + distancias). Sin discrepancias.",
+    "strokeIndexPrimarySource": "rfeg-web-2026 (columna Hdcp). La imagen adjunta actua como confirmacion secundaria.",
+    "ratingDiscrepancy": "AMARILLAS CABALLEROS: 72,2/132 (valoracion de 09/10/2014, ficha PDF) vs 72,6/139 (valoracion de julio de 2024, vigente). RESUELTA: se activa 72,6/139.",
+    "unverified": [
+      "Valoraciones de 9 hoyos vigentes. Irrelevantes para esta edicion: la competicion es a 18 hoyos."
+    ]
+  }
+}
