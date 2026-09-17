@@ -35,10 +35,29 @@ function loadCredentials(requiredSlugs: string[]): Record<string, string> {
   try {
     raw = readFileSync(path, 'utf8');
   } catch {
+    // El mensaje imprime la plantilla lista para copiar. Decir solo "falta el
+    // archivo" obliga a ir a buscar los slug a otro sitio, y son trece.
+    const template = requiredSlugs.map((slug) => `  "${slug}": ""`).join(',\n');
     throw new Error(
-      `Faltan las credenciales iniciales. Crea ${path} con un objeto JSON ` +
-        `{ "slug": "contrasena" } para: ${requiredSlugs.join(', ')}. ` +
-        `Ese archivo esta en .gitignore y no debe versionarse. Ver docs/seed-credentials.md.`,
+      [
+        '',
+        'Falta el archivo de credenciales iniciales. NO viene en el repositorio:',
+        'esta en .gitignore a proposito, porque contiene contrasenas.',
+        '',
+        `Crea ${path} con esto y rellena cada valor:`,
+        '',
+        '{',
+        template,
+        '}',
+        '',
+        'Hay una plantilla lista en prisma/seed-credentials.example.json:',
+        '  cp prisma/seed-credentials.example.json prisma/seed-credentials.json',
+        '',
+        'Y borralo en cuanto termine el seed:',
+        '  rm prisma/seed-credentials.json',
+        '',
+        'Detalle en docs/seed-credentials.md.',
+      ].join('\n'),
     );
   }
 
@@ -46,7 +65,14 @@ function loadCredentials(requiredSlugs: string[]): Record<string, string> {
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     throw new Error('El archivo de credenciales debe contener un objeto JSON plano.');
   }
-  return parsed as Record<string, string>;
+
+  // Las claves que empiezan por guion bajo son metadatos de la plantilla, no
+  // credenciales: se descartan para que copiar el ejemplo no de un error raro.
+  const entries = Object.entries(parsed as Record<string, unknown>)
+    .filter(([key, value]) => !key.startsWith('_') && typeof value === 'string')
+    .map(([key, value]) => [key, value as string] as const);
+
+  return Object.fromEntries(entries);
 }
 
 async function main() {

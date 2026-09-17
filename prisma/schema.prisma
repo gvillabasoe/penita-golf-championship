@@ -11,17 +11,21 @@
 generator client {
   provider = "prisma-client-js"
 
-  /**
-   * `native` resuelve el motor de la maquina que ejecuta `prisma generate`. En
-   * Vercel eso basta casi siempre, pero cuando el entorno de build y el de
-   * ejecucion no coinciden el motor no viaja en el despliegue y toda peticion
-   * muere con:
-   *
-   *   PrismaClientInitializationError: Query engine library for current
-   *   platform "rhel-openssl-3.0.x" could not be found
-   *
-   * Declararlo explicitamente pesa unos megas mas y quita el problema de encima.
-   */
+  // `native` resuelve el motor de la maquina que ejecuta `prisma generate`. En
+  // Vercel eso basta casi siempre, pero cuando el entorno de build y el de
+  // ejecucion no coinciden, el motor no viaja en el despliegue y toda peticion
+  // muere con:
+  //
+  //   PrismaClientInitializationError: Query engine library for current
+  //   platform "rhel-openssl-3.0.x" could not be found
+  //
+  // Declararlo explicitamente pesa unos megas mas y quita el problema de encima.
+  //
+  // Nota: el lenguaje de esquema de Prisma solo admite comentarios de linea con
+  // doble barra. Un comentario de bloque al estilo de C o TypeScript hace fallar
+  // `prisma generate` con P1012 y tumba el build entero. Hay un test que lo
+  // comprueba, porque es un error facil de cometer y el mensaje de Prisma no
+  // dice que el problema sea el comentario.
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 

@@ -2,6 +2,47 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.0.6] - 2026-09-17
+
+### Corregido
+
+- **El build fallaba con `P1012: This line is not a valid definition within a
+  generator`, once veces.**
+
+  El comentario que anadi al bloque `generator client` era un comentario de
+  bloque al estilo de TypeScript. **El lenguaje de esquema de Prisma solo admite
+  comentarios de linea.** Convertido a doble barra.
+
+  Lo que hacia el error dificil de leer es que Prisma no dice en ningun momento
+  que el problema sea el comentario: repite once veces que la linea no es una
+  definicion valida, una por cada linea del bloque.
+
+- Anadido un guardian de sintaxis de `schema.prisma`: sin comentarios de bloque,
+  sin lineas que empiecen por asterisco, bloques de nivel superior conocidos,
+  `binaryTargets` con el objetivo de Vercel y `directUrl` para Neon. Verificado
+  reintroduciendo el comentario que tumbo el build: saltan dos tests.
+
+### Anadido
+
+- **`prisma/seed-credentials.example.json`**, versionada. El archivo real nunca
+  viene en el repositorio —esta en `.gitignore` porque lleva contrasenas— y no
+  habia nada que copiar: habia que ir a la documentacion a buscar los trece
+  slugs. Eso era un fallo de diseno.
+
+  Ahora se copia y se rellena:
+
+      cp prisma/seed-credentials.example.json prisma/seed-credentials.json
+
+- El error del seed cuando falta el archivo **imprime la plantilla completa**
+  lista para copiar, con los trece slugs. Decir solo "falta el archivo" obliga a
+  buscar los nombres en otro sitio.
+
+- El seed descarta las claves que empiezan por guion bajo, para que copiar la
+  plantilla tal cual —con su clave de instrucciones dentro— no de un error raro.
+
+- Tests: la plantilla cubre los trece slugs exactos del roster, no lleva ninguna
+  contrasena, el archivo real sigue en `.gitignore` y la plantilla no.
+
 ## [1.0.5] - 2026-09-17
 
 ### Anadido

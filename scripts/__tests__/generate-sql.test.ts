@@ -391,3 +391,70 @@ describe('restricciones escritas a mano', () => {
     );
   });
 });
+
+/**
+ * Validacion del propio schema.prisma.
+ *
+ * Nace de un build fallido: se escribio un comentario de bloque al estilo de
+ * TypeScript dentro de `generator client`, y `prisma generate` murio con P1012
+ * repitiendo once veces "This line is not a valid definition within a
+ * generator". El mensaje no menciona en ningun momento que el problema sea el
+ * comentario.
+ *
+ * El lenguaje de esquema de Prisma solo admite comentarios de linea. Es un error
+ * facil de cometer viniendo de TypeScript, y tumba el build entero.
+ */
+describe('sintaxis de schema.prisma', () => {
+  const raw = readFileSync(join(ROOT, 'prisma/schema.prisma'), 'utf8');
+  const lines = raw.split('\n');
+
+  test('no hay comentarios de bloque', () => {
+    const offenders: string[] = [];
+    lines.forEach((line, index) => {
+      const withoutLineComment = line.split('//')[0];
+      if (withoutLineComment.includes('/*') || withoutLineComment.includes('*/')) {
+        offenders.push(`linea ${index + 1}: ${line.trim()}`);
+      }
+    });
+    assert.deepEqual(
+      offenders,
+      [],
+      'Prisma solo admite comentarios de linea: un bloque hace fallar prisma generate con P1012',
+    );
+  });
+
+  test('ninguna linea dentro de un bloque empieza por asterisco', () => {
+    // La forma en que se manifiesta el error anterior: las lineas intermedias de
+    // un comentario de bloque empiezan por `*` y Prisma las lee como campos.
+    const offenders: string[] = [];
+    lines.forEach((line, index) => {
+      if (/^\s*\*/.test(line)) offenders.push(`linea ${index + 1}: ${line.trim()}`);
+    });
+    assert.deepEqual(offenders, []);
+  });
+
+  test('los bloques de nivel superior son los que Prisma entiende', () => {
+    const blocks = [...raw.matchAll(/^(\w+)\s+[\w"]/gm)].map((match) => match[1]);
+    const allowed = new Set(['generator', 'datasource', 'model', 'enum', 'type', 'view']);
+    const unknown = [...new Set(blocks)].filter((block) => !allowed.has(block));
+    assert.deepEqual(unknown, []);
+  });
+
+  test('el generador declara binaryTargets para Vercel', () => {
+    const generator = /generator\s+client\s*\{([\s\S]*?)\n\}/.exec(raw);
+    assert.ok(generator);
+    assert.match(generator[1], /binaryTargets\s*=\s*\[[^\]]*"rhel-openssl-3\.0\.x"/);
+    assert.match(generator[1], /provider\s*=\s*"prisma-client-js"/);
+  });
+
+  test('el datasource usa las dos cadenas que necesita Neon', () => {
+    const datasource = /datasource\s+db\s*\{([\s\S]*?)\n\}/.exec(raw);
+    assert.ok(datasource);
+    assert.match(datasource[1], /url\s*=\s*env\("DATABASE_URL"\)/);
+    assert.match(
+      datasource[1],
+      /directUrl\s*=\s*env\("DIRECT_URL"\)/,
+      'sin directUrl, prisma migrate sobre el pooler de Neon se comporta de forma erratica',
+    );
+  });
+});

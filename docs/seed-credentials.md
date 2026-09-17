@@ -12,7 +12,25 @@ Tampoco contiene el patrón para deducirlas: escribir en el código
 
 ## Cómo ejecutar el seed
 
-Crea `prisma/seed-credentials.json` (ya está en `.gitignore`):
+**El archivo no existe en el repositorio. Lo creas tú.** Está en `.gitignore`
+precisamente porque contiene contraseñas, así que no viene al clonar.
+
+La forma rápida:
+
+```bash
+cp prisma/seed-credentials.example.json prisma/seed-credentials.json
+# abre el archivo, rellena las 13 contraseñas
+npm run db:seed
+rm prisma/seed-credentials.json
+```
+
+La plantilla trae los 13 slugs con valores vacíos y hay un test que comprueba
+que son exactamente los del roster y que ninguno lleva contraseña.
+
+Si intentas ejecutar el seed sin el archivo, el error imprime la plantilla lista
+para copiar, así que no hace falta venir aquí a buscar los slugs.
+
+El contenido, para referencia:
 
 ```json
 {
