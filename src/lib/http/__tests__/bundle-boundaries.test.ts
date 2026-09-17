@@ -280,3 +280,105 @@ describe('variables de entorno', () => {
     assert.equal(declaredInExample().includes('AUTH_SECRET'), false);
   });
 });
+
+/**
+ * El diagnostico no puede filtrar credenciales.
+ *
+ * Es publico, porque se necesita justo cuando la autenticacion no funciona. A
+ * cambio, su salida tiene que estar saneada: un mensaje de Prisma puede llevar
+ * la cadena de conexion dentro.
+ */
+describe('saneado del diagnostico', () => {
+  test('borra cadenas de conexion, contrasenas y hashes', async () => {
+    const { sanitizeErrorDetail } = await import('@/lib/data/sanitize');
+
+    const message = sanitizeErrorDetail(
+      new Error(
+        'Cannot reach postgresql://usuario:secreto@ep-algo.neon.tech/db?sslmode=require password=abc123',
+      ),
+    );
+    assert.equal(message.includes('secreto'), false);
+    assert.equal(message.includes('abc123'), false);
+    assert.equal(message.includes('neon.tech'), false);
+    assert.match(message, /cadena de conexion oculta/);
+
+    const conHash = sanitizeErrorDetail(
+      new Error('duplicate key value: $scrypt$N=32768,r=8,p=1$AAAA$BBBB'),
+    );
+    assert.equal(conHash.includes('scrypt'), false);
+    assert.match(conHash, /hash oculto/);
+  });
+
+  test('deja pasar lo que si hace falta para arreglar el problema', async () => {
+    const { sanitizeErrorDetail } = await import('@/lib/data/sanitize');
+    const message = sanitizeErrorDetail(
+      new Error('The column `User.defaultColor` does not exist in the current database.'),
+    );
+    assert.match(message, /User\.defaultColor/);
+    assert.match(message, /does not exist/);
+  });
+
+  test('nunca lanza y recorta', async () => {
+    const { sanitizeErrorDetail, MAX_DETAIL_LENGTH } = await import('@/lib/data/sanitize');
+    for (const input of [null, undefined, 0, '', {}, [], new Error('')]) {
+      assert.doesNotThrow(() => sanitizeErrorDetail(input));
+    }
+    assert.ok(sanitizeErrorDetail(new Error('x'.repeat(5000))).length <= MAX_DETAIL_LENGTH);
+  });
+
+  test('el codigo de error de Prisma se extrae sin exponer nada mas', async () => {
+    const { errorCode } = await import('@/lib/data/sanitize');
+    const prismaError = Object.assign(new Error('...'), { code: 'P2021' });
+    assert.equal(errorCode(prismaError), 'P2021');
+    assert.equal(errorCode(new Error('sin codigo')), null);
+    assert.equal(errorCode(null), null);
+  });
+
+  test('la sonda de login aborta su transaccion: no deja filas', () => {
+    const source = readFileSync(join(ROOT, 'src/lib/data/health.ts'), 'utf8');
+    assert.match(source, /class Rollback extends Error/);
+    assert.match(source, /throw new Rollback\(\)/);
+    assert.match(source, /if \(!\(error instanceof Rollback\)\)/);
+  });
+
+  test('el saneado vive sin Prisma: se puede probar sin base de datos', () => {
+    const source = readFileSync(join(ROOT, 'src/lib/data/sanitize.ts'), 'utf8');
+    assert.equal(source.includes('@prisma/client'), false);
+    assert.equal(source.includes("from '../db'"), false);
+  });
+});
+
+/**
+ * La version que responde tiene que ser visible y no desincronizarse.
+ *
+ * Nace de una confusion real: el diagnostico decia "ready: true" y la
+ * aplicacion seguia fallando, y la unica forma de saber que version estaba
+ * desplegada era deducirlo por los campos que traia la respuesta.
+ */
+describe('version de la aplicacion', () => {
+  test('APP_VERSION coincide con package.json', async () => {
+    const { APP_VERSION } = await import('@/lib/version');
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
+      version: string;
+    };
+    assert.equal(
+      APP_VERSION,
+      pkg.version,
+      'src/lib/version.ts se ha desincronizado de package.json',
+    );
+  });
+
+  test('todos los caminos de diagnose devuelven la version', () => {
+    // Si un solo return se la deja, ese es justo el caso en el que hara falta.
+    const source = readFileSync(join(ROOT, 'src/lib/data/health.ts'), 'utf8');
+    const diagnose = source.slice(source.indexOf('export async function diagnose'));
+    const returns = (diagnose.match(/return \{/g) ?? []).length;
+    const withVersion = (diagnose.match(/version: APP_VERSION/g) ?? []).length;
+    assert.equal(withVersion, returns, `${returns} returns y ${withVersion} con version`);
+  });
+
+  test('version.ts no importa nada: es un dato, no un modulo con dependencias', () => {
+    const source = readFileSync(join(ROOT, 'src/lib/version.ts'), 'utf8');
+    assert.equal(/^\s*import /m.test(source), false);
+  });
+});

@@ -2,6 +2,32 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.0.9] - 2026-09-17
+
+### Anadido
+
+- **`version` como primer campo de `/api/diagnostico`.**
+
+  Nace de una confusion real. El diagnostico devolvia `"ready": true` y la
+  aplicacion seguia fallando al iniciar sesion. La unica forma de saber que
+  version estaba respondiendo era **deducirla por los campos que traia la
+  respuesta**: sin `AUTH_SECRET` era 1.0.7 o posterior, sin `loginPath` era
+  anterior a 1.0.8. Averiguar la version desplegada por arqueologia de un JSON
+  es absurdo, y costo un turno entero.
+
+  Ahora lo dice. Es el primer campo a proposito: si el diagnostico dice que todo
+  esta bien y la aplicacion falla, lo primero que hay que descartar es que
+  responda una version antigua.
+
+- `src/lib/version.ts` con la version como constante. No se importa
+  `package.json`: funciona, pero depende del rastreo de archivos de Next y es
+  una dependencia fragil para un dato de siete caracteres.
+
+- Tres guardianes: `APP_VERSION` coincide con `package.json` —verificado
+  desincronizandolo a proposito—, **todos** los caminos de `diagnose()` devuelven
+  la version (si uno se la deja, es justo el caso en el que hara falta), y
+  `version.ts` no importa nada.
+
 ## [1.0.8] - 2026-09-17
 
 El login fallaba con la misma pantalla de error con la contrasena correcta y con

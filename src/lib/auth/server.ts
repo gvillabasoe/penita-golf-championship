@@ -126,6 +126,30 @@ export type LoginResult = { ok: true } | { ok: false; message: string };
 
 /** Inicio de sesion con limite de intentos por jugador y por IP. */
 export async function login(userId: string, password: string): Promise<LoginResult> {
+  try {
+    return await attemptLogin(userId, password);
+  } catch (error) {
+    /**
+     * Un fallo de base de datos aqui no debe tumbar la pagina.
+     *
+     * Antes, cualquier excepcion en este camino sacaba la pantalla de error
+     * generica, identica con la contrasena bien y mal, sin ninguna pista. Ahora
+     * el detalle va a los logs y el jugador ve un mensaje que dice que no es
+     * culpa suya.
+     */
+    console.error(
+      'Fallo en el inicio de sesion:',
+      error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+    );
+    return {
+      ok: false,
+      message:
+        'No se ha podido comprobar el acceso por un problema del servidor, no por tu contrasena. Abre /api/diagnostico o avisa al organizador.',
+    };
+  }
+}
+
+async function attemptLogin(userId: string, password: string): Promise<LoginResult> {
   const ip = await clientIp();
   const windowStart = new Date(Date.now() - 15 * 60 * 1000);
 
@@ -145,16 +169,26 @@ export async function login(userId: string, password: string): Promise<LoginResu
     return { ok: false, message: loginErrorMessage(decision) };
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  /**
+   * `select` explicito y no la fila completa.
+   *
+   * Sin `select`, Prisma pide las doce columnas de User. Solo se necesitan
+   * cuatro, y cuanto menos se pida, menos superficie hay para que un desajuste
+   * entre el esquema y la base de datos rompa el login.
+   */
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, isActive: true, passwordHash: true, sessionEpoch: true },
+  });
   const passwordOk =
     user !== null && user.isActive && (await verifyPassword(password, user.passwordHash));
 
-  await prisma.loginAttempt.createMany({
-    data: [
-      { identifier: userId, succeeded: passwordOk },
-      { identifier: `ip:${ip}`, succeeded: passwordOk },
-    ],
-  });
+  // Dos `create` en vez de un `createMany`: son dos filas, no hay ganancia, y
+  // `create` es el camino mas trillado para la generacion del identificador.
+  await Promise.all([
+    prisma.loginAttempt.create({ data: { identifier: userId, succeeded: passwordOk } }),
+    prisma.loginAttempt.create({ data: { identifier: `ip:${ip}`, succeeded: passwordOk } }),
+  ]);
 
   if (!user || !passwordOk) {
     // El mismo mensaje exista el jugador o no: lo contrario enumeraria la lista.
