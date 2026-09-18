@@ -222,6 +222,49 @@ WCAG y rechaza cualquier color demasiado claro para llevar texto blanco encima.
   columna anulable obligaria a tocar exportaciones y restricciones sin ganar
   ninguna garantia.
 
+### Corregido
+
+- **`Competition.handicapRuleVersion` se habia borrado del esquema por error** al
+  anadir el limite de hándicap y la generacion de resultados: el bloque de texto
+  que se sustituyo incluia esa linea y no se volvio a escribir. Restaurado.
+
+  No lo detecto ninguna de las 609 pruebas que pasaban, y merece explicarse
+  porque el hueco era estructural:
+
+  - Ningun test lee ese campo.
+  - `scripts/__tests__/generate-sql.test.ts` comprueba que **cada campo del
+    esquema tiene su columna**. Un campo que desaparece del esquema desaparece
+    tambien del SQL generado, asi que los dos seguian cuadrando. Comprobaba la
+    direccion equivocada.
+  - `src/lib/http/__tests__/prisma-references.test.ts` valida las referencias a
+    Prisma, pero solo en `select`, `include` y `orderBy`. El campo se escribia en
+    un `data`, que no se comprobaba.
+
+  Apareció en el `tsc` del despliegue, con un mensaje que hablaba de
+  `CompetitionUpdateInput` y no de un campo borrado.
+
+### Anadido (guardianes de la regresion anterior)
+
+- **`src/lib/data/__tests__/schema-fields.test.ts`**: fija los campos que el
+  dominio necesita para funcionar, con su tipo. Si alguno desaparece del esquema,
+  falla con el nombre del campo y sin necesidad de compilar Next. Comprueba
+  tambien que ningun hándicap ni valoracion pasa a `Float` o `Decimal`, porque un
+  `Float` colado ahi no rompe nada visible: empieza a dar un golpe de diferencia
+  en algunos hándicaps y no se descubre hasta que alguien compara con la
+  calculadora del club.
+- **`prisma-references.test.ts` ampliado a `data`, `where`, `create` y `update`**,
+  que es por donde se colo el campo borrado. Con el fallo reintroducido, ahora
+  senala `src/lib/actions/admin.ts: Competition.data.handicapRuleVersion no
+  existe (update)`: el mismo archivo y la misma linea que reporto Vercel.
+
+  El analizador de claves hubo que hacerlo robusto: la primera version daba siete
+  falsos positivos porque confundia cadenas (`` `ip:${ip}` ``), comentarios y
+  ramas de ternario (`? null :`) con claves de objeto. Un falso positivo en un
+  guardian es peor que un hueco conocido, porque se acaba ignorando el test
+  entero.
+
+Verificado reintroduciendo el fallo: los dos guardianes saltan.
+
 ### Cambios tecnicos imprescindibles fuera del alcance pedido
 
 Dos, ambos necesarios para que el rediseno llegue a producirse:

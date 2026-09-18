@@ -102,7 +102,7 @@ docs/                       Trazabilidad, proveedores, hándicap, seed, desplieg
 ## Verificación ejecutada
 
 ```
-609 tests · 609 pasando · 115 suites
+631 tests · 631 pasando · 118 suites
 Guardianes estáticos: fronteras de empaquetado y referencias a Prisma
 Tests de render sobre React 19
 Exportaciones verificadas leyendo los PDF de vuelta
@@ -110,7 +110,7 @@ Exportaciones verificadas leyendo los PDF de vuelta
 npm run verify → referencias, tipos y tests de una pasada
 ```
 
-En la version 1.2.0 se han anadido 94 tests: el limite de hándicap (26), el
+En la version 1.2.0 se han anadido 116 tests: el limite de hándicap (26), el
 borrado de hoyo con su guardia contra datos offline antiguos (36), el vaciado de
 tarjetas (31) y un guardian de contraste sobre la paleta de jugador.
 

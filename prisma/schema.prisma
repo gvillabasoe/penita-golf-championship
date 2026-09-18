@@ -180,6 +180,8 @@ model Competition {
   category                 PlayerCategory         @default(CABALLEROS)
   handicapAllowancePercent Int                    @default(95)
   handicapRoundingPolicy   HandicapRoundingPolicy @default(ROUND_TWICE)
+  // Version de regla usada, para poder reconstruir un calculo antiguo.
+  handicapRuleVersion      String
   // Limite maximo de hándicap exacto aplicable, en DECIMAS. 26,4 -> 264.
   // null = sin limite. NO sustituye el hándicap exacto de nadie: se usa como
   // entrada del calculo cuando el del jugador es mayor (ver lib/golf/handicap-cap.ts).

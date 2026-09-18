@@ -142,6 +142,7 @@ CREATE TABLE IF NOT EXISTS "Competition" (
     "category" "PlayerCategory" NOT NULL DEFAULT 'CABALLEROS'::"PlayerCategory",
     "handicapAllowancePercent" INTEGER NOT NULL DEFAULT 95,
     "handicapRoundingPolicy" "HandicapRoundingPolicy" NOT NULL DEFAULT 'ROUND_TWICE'::"HandicapRoundingPolicy",
+    "handicapRuleVersion" TEXT NOT NULL,
     "maxHandicapIndexTenths" INTEGER,
     "scoreResetVersion" INTEGER NOT NULL DEFAULT 0,
     "status" "CompetitionStatus" NOT NULL DEFAULT 'DRAFT'::"CompetitionStatus",
