@@ -2,12 +2,20 @@ import { getCompetition, getRanking } from '@/lib/data/queries';
 import { RevealControls } from '@/components/client/reveal-controls';
 import { availableActions } from '@/lib/reveal/controller';
 import { rankingFingerprint } from '@/lib/golf/ranking';
+import { AdminSection, StateBlock, StatTile } from '@/components/ui';
+import { IconTrophy } from '@/components/ui/icons';
 
 export const metadata = { title: 'Admin · Revelacion' };
 
 export default async function AdminRevealPage() {
   const context = await getCompetition();
-  if (!context) return <p className="alert">No hay competicion configurada.</p>;
+  if (!context) {
+    return (
+      <StateBlock title="No hay competicion configurada" icon={<IconTrophy />}>
+        Sin clasificacion no hay nada que revelar.
+      </StateBlock>
+    );
+  }
 
   const { rows, order, state } = await getRanking(context);
   const fingerprint = rankingFingerprint(rows);
@@ -22,23 +30,32 @@ export default async function AdminRevealPage() {
 
   return (
     <div className="stack">
-      <header className="page-header">
-        <div>
-          <h1>Revelacion</h1>
-          <p className="muted">
-            {state.revealedCount}/{order.length} posiciones reveladas
-            {state.isPaused ? ' · en pausa' : ''}
-          </p>
-        </div>
-      </header>
+      <div className="section-header">
+        <h1>Revelacion</h1>
+      </div>
 
-      <p className="muted">
-        Se revela desde la ultima posicion hacia la primera, sin saltos y con una pausa minima
-        entre posiciones. Si se corrige una tarjeta a mitad, la presentacion se bloquea sola y hay
-        que reiniciarla con una clasificacion actualizada.
-      </p>
+      <div className="dashboard-grid">
+        <StatTile
+          label="Reveladas"
+          value={`${state.revealedCount}/${order.length}`}
+          ariaLabel={`${state.revealedCount} de ${order.length} posiciones reveladas`}
+        />
+        <StatTile label="Estado" value={state.status} />
+        <StatTile label="Pausa" value={state.isPaused ? 'Si' : 'No'} />
+      </div>
 
-      <RevealControls actions={actions.map((a) => ({ action: a.action, enabled: a.enabled, reason: a.reason }))} />
+      <AdminSection
+        title="Como funciona"
+        description="Se revela desde la ultima posicion hacia la primera, sin saltos y con una pausa minima entre posiciones. Si se corrige una tarjeta a mitad, la presentacion se bloquea sola y hay que reiniciarla con una clasificacion actualizada."
+      >
+        <RevealControls
+          actions={actions.map((a) => ({
+            action: a.action,
+            enabled: a.enabled,
+            reason: a.reason,
+          }))}
+        />
+      </AdminSection>
     </div>
   );
 }

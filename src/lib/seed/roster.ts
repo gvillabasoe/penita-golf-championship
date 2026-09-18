@@ -22,24 +22,37 @@ export interface RosterEntry {
 }
 
 /**
- * Paleta pastel: 13 tonos distinguibles entre si y con contraste suficiente
- * para texto oscuro encima. Se asignan por indice, de forma deterministica, y el
- * administrador puede cambiarlos despues (quedan en base de datos).
+ * Paleta de acentos de jugador.
+ *
+ * Trece tonos profundos y moderadamente saturados, distinguibles entre si y con
+ * contraste suficiente sobre blanco y sobre el marfil del fondo. Se asignan por
+ * indice, de forma deterministica, y el administrador puede cambiarlos despues
+ * (quedan en base de datos).
+ *
+ * Sustituyen a la paleta pastel de la v1.1. La conversion de los valores ya
+ * guardados es deterministica y esta en
+ * prisma/sql/migrations/002-limite-hcp-y-vaciado.sql: cada pastel antiguo tiene
+ * un unico destino, en el mismo orden que esta lista, asi que ningun jugador
+ * cambia de color dos veces. Un color elegido a mano por el administrador no
+ * coincide con ninguno de los antiguos y se conserva.
+ *
+ * Por que profundos y no pastel: el color de jugador se lee sobre blanco, al
+ * sol, en una barra de 4 px. Un pastel ahi no se distingue de otro pastel.
  */
-const PASTEL_RAMP = [
-  '#cfe3d4',
-  '#f2c9c0',
-  '#cddcf0',
-  '#f4e3b2',
-  '#dcd0ea',
-  '#c9e4e0',
-  '#f0d3e2',
-  '#dfe8c4',
-  '#f5d9bd',
-  '#c8d9e8',
-  '#e6dcc8',
-  '#d4e8cf',
-  '#ead6cd',
+const ACCENT_RAMP = [
+  '#1b563b', // verde esmeralda oscuro
+  '#8c3b2e', // terracota
+  '#1d4e79', // azul atlantico
+  '#8a6a1f', // ocre
+  '#4a3168', // morado profundo
+  '#1f5c60', // azul petroleo
+  '#7a2540', // burdeos
+  '#55631f', // verde oliva
+  '#9c5a24', // cobre
+  '#1f3a5f', // azul marino
+  '#6b5433', // bronce
+  '#2f6b46', // verde bosque
+  '#7d4a3a', // castano rojizo
 ] as const;
 
 export const ROSTER: RosterEntry[] = [
@@ -69,6 +82,6 @@ export function resolveRoster(roster: RosterEntry[] = ROSTER): ResolvedRosterEnt
     ...entry,
     displayName: buildDisplayName(entry.firstName, entry.lastName),
     normalizedName: normalizeName(`${entry.firstName} ${entry.lastName}`),
-    defaultColor: PASTEL_RAMP[index % PASTEL_RAMP.length],
+    defaultColor: ACCENT_RAMP[index % ACCENT_RAMP.length],
   }));
 }

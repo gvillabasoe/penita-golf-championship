@@ -340,10 +340,39 @@ describe('lista de participantes', () => {
     assert.equal(roster.find((r) => r.role === 'ADMIN')?.displayName, 'Gonzalo Villabaso');
   });
 
-  test('cada jugador tiene un color pastel distinto', () => {
+  test('cada jugador tiene un color de acento distinto', () => {
     const colores = roster.map((r) => r.defaultColor);
     assert.equal(new Set(colores).size, 13);
     for (const color of colores) assert.match(color, /^#[0-9a-f]{6}$/);
+  });
+
+  /**
+   * Guardian del rediseno v1.2.0.
+   *
+   * La paleta anterior era pastel y se leia mal en una barra de 4 px al sol. Este
+   * test fija el criterio nuevo: todo color de jugador tiene que ser lo bastante
+   * oscuro para que el blanco encima pase contraste, porque es como se usa.
+   *
+   * Se mide con la luminancia relativa de la WCAG. El umbral 0,4 deja fuera
+   * cualquier pastel sin tener que enumerarlos.
+   */
+  test('ningun color de jugador es pastel: todos aguantan texto blanco encima', () => {
+    const luminance = (hex: string): number => {
+      const channel = (value: number): number => {
+        const srgb = value / 255;
+        return srgb <= 0.03928 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+      };
+      const r = channel(Number.parseInt(hex.slice(1, 3), 16));
+      const g = channel(Number.parseInt(hex.slice(3, 5), 16));
+      const b = channel(Number.parseInt(hex.slice(5, 7), 16));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+
+    const claros = roster
+      .map((r) => r.defaultColor)
+      .filter((color) => luminance(color) > 0.4);
+
+    assert.deepEqual(claros, [], 'estos colores son demasiado claros para la paleta nueva');
   });
 
   test('los nombres normalizados no colisionan', () => {

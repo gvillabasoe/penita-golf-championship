@@ -1,40 +1,29 @@
-import Link from 'next/link';
-
 import { requireAdmin } from '@/lib/auth/server';
 import { BottomNav } from '@/components/client/bottom-nav';
-
-const SECTIONS = [
-  { href: '/admin', label: 'Resumen' },
-  { href: '/admin/jugadores', label: 'Jugadores' },
-  { href: '/admin/campo', label: 'Campo' },
-  { href: '/admin/partidos', label: 'Partidos' },
-  { href: '/admin/tarjetas', label: 'Tarjetas' },
-  { href: '/admin/clasificacion', label: 'Clasificacion' },
-  { href: '/admin/revelacion', label: 'Revelacion' },
-  { href: '/admin/historial', label: 'Historial' },
-  { href: '/admin/exportacion', label: 'Exportacion' },
-];
+import { AdminNav } from '@/components/client/admin-nav';
+import { AppHeader } from '@/components/ui/app-header';
+import { LogoutButton } from '@/components/client/logout-button';
 
 /**
  * Comprobacion de rol en servidor, para TODO el panel.
  *
  * Es la capa que protege. El middleware corre en edge y no puede leer la base
- * de datos, asi que solo delega. `requireAdmin` responde 404 si no procede.
+ * de datos, asi que solo delega. `requireAdmin` responde 404 si no procede: 404
+ * y no 403, para no confirmar que la ruta existe.
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
 
   return (
-    <main className="container stack">
-      <ul className="admin-nav">
-        {SECTIONS.map((section) => (
-          <li key={section.href}>
-            <Link href={section.href}>{section.label}</Link>
-          </li>
-        ))}
-      </ul>
-      {children}
+    <>
+      <AppHeader screen="Administracion" action={<LogoutButton />} />
+
+      <main className="container stack">
+        <AdminNav />
+        {children}
+      </main>
+
       <BottomNav role={admin.role} />
-    </main>
+    </>
   );
 }

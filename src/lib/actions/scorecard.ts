@@ -17,11 +17,11 @@ import { applyMutation, type ServerScorecardState } from '../sync/apply';
 import { allocateStrokes } from '../golf/strokes';
 import { resolveHole, deriveStatus, canFinish, resolveScorecard, computeTotals, type HoleScoreInput } from '../golf/stableford';
 import { evaluateReview, canReviewCard } from '../scorecard/visibility';
-import type { HoleMutation } from '../sync/queue';
+import type { HoleMutation, HoleOperation } from '../sync/queue';
 
 export type ActionResult =
   | { ok: true; version: number; staleAllocation?: boolean }
-  | { ok: false; error: string; kind?: 'CONFLICT' | 'REJECTED' };
+  | { ok: false; error: string; kind?: 'CONFLICT' | 'REJECTED' | 'STALE_GENERATION' };
 
 async function loadState(scorecardId: string): Promise<ServerScorecardState | null> {
   const card = await prisma.scorecard.findUnique({
@@ -51,15 +51,36 @@ async function loadState(scorecardId: string): Promise<ServerScorecardState | nu
   };
 }
 
-/** Escribe un hoyo. Se llama al confirmar en el teclado. */
-export async function saveHole(input: {
-  clientMutationId: string;
-  clientId: string;
-  holeNumber: number;
-  grossStrokes: number | null;
-  isPickup: boolean;
-  baseVersion: number;
-}): Promise<ActionResult> {
+/**
+ * Nucleo comun de "escribir un hoyo" y "borrar un hoyo".
+ *
+ * Las dos operaciones recorren exactamente el mismo camino: cargar el estado,
+ * dejar que `applyMutation` decida, y escribir el resultado en una transaccion.
+ * Lo unico que cambia es el contenido del hoyo que queda al final.
+ *
+ * Estan juntas a proposito. Cuando eran dos funciones separadas, el recalculo de
+ * totales y el registro de auditoria acabaron duplicados, y un cambio en uno de
+ * los dos caminos dejaba el otro desincronizado. Aqui el recalculo ocurre una
+ * sola vez, con lo que haya en la tabla despues de la escritura, sea cual sea la
+ * operacion.
+ *
+ * No se exporta: en un archivo `'use server'` cada funcion exportada es una
+ * Server Action accesible desde el navegador, y esta recibe la operacion como
+ * parametro. Las dos puertas publicas son `saveHole` y `clearHole`.
+ */
+async function writeHole(
+  operation: HoleOperation,
+  input: {
+    clientMutationId: string;
+    clientId: string;
+    holeNumber: number;
+    grossStrokes: number | null;
+    isPickup: boolean;
+    baseVersion: number;
+    /** Generacion de resultados que el movil tenia. */
+    scoreGeneration?: number;
+  },
+): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: 'Sesion caducada. Vuelve a entrar.' };
 
@@ -72,6 +93,15 @@ export async function saveHole(input: {
     include: { scorecard: true },
   });
   if (!player) return { ok: false, error: 'No estas inscrito en la competicion.' };
+
+  /**
+   * Borrar exige que la tarjeta exista. Crearla aqui para dejarla vacia acto
+   * seguido no tendria ningun sentido, y el mensaje explica el estado real en
+   * lugar de fingir que ha pasado algo.
+   */
+  if (operation === 'CLEAR' && !player.scorecard) {
+    return { ok: false, error: 'Todavia no has apuntado nada en esta tarjeta.' };
+  }
 
   const scorecard =
     player.scorecard ??
@@ -92,9 +122,13 @@ export async function saveHole(input: {
     userId: user.userId,
     scorecardId: scorecard.id,
     holeNumber: input.holeNumber,
-    grossStrokes: input.grossStrokes,
-    isPickup: input.isPickup,
+    operation,
+    grossStrokes: operation === 'CLEAR' ? null : input.grossStrokes,
+    isPickup: operation === 'CLEAR' ? false : input.isPickup,
     baseVersion: input.baseVersion,
+    // Sin dato del cliente se asume la generacion vigente: una operacion escrita
+    // en esta misma peticion no puede ser anterior a un vaciado.
+    scoreGeneration: input.scoreGeneration ?? context.scoreGeneration,
     createdAtLocal: new Date().toISOString(),
   };
 
@@ -102,10 +136,39 @@ export async function saveHole(input: {
     actorUserId: user.userId,
     actorRole: user.role,
     competitionClosed: context.status === 'CLOSED',
+    competitionScoreGeneration: context.scoreGeneration,
   });
 
   if (outcome.type === 'DUPLICATE') return { ok: true, version: outcome.version };
-  if (outcome.type === 'REJECTED') return { ok: false, error: outcome.message, kind: 'REJECTED' };
+
+  if (outcome.type === 'REJECTED') {
+    /**
+     * Una operacion obsoleta se registra como rechazada antes de contestar.
+     *
+     * Sin esta fila, el jugador ve un aviso que no cuadra con nada y el
+     * administrador no tiene forma de saber cuantos resultados se quedaron por
+     * el camino al vaciar las tarjetas.
+     */
+    if (outcome.code === 'STALE_GENERATION') {
+      await prisma.syncMutation.upsert({
+        where: { clientMutationId: input.clientMutationId },
+        create: {
+          clientMutationId: input.clientMutationId,
+          userId: user.userId,
+          entityType: 'HoleScore',
+          entityId: `${scorecard.id}:${input.holeNumber}`,
+          operation,
+          payloadHash: operation === 'CLEAR' ? 'vacio' : `${input.grossStrokes ?? 'raya'}`,
+          scoreGeneration: mutation.scoreGeneration ?? 0,
+          status: 'REJECTED',
+          rejectionReason: outcome.code,
+        },
+        update: { status: 'REJECTED', rejectionReason: outcome.code },
+      });
+      return { ok: false, error: outcome.message, kind: 'STALE_GENERATION' };
+    }
+    return { ok: false, error: outcome.message, kind: 'REJECTED' };
+  }
 
   if (outcome.type === 'CONFLICT') {
     await prisma.syncConflict.create({
@@ -137,11 +200,17 @@ export async function saveHole(input: {
       (a) => a.holeNumber === input.holeNumber,
     )?.strokesReceived ?? 0;
 
+  /**
+   * Un hoyo borrado se resuelve con la misma funcion que cualquier otro, pasando
+   * la entrada vacia. `resolveHole` ya sabe que eso es un hoyo sin jugar, y no
+   * una raya: no hay que replicar la regla aqui.
+   */
   const resolved = resolveHole(hole, strokesReceived, {
     holeNumber: input.holeNumber,
-    grossStrokes: input.grossStrokes,
-    isPickup: input.isPickup,
+    grossStrokes: mutation.grossStrokes,
+    isPickup: mutation.isPickup,
   });
+  const isClear = operation === 'CLEAR';
 
   await prisma.$transaction(async (tx) => {
     await tx.holeScore.upsert({
@@ -156,9 +225,11 @@ export async function saveHole(input: {
         grossToPar: resolved.grossToPar,
         netToPar: resolved.netToPar,
         stablefordPoints: resolved.stablefordPoints,
-        isConfirmed: true,
+        // Un hoyo vacio NO esta confirmado: es lo que lo distingue de una raya,
+        // que si es un resultado que el jugador ha dado por bueno.
+        isConfirmed: !isClear,
         serverVersion: outcome.version,
-        confirmedAt: new Date(),
+        confirmedAt: isClear ? null : new Date(),
       },
       update: {
         grossStrokes: resolved.grossStrokes,
@@ -168,10 +239,10 @@ export async function saveHole(input: {
         grossToPar: resolved.grossToPar,
         netToPar: resolved.netToPar,
         stablefordPoints: resolved.stablefordPoints,
-        isConfirmed: true,
+        isConfirmed: !isClear,
         isOverridden: false,
         serverVersion: outcome.version,
-        confirmedAt: new Date(),
+        confirmedAt: isClear ? null : new Date(),
       },
     });
 
@@ -191,6 +262,16 @@ export async function saveHole(input: {
     const results = resolveScorecard(context.snapshot.holes, strokesByHole, inputs);
     const totals = computeTotals(results);
 
+    /**
+     * Borrar un hoyo puede devolver la tarjeta a "En juego" desde "Finalizada" o
+     * "Revisada", y en ese caso la confirmacion del jugador deja de ser cierta:
+     * ya no ha terminado. Se retira, porque si no `deriveStatus` volveria a dar
+     * FINISHED en cuanto rellenase el hueco, sin que nadie lo hubiera vuelto a
+     * confirmar.
+     */
+    const stillComplete = totals.total.holesPlayed === results.length;
+    const playerConfirmedFinish = scorecard.playerConfirmedFinish && stillComplete;
+
     await tx.scorecard.update({
       where: { id: scorecard.id },
       data: {
@@ -199,14 +280,35 @@ export async function saveHole(input: {
         pointsTotal: totals.total.points,
         numericStrokesTotal: totals.total.numericStrokes,
         pickupCount: totals.total.pickups,
+        playerConfirmedFinish,
         status: deriveStatus(
           results,
-          scorecard.playerConfirmedFinish,
-          scorecard.reviewedAt !== null,
+          playerConfirmedFinish,
+          scorecard.reviewedAt !== null && stillComplete,
           scorecard.lockedAt !== null,
         ),
       },
     });
+
+    /**
+     * La revision existente queda DESACTUALIZADA, no borrada.
+     *
+     * `evaluateReview` compara la version de la tarjeta con la de la revision, y
+     * al haber subido la version ya la considera obsoleta sola. Marcarla aqui
+     * como OUTDATED es lo que hace que el companero que reviso vea por que se le
+     * vuelve a pedir, en lugar de encontrarse la pantalla como si nunca hubiera
+     * revisado nada.
+     */
+    if (isClear && !stillComplete) {
+      await tx.cardReview.updateMany({
+        where: { scorecardId: scorecard.id, status: 'OK' },
+        data: { status: 'OUTDATED' },
+      });
+      await tx.scorecard.update({
+        where: { id: scorecard.id },
+        data: { reviewedById: null, reviewedAt: null },
+      });
+    }
 
     await tx.syncMutation.upsert({
       where: { clientMutationId: input.clientMutationId },
@@ -215,8 +317,9 @@ export async function saveHole(input: {
         userId: user.userId,
         entityType: 'HoleScore',
         entityId: `${scorecard.id}:${input.holeNumber}`,
-        operation: 'WRITE',
-        payloadHash: `${input.grossStrokes ?? 'raya'}`,
+        operation,
+        payloadHash: isClear ? 'vacio' : `${input.grossStrokes ?? 'raya'}`,
+        scoreGeneration: mutation.scoreGeneration ?? 0,
         status: 'APPLIED',
         appliedAt: new Date(),
       },
@@ -237,7 +340,50 @@ export async function saveHole(input: {
   });
 
   revalidatePath('/tarjeta');
+  revalidatePath(`/tarjeta/${input.holeNumber}`);
+  revalidatePath('/partido');
+  revalidatePath('/clasificacion');
   return { ok: true, version: outcome.version, staleAllocation: outcome.staleAllocation };
+}
+
+/** Escribe un hoyo. Se llama al confirmar en el teclado. */
+export async function saveHole(input: {
+  clientMutationId: string;
+  clientId: string;
+  holeNumber: number;
+  grossStrokes: number | null;
+  isPickup: boolean;
+  baseVersion: number;
+  scoreGeneration?: number;
+}): Promise<ActionResult> {
+  return writeHole('WRITE', input);
+}
+
+/**
+ * Borra el resultado de un hoyo y lo deja realmente VACIO (seccion 4).
+ *
+ * Vacio no es raya: no cuenta como hoyo completado, no da puntos e impide
+ * finalizar la tarjeta. La distincion la sostiene `resolveHole`, no esta accion.
+ *
+ * Los permisos NO se amplian: quien puede borrar es exactamente quien ya podia
+ * escribir, y lo decide `applyMutation` con la sesion del servidor. Un jugador
+ * no puede borrar en la tarjeta de otro ni en una tarjeta bloqueada.
+ *
+ * Es idempotente por el `clientMutationId`, asi que reenviarla desde la cola
+ * offline no da error ni deja el hoyo en un estado raro.
+ */
+export async function clearHole(input: {
+  clientMutationId: string;
+  clientId: string;
+  holeNumber: number;
+  baseVersion: number;
+  scoreGeneration?: number;
+}): Promise<ActionResult> {
+  return writeHole('CLEAR', {
+    ...input,
+    grossStrokes: null,
+    isPickup: false,
+  });
 }
 
 /** Finaliza la tarjeta. Exige los 18 hoyos con resultado o raya. */

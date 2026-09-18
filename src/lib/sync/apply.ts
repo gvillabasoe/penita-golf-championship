@@ -25,7 +25,7 @@
  */
 
 import type { ScorecardStatus } from '../golf/types';
-import type { HoleMutation } from './queue';
+import { generationOf, operationOf, type HoleMutation } from './queue';
 
 export type Role = 'PLAYER' | 'ADMIN';
 
@@ -56,7 +56,13 @@ export type RejectionCode =
   | 'NOT_OWNER'
   | 'INVALID_HOLE'
   | 'INVALID_STROKES'
-  | 'COMPETITION_CLOSED';
+  | 'COMPETITION_CLOSED'
+  /**
+   * La operacion se creo antes de un vaciado de tarjetas. Se rechaza en vez de
+   * aplicarse: aplicarla devolveria a la vida un resultado ya borrado, que es
+   * exactamente lo que prohibe la seccion 3.5.
+   */
+  | 'STALE_GENERATION';
 
 export interface ConflictRecord {
   scorecardId: string;
@@ -100,6 +106,16 @@ export interface ApplyContext {
   /** Version del reparto que el cliente tenia. Si difiere, se avisa. */
   clientAllocationVersion?: number;
   competitionClosed?: boolean;
+  /**
+   * Generacion de resultados vigente en el campeonato. Cuando se indica, una
+   * operacion de una generacion anterior se rechaza.
+   *
+   * Es opcional para que las llamadas que no tengan el dato a mano se comporten
+   * como antes, no porque la comprobacion sea prescindible: la ruta de
+   * sincronizacion y la accion del teclado la pasan siempre, y hay un test que
+   * lo exige.
+   */
+  competitionScoreGeneration?: number;
   now?: Date;
   /** Motivo, obligatorio para correcciones administrativas. */
   reason?: string;
@@ -114,6 +130,24 @@ function validate(
 ): { code: RejectionCode; message: string } | null {
   if (!Number.isInteger(mutation.holeNumber) || mutation.holeNumber < 1 || mutation.holeNumber > 18) {
     return { code: 'INVALID_HOLE', message: `Hoyo fuera de rango: ${mutation.holeNumber}.` };
+  }
+
+  /**
+   * Borrar un resultado deja el hoyo VACIO, no en raya.
+   *
+   * Por eso una operacion CLEAR con golpes o con raya dentro es un estado
+   * imposible y se rechaza: si se aceptase, la diferencia entre "todavia no lo
+   * he jugado" y "levante la bola" dependeria de cual de los dos campos mirase
+   * cada pantalla.
+   */
+  if (operationOf(mutation) === 'CLEAR') {
+    if (mutation.grossStrokes !== null || mutation.isPickup) {
+      return {
+        code: 'INVALID_STROKES',
+        message: 'Borrar un resultado no puede llevar golpes ni raya. Estado imposible.',
+      };
+    }
+    return null;
   }
 
   if (mutation.isPickup) {
@@ -162,7 +196,28 @@ export function applyMutation(
     return { type: 'DUPLICATE', clientMutationId, version: state.version };
   }
 
-  // 2. Autorizacion.
+  /**
+   * 2. Generacion de resultados.
+   *
+   * Va ANTES de la autorizacion y de la validacion a proposito: una operacion de
+   * una generacion anterior no debe llegar a evaluarse. El caso real es un movil
+   * que apunto nueve hoyos sin cobertura, el administrador vacio las tarjetas, y
+   * el movil recupera la conexion. Esas nueve operaciones son legitimas, de su
+   * dueno y con golpes validos; lo unico que las invalida es que el resultado al
+   * que se referian ya no existe.
+   */
+  const competitionGeneration = context.competitionScoreGeneration;
+  if (competitionGeneration !== undefined && generationOf(mutation) < competitionGeneration) {
+    return {
+      type: 'REJECTED',
+      clientMutationId,
+      code: 'STALE_GENERATION',
+      message:
+        'El administrador ha vaciado las tarjetas despues de apuntar este resultado. No se ha guardado.',
+    };
+  }
+
+  // 3. Autorizacion.
   //
   // La decision se toma con `context.actorUserId`, que viene de la sesion del
   // servidor, NUNCA con `mutation.userId`, que lo escribe el cliente y por tanto
@@ -198,7 +253,7 @@ export function applyMutation(
     };
   }
 
-  // 3. Validacion de contenido.
+  // 4. Validacion de contenido.
   const invalid = validate(mutation, context);
   if (invalid) {
     return { type: 'REJECTED', clientMutationId, ...invalid };
@@ -206,7 +261,7 @@ export function applyMutation(
 
   const existing = state.holes[mutation.holeNumber];
 
-  // 4. Conflictos.
+  // 5. Conflictos.
   if (existing) {
     if (existing.isOverridden && context.actorRole !== 'ADMIN') {
       return {
@@ -246,7 +301,7 @@ export function applyMutation(
     }
   }
 
-  // 5. Aplicacion.
+  // 6. Aplicacion.
   const nextVersion = state.version + 1;
 
   /**
@@ -260,15 +315,26 @@ export function applyMutation(
    * auditoria de la prueba entera.
    */
   const isAdminWrite = context.actorRole === 'ADMIN' && !actorIsOwner;
+  const isClear = operationOf(mutation) === 'CLEAR';
 
+  /**
+   * El hoyo borrado se queda en el estado con los dos campos vacios, NO se
+   * elimina del mapa.
+   *
+   * Eliminarlo daria un hoyo indistinguible de uno nunca jugado para el
+   * resolutor —que es correcto— pero perderia quien lo toco por ultima vez y
+   * con que version, y con eso se perderia la deteccion de conflictos: otro
+   * dispositivo con una version antigua podria escribir encima sin que nadie lo
+   * marcase. Un registro vacio conserva las dos cosas.
+   */
   const nextState: ServerScorecardState = {
     ...state,
     version: nextVersion,
     holes: {
       ...state.holes,
       [mutation.holeNumber]: {
-        grossStrokes: mutation.grossStrokes,
-        isPickup: mutation.isPickup,
+        grossStrokes: isClear ? null : mutation.grossStrokes,
+        isPickup: isClear ? false : mutation.isPickup,
         // Una escritura administrativa marca el hoyo como corregido; la del
         // propio jugador lo devuelve a estado normal.
         isOverridden: isAdminWrite,
@@ -303,14 +369,20 @@ export function applyMutation(
     version: nextVersion,
     staleAllocation,
     audit: {
-      action: isAdminWrite ? 'HOLE_SCORE_OVERRIDDEN' : 'HOLE_SCORE_WRITTEN',
+      action: isClear
+        ? 'HOLE_SCORE_CLEARED'
+        : isAdminWrite
+          ? 'HOLE_SCORE_OVERRIDDEN'
+          : 'HOLE_SCORE_WRITTEN',
       entityType: 'HoleScore',
       entityId: `${state.id}:${mutation.holeNumber}`,
       actorId: context.actorUserId,
       beforeData: existing
         ? { grossStrokes: existing.grossStrokes, isPickup: existing.isPickup }
         : null,
-      afterData: { grossStrokes: mutation.grossStrokes, isPickup: mutation.isPickup },
+      afterData: isClear
+        ? { grossStrokes: null, isPickup: false, cleared: true }
+        : { grossStrokes: mutation.grossStrokes, isPickup: mutation.isPickup },
       reason: context.reason?.trim() || null,
       createdAt: now.toISOString(),
     },

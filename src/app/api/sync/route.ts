@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { getCurrentUser } from '@/lib/auth/server';
-import { saveHole } from '@/lib/actions/scorecard';
+import { clearHole, saveHole } from '@/lib/actions/scorecard';
+import { getCompetition } from '@/lib/data/queries';
 
 /**
  * Sincronizacion de la cola offline.
@@ -9,6 +10,14 @@ import { saveHole } from '@/lib/actions/scorecard';
  * Recibe un lote y devuelve un veredicto por operacion, para que el movil sepa
  * exactamente que retirar de su cola y que dejar para resolver. Es idempotente:
  * reenviar el mismo lote no duplica nada.
+ *
+ * Admite dos operaciones: WRITE (apuntar golpes o raya) y CLEAR (dejar el hoyo
+ * vacio). Sin el campo `operation` se asume WRITE, para que una cola guardada por
+ * la version 1.1 siga subiendo sin tocar nada en el movil.
+ *
+ * La respuesta lleva la generacion de resultados vigente. Es lo que permite al
+ * movil descubrir que el administrador ha vaciado las tarjetas y anular sus
+ * operaciones pendientes en lugar de reintentarlas para siempre.
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -29,6 +38,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Lote demasiado grande' }, { status: 413 });
   }
 
+  const context = await getCompetition();
+  const scoreGeneration = context?.scoreGeneration ?? 0;
+
   const outcomes: Array<{ clientMutationId: string; status: string; error?: string }> = [];
 
   // En orden estricto: una correccion nunca debe aplicarse antes del valor que
@@ -41,6 +53,8 @@ export async function POST(request: Request) {
       grossStrokes?: unknown;
       isPickup?: unknown;
       baseVersion?: unknown;
+      operation?: unknown;
+      scoreGeneration?: unknown;
     };
 
     if (
@@ -54,14 +68,28 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const result = await saveHole({
-      clientMutationId: mutation.clientMutationId,
-      clientId: mutation.clientId,
-      holeNumber: mutation.holeNumber,
-      grossStrokes: typeof mutation.grossStrokes === 'number' ? mutation.grossStrokes : null,
-      isPickup: mutation.isPickup,
-      baseVersion: mutation.baseVersion,
-    });
+    const operation = mutation.operation === 'CLEAR' ? 'CLEAR' : 'WRITE';
+    const mutationGeneration =
+      typeof mutation.scoreGeneration === 'number' ? mutation.scoreGeneration : undefined;
+
+    const result =
+      operation === 'CLEAR'
+        ? await clearHole({
+            clientMutationId: mutation.clientMutationId,
+            clientId: mutation.clientId,
+            holeNumber: mutation.holeNumber,
+            baseVersion: mutation.baseVersion,
+            scoreGeneration: mutationGeneration,
+          })
+        : await saveHole({
+            clientMutationId: mutation.clientMutationId,
+            clientId: mutation.clientId,
+            holeNumber: mutation.holeNumber,
+            grossStrokes: typeof mutation.grossStrokes === 'number' ? mutation.grossStrokes : null,
+            isPickup: mutation.isPickup,
+            baseVersion: mutation.baseVersion,
+            scoreGeneration: mutationGeneration,
+          });
 
     outcomes.push(
       result.ok
@@ -75,7 +103,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(
-    { outcomes },
+    { outcomes, scoreGeneration },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }

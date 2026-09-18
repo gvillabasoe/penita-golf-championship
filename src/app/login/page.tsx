@@ -4,9 +4,21 @@ import { getCurrentUser } from '@/lib/auth/server';
 import { getLoginRoster } from '@/lib/data/queries';
 import { diagnose } from '@/lib/data/health';
 import { LoginForm } from '@/components/client/login-form';
+import { StateBlock } from '@/components/ui';
+import { IconAlert } from '@/components/ui/icons';
 
 export const metadata = { title: 'Acceso · Peñita Golf Championship' };
 
+/**
+ * Pantalla de acceso.
+ *
+ * Identidad del campeonato arriba, sobre un bloque verde profundo con la misma
+ * textura de curvas de nivel que el resto de la aplicacion, y el formulario
+ * debajo sobre superficie SOLIDA. Ni cristal, ni pastel, ni logo inventado: el
+ * escudo de la Peñita es el de assets/logo.png y no se sustituye por un dibujo.
+ *
+ * Las credenciales y la logica de sesion no se han tocado.
+ */
 export default async function LoginPage({
   searchParams,
 }: {
@@ -39,24 +51,52 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="container stack">
-      <header className="page-header">
-        <div>
-          <h1>Peñita Golf Championship</h1>
-          <p className="muted">I edicion · Ulzama-Bariain 2026</p>
+    <main className="container stack" style={{ paddingTop: 'var(--space-5)' }}>
+      {/* Identidad del campeonato. El unico bloque decorativo de la pantalla. */}
+      <section className="hero" aria-label="I Peñita Golf Championship">
+        <svg
+          className="hero__texture"
+          viewBox="0 0 400 200"
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <g fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1">
+            <path d="M-20 172 C 60 140, 120 168, 200 132 S 340 108, 420 128" />
+            <path d="M-20 148 C 60 116, 130 146, 210 108 S 345 84, 420 102" />
+            <path d="M-20 124 C 70 92, 140 122, 220 84 S 350 60, 420 76" />
+            <path d="M-20 98 C 80 68, 150 96, 230 58 S 355 34, 420 48" />
+            <path d="M-20 70 C 90 42, 160 68, 240 32 S 360 10, 420 22" />
+          </g>
+        </svg>
+
+        <div className="hero__body">
+          <p className="hero__meta">
+            <span>I edicion</span>
+            <span>Ulzama · Bariain 2026</span>
+          </p>
+          <p className="hero__course">
+            Peñita Golf
+            <br />
+            Championship
+          </p>
+          <p className="muted">Individual Stableford · 18 hoyos</p>
         </div>
-      </header>
+      </section>
 
       {problem !== null ? (
-        <div className="card stack">
-          <p className="alert" role="alert">
-            La aplicación todavía no está lista para usarse.
-          </p>
-          <p>{problem}</p>
-          <p className="muted">
-            Detalle completo en <a href="/api/diagnostico">/api/diagnostico</a>.
-          </p>
-        </div>
+        <StateBlock
+          title="La aplicacion todavia no esta lista para usarse"
+          variant="error"
+          icon={<IconAlert size={22} />}
+          action={
+            <a className="button button--secondary" href="/api/diagnostico">
+              Ver el diagnostico completo
+            </a>
+          }
+        >
+          {problem}
+        </StateBlock>
       ) : (
         <LoginForm
           players={players}

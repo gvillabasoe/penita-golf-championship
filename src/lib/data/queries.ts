@@ -13,6 +13,7 @@ import {
 } from '../golf/stableford';
 import { allocateStrokes } from '../golf/strokes';
 import { buildRanking, revealOrder } from '../golf/ranking';
+import { describeHandicapCap, type HandicapCapView } from '../golf/handicap-cap';
 import type {
   CourseSnapshot,
   HoleResult,
@@ -34,6 +35,13 @@ export interface CompetitionContext {
   category: string;
   allowancePercent: number;
   ruleVersion: string;
+  /** Limite maximo de hándicap exacto aplicable, en decimas. null = sin limite. */
+  maxHandicapIndexTenths: number | null;
+  /**
+   * Generacion de resultados. La incrementa el vaciado de tarjetas y viaja hasta
+   * el movil, que la guarda con cada operacion offline.
+   */
+  scoreGeneration: number;
   status: 'DRAFT' | 'CONFIGURED' | 'IN_PLAY' | 'CLOSED';
   classificationStatus: 'HIDDEN' | 'REVEALING' | 'PUBLISHED';
   snapshot: CourseSnapshot & { snapshotId: string };
@@ -74,6 +82,8 @@ export async function getCompetition(): Promise<CompetitionContext | null> {
     category: competition.category,
     allowancePercent: competition.handicapAllowancePercent,
     ruleVersion: competition.handicapRuleVersion,
+    maxHandicapIndexTenths: competition.maxHandicapIndexTenths,
+    scoreGeneration: competition.scoreResetVersion,
     status: competition.status,
     classificationStatus: competition.classificationStatus,
     snapshot: {
@@ -96,6 +106,10 @@ export interface PlayerScorecard {
   displayName: string;
   color: string;
   handicapIndexTenths: number | null;
+  /** Hándicap exacto que se ha usado para calcular, en decimas. */
+  appliedHandicapIndexTenths: number | null;
+  /** Como presentar el limite de hándicap en esta ficha. */
+  handicapCap: HandicapCapView;
   playingHandicap: number | null;
   flightId: string | null;
   flightName: string | null;
@@ -172,6 +186,11 @@ export async function getAllScorecards(
       displayName: player.user.displayName,
       color: player.color,
       handicapIndexTenths: player.handicapIndexTenths,
+      appliedHandicapIndexTenths: player.appliedHandicapIndexTenths,
+      handicapCap: describeHandicapCap(
+        player.handicapIndexTenths,
+        context.maxHandicapIndexTenths,
+      ),
       playingHandicap: player.playingHandicap,
       flightId: player.flightMember?.flightId ?? null,
       flightName: player.flightMember?.flight.name ?? null,
@@ -256,10 +275,13 @@ export interface FlightView {
   members: Array<{
     competitionPlayerId: string;
     displayName: string;
+    color: string;
     handicapIndexTenths: number | null;
+    handicapCap: HandicapCapView;
     playingHandicap: number | null;
     status: ScorecardStatus;
     holesCompleted: number;
+    points: number;
   }>;
 }
 
@@ -286,10 +308,15 @@ export async function getFlights(context: CompetitionContext): Promise<FlightVie
       return {
         competitionPlayerId: member.competitionPlayerId,
         displayName: card?.displayName ?? '(desconocido)',
+        color: card?.color ?? 'var(--border-strong)',
         handicapIndexTenths: card?.handicapIndexTenths ?? null,
+        handicapCap:
+          card?.handicapCap ??
+          describeHandicapCap(null, context.maxHandicapIndexTenths),
         playingHandicap: card?.playingHandicap ?? null,
         status: card?.status ?? 'NOT_STARTED',
         holesCompleted: card?.totals.total.holesPlayed ?? 0,
+        points: card?.totals.total.points ?? 0,
       };
     }),
   }));

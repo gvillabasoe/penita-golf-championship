@@ -18,7 +18,32 @@
  *     enviarla, ni al perder la conexion, ni al cerrar la app.
  */
 
-export type MutationStatus = 'PENDING' | 'IN_FLIGHT' | 'APPLIED' | 'CONFLICT' | 'FAILED';
+export type MutationStatus =
+  | 'PENDING'
+  | 'IN_FLIGHT'
+  | 'APPLIED'
+  | 'CONFLICT'
+  | 'FAILED'
+  /**
+   * Operacion anterior a un vaciado de tarjetas. No se envia y no se aplica: si
+   * se enviase, devolveria a la vida un resultado que el administrador borro.
+   */
+  | 'STALE';
+
+/**
+ * Que hace la operacion con el hoyo.
+ *
+ *   WRITE : apuntar golpes o marcar raya.
+ *   CLEAR : dejar el hoyo VACIO, que no es lo mismo que una raya (ver
+ *           lib/golf/stableford.ts). Un hoyo vacio no cuenta como jugado,
+ *           no da puntos e impide finalizar la tarjeta.
+ *
+ * Es opcional para que una cola guardada por la version anterior siga siendo
+ * legible: sin el campo, la operacion es un WRITE, que es lo unico que existia.
+ * Asi no hace falta subir `QUEUE_SCHEMA_VERSION`, que pondria en cuarentena
+ * resultados que solo existen en el movil.
+ */
+export type HoleOperation = 'WRITE' | 'CLEAR';
 
 export interface HoleMutation {
   /** Identificador unico generado en el cliente. Base de la idempotencia. */
@@ -32,13 +57,31 @@ export interface HoleMutation {
   userId: string;
   scorecardId: string;
   holeNumber: number;
-  /** null cuando es raya. */
+  /** WRITE por omision: las colas guardadas por la version 1.1 no lo traen. */
+  operation?: HoleOperation;
+  /** null cuando es raya, y tambien cuando la operacion es CLEAR. */
   grossStrokes: number | null;
   isPickup: boolean;
   /** Version de la tarjeta que el cliente tenia al escribir. */
   baseVersion: number;
+  /**
+   * Generacion de resultados vigente cuando se creo la operacion. El servidor la
+   * compara con la del campeonato: si no coincide, la operacion es anterior a un
+   * vaciado y se rechaza. Opcional por el mismo motivo que `operation`.
+   */
+  scoreGeneration?: number;
   /** Reloj local. Solo informativo: no se usa para ordenar ni para resolver. */
   createdAtLocal: string;
+}
+
+/** Operacion de una mutacion, con el valor por omision aplicado. */
+export function operationOf(mutation: HoleMutation): HoleOperation {
+  return mutation.operation ?? 'WRITE';
+}
+
+/** Generacion de una mutacion, con el valor por omision aplicado. */
+export function generationOf(mutation: HoleMutation): number {
+  return mutation.scoreGeneration ?? 0;
 }
 
 export interface QueueItem {
@@ -109,6 +152,9 @@ export function nextBatch(queue: Queue, now = Date.now()): QueueItem[] {
 
   for (const item of ordered) {
     if (item.status === 'APPLIED' || item.status === 'CONFLICT') continue;
+    // Una operacion obsoleta se salta, no detiene la cola: lo que venga detras
+    // es de la generacion nueva y tiene todo el derecho a subir.
+    if (item.status === 'STALE') continue;
     if (item.status === 'FAILED') break; // una operacion muerta detiene la cola
     if (item.status === 'IN_FLIGHT') break;
     if (item.nextAttemptAt > now) break; // respeta el backoff y no adelanta nada
@@ -176,6 +222,64 @@ export function markFailed(
   });
 }
 
+/**
+ * Marca una operacion como obsoleta: es anterior a un vaciado de tarjetas.
+ *
+ * No se borra, se marca. Borrarla dejaria al jugador sin ninguna pista de que lo
+ * que apunto no ha llegado, y esta aplicacion tiene una regla que manda por
+ * encima de la comodidad: nada desaparece en silencio.
+ */
+export function markStale(queue: Queue, clientMutationId: string, detail: string): Queue {
+  return updateItem(queue, clientMutationId, (item) => ({
+    ...item,
+    status: 'STALE',
+    lastError: detail,
+  }));
+}
+
+export interface StaleInvalidation {
+  queue: Queue;
+  /** Cuantas operaciones se han invalidado. */
+  invalidated: number;
+  /** Hoyos afectados, para poder decirle al jugador exactamente que se perdio. */
+  holes: number[];
+}
+
+/**
+ * Invalida todo lo pendiente que pertenezca a una generacion anterior.
+ *
+ * Se llama al descubrir que el campeonato ha avanzado de generacion, es decir
+ * cuando el administrador ha vaciado las tarjetas. Es la pieza del cliente que
+ * cumple la seccion 3.5: una operacion creada antes del vaciado no se envia, no
+ * se aplica y no restaura nada.
+ *
+ * Las que ya estan aplicadas o en conflicto no se tocan: aquellas ya tienen su
+ * veredicto del servidor y reescribirlo aqui seria inventarse un estado.
+ */
+export function invalidateStaleGenerations(
+  queue: Queue,
+  currentGeneration: number,
+  detail = 'El administrador ha vaciado las tarjetas. Este resultado ya no se envia.',
+): StaleInvalidation {
+  const holes: number[] = [];
+
+  const items = queue.items.map((item) => {
+    const isOpen =
+      item.status === 'PENDING' || item.status === 'IN_FLIGHT' || item.status === 'FAILED';
+    if (!isOpen) return item;
+    if (generationOf(item.mutation) >= currentGeneration) return item;
+
+    holes.push(item.mutation.holeNumber);
+    return { ...item, status: 'STALE' as const, lastError: detail };
+  });
+
+  return {
+    queue: { ...queue, items },
+    invalidated: holes.length,
+    holes: [...new Set(holes)].sort((a, b) => a - b),
+  };
+}
+
 /** Retira las operaciones ya aplicadas. Se llama tras una sincronizacion limpia. */
 export function pruneApplied(queue: Queue): Queue {
   return { ...queue, items: queue.items.filter((item) => item.status !== 'APPLIED') };
@@ -186,6 +290,8 @@ export interface QueueStats {
   inFlight: number;
   conflicts: number;
   failed: number;
+  /** Operaciones anuladas por un vaciado de tarjetas. */
+  stale: number;
   hasPermanentFailure: boolean;
   /** Hoyos con escritura pendiente, para marcarlos en la tarjeta. */
   pendingHoles: number[];
@@ -202,6 +308,7 @@ export function queueStats(queue: Queue): QueueStats {
     inFlight: inFlight.length,
     conflicts: byStatus('CONFLICT').length,
     failed: failed.length,
+    stale: byStatus('STALE').length,
     hasPermanentFailure: failed.length > 0,
     pendingHoles: [
       ...new Set([...pending, ...inFlight].map((i) => i.mutation.holeNumber)),

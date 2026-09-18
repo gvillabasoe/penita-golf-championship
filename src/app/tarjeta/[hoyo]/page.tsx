@@ -41,6 +41,12 @@ export default async function HolePage({ params }: { params: Promise<{ hoyo: str
         canEdit={permission.canEdit}
         blockedReason={permission.reason}
         invalidatesReview={permission.invalidatesReview}
+        playerName={card.displayName}
+        playerColor={card.color}
+        playingHandicap={card.playingHandicap}
+        scoreGeneration={context.scoreGeneration}
+        previousHole={holeNumber > 1 ? holeNumber - 1 : null}
+        nextHole={holeNumber < 18 ? holeNumber + 1 : null}
       />
     </main>
   );

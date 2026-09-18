@@ -1,7 +1,39 @@
 import type { Metadata, Viewport } from 'next';
+import { Fraunces, Inter } from 'next/font/google';
 
 import './globals.css';
 import { ServiceWorkerRegistration } from '@/components/client/service-worker';
+
+/**
+ * Dos familias y ninguna mas (seccion 11).
+ *
+ * `next/font` las descarga en tiempo de compilacion y las sirve desde el propio
+ * dominio, asi que no hay peticion a Google en tiempo de ejecucion ni salto de
+ * maquetacion al cargar. Se exponen como variables CSS y toda la hoja de
+ * estilos las consume desde `--font-display` y `--font-sans`.
+ *
+ * `fallback` esta escrito a proposito: si la fuente no llega, la aplicacion
+ * tiene que seguir siendo legible en el hoyo 14, no bonita.
+ */
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+  fallback: ['system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+});
+
+/**
+ * Serif editorial para titulares y cifras grandes. Se cargan solo los dos pesos
+ * que se usan: ninguna pantalla necesita mas, y cada peso extra es peso que
+ * viaja por la cobertura del campo.
+ */
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['600', '700'],
+  variable: '--font-fraunces',
+  fallback: ['Iowan Old Style', 'Georgia', 'Times New Roman', 'serif'],
+});
 
 export const metadata: Metadata = {
   title: 'Peñita Golf Championship',
@@ -37,7 +69,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" className={`${inter.variable} ${fraunces.variable}`}>
       <body>
         <div className="app-shell">{children}</div>
         <ServiceWorkerRegistration />

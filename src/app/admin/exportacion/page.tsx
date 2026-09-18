@@ -1,11 +1,19 @@
 import { getAllScorecards, getCompetition } from '@/lib/data/queries';
 import { canExport } from '@/lib/export/guards';
+import { AdminSection, Alert, ButtonLink, StateBlock } from '@/components/ui';
+import { IconGrid } from '@/components/ui/icons';
 
 export const metadata = { title: 'Admin · Exportacion' };
 
 export default async function AdminExportPage() {
   const context = await getCompetition();
-  if (!context) return <p className="alert">No hay competicion configurada.</p>;
+  if (!context) {
+    return (
+      <StateBlock title="No hay competicion configurada" icon={<IconGrid />}>
+        No hay nada que exportar todavia.
+      </StateBlock>
+    );
+  }
 
   const cards = await getAllScorecards(context);
 
@@ -22,53 +30,58 @@ export default async function AdminExportPage() {
 
   return (
     <div className="stack">
-      <header className="page-header">
+      <div className="section-header">
         <h1>Exportacion</h1>
-      </header>
+      </div>
 
-      <section className="card stack" aria-label="Clasificacion">
-        <h2>Clasificacion</h2>
-
+      <AdminSection
+        title="Clasificacion"
+        description="El PDF definitivo solo se genera con la clasificacion publicada."
+      >
         {finalDecision.allowed ? (
-          <>
-            <a className="button button--primary" href="/api/export/leaderboard?format=pdf">
-              PDF definitivo
-            </a>
-            <a className="button button--secondary" href="/api/export/leaderboard?format=png">
+          <div className="button-row">
+            <ButtonLink href="/api/export/leaderboard?format=pdf">PDF definitivo</ButtonLink>
+            <ButtonLink href="/api/export/leaderboard?format=png" tone="secondary">
               Imagen para WhatsApp
-            </a>
-          </>
+            </ButtonLink>
+          </div>
         ) : (
-          <p className="alert" role="note">
-            {finalDecision.reason}
-          </p>
+          <Alert role="note">{finalDecision.reason}</Alert>
         )}
 
         {provisionalDecision.allowed ? (
-          <a className="button button--secondary" href="/api/export/leaderboard-provisional">
-            PDF provisional (marcado)
-          </a>
+          <ButtonLink href="/api/export/leaderboard-provisional" tone="secondary">
+            PDF provisional (marcado como tal)
+          </ButtonLink>
         ) : null}
-      </section>
+      </AdminSection>
 
-      <section className="card stack" aria-label="Tarjetas">
-        <h2>Tarjetas</h2>
-        <ul>
-          {cards
-            .filter((card) => card.scorecardId !== null)
-            .map((card) => (
-              <li key={card.competitionPlayerId}>
-                <a href={`/api/export/scorecard/${card.scorecardId}`}>{card.displayName}</a>
-              </li>
-            ))}
-        </ul>
-      </section>
+      <AdminSection title="Tarjetas" description="Una por jugador, con los 18 hoyos.">
+        {cards.filter((card) => card.scorecardId !== null).length === 0 ? (
+          <p className="muted">Todavia no hay tarjetas creadas.</p>
+        ) : (
+          <ul className="flight-card__members">
+            {cards
+              .filter((card) => card.scorecardId !== null)
+              .map((card) => (
+                <li key={card.competitionPlayerId}>
+                  <a href={`/api/export/scorecard/${card.scorecardId}`}>{card.displayName}</a>
+                </li>
+              ))}
+          </ul>
+        )}
+      </AdminSection>
 
-      <section className="card stack" aria-label="Otros">
-        <h2>Otros documentos</h2>
-        <a href="/api/export/audit">Historial de auditoria</a>
-        <a href="/api/export/course-config">Configuracion del campo</a>
-      </section>
+      <AdminSection title="Otros documentos">
+        <div className="button-row">
+          <ButtonLink href="/api/export/audit" tone="secondary" size="sm">
+            Historial de auditoria
+          </ButtonLink>
+          <ButtonLink href="/api/export/course-config" tone="secondary" size="sm">
+            Configuracion del campo
+          </ButtonLink>
+        </div>
+      </AdminSection>
     </div>
   );
 }

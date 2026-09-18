@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+import { IconAlert } from '@/components/ui/icons';
+
 /**
  * Pantalla de error.
  *
@@ -28,31 +30,37 @@ export default function ErrorScreen({
 
   return (
     <main className="container stack">
-      <header className="page-header">
+      <div className="section-header">
         <h1>Algo ha fallado</h1>
-      </header>
-
-      <div className="card stack">
-        <p>
-          <strong>Tus resultados están guardados.</strong> Lo que hayas confirmado en la tarjeta
-          vive en este móvil y se enviará solo en cuanto todo vuelva a funcionar.
-        </p>
-
-        <button type="button" className="button button--primary" onClick={reset}>
-          Volver a intentarlo
-        </button>
-
-        <a className="button button--secondary" href="/tarjeta">
-          Ir a mi tarjeta
-        </a>
-
-        {error.digest ? (
-          <p className="muted">
-            Si tienes que avisar al organizador, dale esta referencia:{' '}
-            <code>{error.digest}</code>
-          </p>
-        ) : null}
       </div>
+
+      <div className="state-block state-block--error" role="alert">
+        <span className="state-block__icon">
+          <IconAlert size={22} />
+        </span>
+        <p className="state-block__title">No se ha podido cargar la pantalla</p>
+        <div className="state-block__body">
+          <p>
+            <strong>Tus resultados estan guardados.</strong> Lo que hayas confirmado en la
+            tarjeta vive en este movil y se enviara solo en cuanto todo vuelva a funcionar.
+          </p>
+        </div>
+        <div className="button-row">
+          <button type="button" className="button button--primary" onClick={reset}>
+            Volver a intentarlo
+          </button>
+          <a className="button button--secondary" href="/tarjeta">
+            Ir a mi tarjeta
+          </a>
+        </div>
+      </div>
+
+      {error.digest ? (
+        <p className="muted">
+          Si tienes que avisar al organizador, dale esta referencia:{' '}
+          <code>{error.digest}</code>
+        </p>
+      ) : null}
     </main>
   );
 }
