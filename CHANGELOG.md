@@ -2,6 +2,246 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+> Las entradas anteriores a la 1.2.0 mencionan la paleta pastel y el Liquid
+> Glass porque es lo que se construyo entonces. No se reescriben: un registro de
+> cambios que se corrige a si mismo deja de servir para saber que paso. Los dos
+> sistemas quedaron ELIMINADOS en la 1.2.0, como se detalla justo debajo.
+
+## [1.2.0] - 2026-09-18
+
+Tres funcionalidades nuevas y el rediseno completo de la interfaz.
+
+### Anadido
+
+#### Vaciar los resultados de todas las tarjetas
+
+Accion de administrador en `/admin/tarjetas`, dentro de una **Zona de acciones
+criticas** separada visualmente del resto del panel.
+
+- Doble confirmacion. La primera muestra CIFRAS —tarjetas afectadas, resultados
+  que se eliminan, puntos que se pierden, bloqueos y revisiones que se van,
+  estado de la clasificacion— y la segunda obliga a escribir `VACIAR`. Un
+  "¿seguro?" se pulsa sin leerlo; escribir una palabra no se hace por inercia.
+- Todo en una transaccion. Un vaciado a medias —tarjetas vacias con una
+  clasificacion calculada de resultados que ya no existen— es peor estado que no
+  haber vaciado nada.
+- Las tarjetas se **vacian, no se borran**: quedan en "Sin comenzar" con todo a
+  cero. Borrarlas obligaria a recrearlas y a reasignar `competitionPlayerId`, y
+  cualquier tropiezo ahi deja a un jugador sin tarjeta el dia del torneo.
+- Se conservan usuarios, contrasenas, roles, hándicaps exactos, el limite de
+  hándicap, colores, partidos, horas de salida, campo, valoracion, reglas y el
+  historial de auditoria anterior. Hay un test que lo comprueba enumerando lo que
+  la accion NO debe tocar.
+- Auditoria con el antes, el despues y las dos generaciones de resultados.
+
+#### Proteccion frente a datos offline anteriores al vaciado
+
+El requisito mas delicado de los tres. El caso real: un movil apunta nueve hoyos
+sin cobertura, el administrador vacia las tarjetas, y el movil recupera la
+conexion. Esas nueve operaciones son legitimas, de su dueno y con golpes
+validos; lo unico que las invalida es que el resultado al que se referian ya no
+existe. Sin guardia, el servidor las aplicaria sin pestanear y habria resultados
+borrados reapareciendo solos horas despues.
+
+- `Competition.scoreResetVersion`: generacion de resultados. La incrementa el
+  vaciado.
+- Cada operacion offline viaja con la generacion sobre la que se creo.
+  `applyMutation` rechaza con `STALE_GENERATION` cualquiera de una generacion
+  anterior, y lo hace **antes** de autorizar y de validar: una operacion obsoleta
+  y ademas mal formada tiene que reportarse como obsoleta, porque esa es la causa
+  real y es lo que el jugador necesita saber.
+- La generacion se incrementa **primero** dentro de la transaccion. Eso bloquea
+  la fila de `Competition` desde ese momento, asi que una escritura que entre a
+  mitad espera y se encuentra ya con la generacion nueva. Es lo que evita que un
+  resultado se cuele entre el borrado y el fin del vaciado.
+- En el movil, `invalidateStaleGenerations` marca las pendientes como `STALE`:
+  no se envian, no se aplican y **no se borran**. Quedan con su motivo, porque
+  nada desaparece en silencio en esta aplicacion.
+- Una operacion obsoleta no detiene la cola de lo que venga detras, y no bloquea
+  el cierre de sesion: no esta pendiente de enviar, asi que no hay nada que
+  perder al salir.
+
+#### El jugador puede dejar un hoyo vacio
+
+- Operacion `CLEAR` en el teclado de resultados, con icono de papelera, color
+  destructivo y confirmacion propia.
+- **Vacio no es raya**, y esa es toda la funcionalidad. Un hoyo vacio no tiene
+  resultado, no cuenta como completado, no genera puntos e impide finalizar la
+  tarjeta. Una raya es un resultado valido: cuenta, vale 0 y permite finalizar.
+  Confundirlas regalaria una tarjeta completa a quien le falta un hoyo.
+- Una operacion `CLEAR` con golpes o con raya dentro se rechaza como estado
+  imposible. Si se aceptase, la diferencia entre "todavia no lo he jugado" y
+  "levante la bola" dependeria de cual de los dos campos mirase cada pantalla.
+- El hoyo borrado **conserva su registro** con los campos vacios en lugar de
+  desaparecer del estado. Eliminarlo perderia quien lo toco por ultima vez y con
+  que version, y con ello la deteccion de conflictos: otro dispositivo con una
+  version antigua podria escribir encima sin que nadie lo marcase.
+- Borrar retira `playerConfirmedFinish` si la tarjeta deja de estar completa. Sin
+  eso, `deriveStatus` volveria a dar `FINISHED` en cuanto el jugador rellenase el
+  hueco, sin que nadie lo hubiera vuelto a confirmar.
+- La revision existente queda `OUTDATED`, no borrada: asi el companero que reviso
+  ve por que se le vuelve a pedir.
+- Funciona sin conexion, es idempotente y resuelve conflictos con la logica que
+  ya existia. Los permisos **no se amplian**: puede borrar exactamente quien ya
+  podia escribir, y lo decide `applyMutation` con la sesion del servidor.
+
+#### Limite maximo de hándicap
+
+- Accion "Limitar HCP" en `/admin/campo`, junto al resto de la configuracion de
+  calculo. No es una pestana nueva: el limite es un parametro de calculo mas, y
+  separarlo de las reglas con las que se combina obligaria a saltar de pantalla
+  para entender un hándicap de juego.
+- Admite coma y punto: `24`, `26,4`, `26.4`. Se normaliza a DECIMAS enteras.
+- Rechaza la notacion plus (`+2,4`): un limite plus no limita a nadie de los que
+  el limite pretende afectar, y aceptarlo dejaria una configuracion que no hace
+  lo que su autor cree.
+- El hándicap exacto **NO se sobreescribe nunca**. Lo unico que cambia es la
+  entrada del calculo: `handicapAplicable = min(exacto, limite)`. De ahi salen el
+  hándicap de campo, el de juego, los golpes recibidos, el neto, los puntos y la
+  clasificacion derivada.
+- **El desempate sigue usando el hándicap exacto ORIGINAL.** Es el punto mas
+  delicado de la funcionalidad: dos jugadores de 30,2 y 28,0 con el limite en
+  26,4 compiten los dos con 26,4, asi que si el desempate usase el aplicable
+  quedarian empatados para siempre. Con el exacto, gana el de 28,0, que es lo que
+  dicen las reglas. Hay un test dedicado a esto.
+- Antes de guardar se muestra el impacto real: quien cambia y con que valor pasa
+  a competir. Un aviso generico no sirve de nada.
+- Quitar el limite es una accion explicita y separada, no "guardar con el campo
+  vacio": dejar en blanco un numero es demasiado facil de hacer sin querer para
+  algo que devuelve golpes a media docena de jugadores.
+- Auditoria del valor anterior, el nuevo y los jugadores afectados.
+
+### Cambiado
+
+#### Rediseno completo de la interfaz
+
+Direccion visual nueva: **premium, golfistica, editorial y legible al sol**. No
+es un cambio de colores; se han rediseñado arquitectura visual, jerarquia,
+navegacion, componentes, formularios, scorecard, entrada de resultados,
+clasificacion, administracion y todos los estados.
+
+- **Paleta**: fondo marfil `#F4F1E8`, verde golf profundo `#0B2B1E`, carbon, y
+  oro `#B6924A` como acento contado. Si el oro aparece en cada boton deja de
+  significar nada.
+- **Tipografia**: dos familias y ninguna mas, con `next/font`. Fraunces (serif
+  editorial) para titulares y cifras grandes; Inter para interfaz y datos, con
+  numeros tabulares en todo lo que se compara. Los fallbacks estan escritos a
+  mano: si la fuente no llega, la aplicacion tiene que seguir siendo legible en
+  el hoyo 14.
+- **Nueva pantalla Mi tarjeta**: gran tarjeta resumen con el resultado en grande
+  y el resumen comprimido de los 18 hoyos, conservando las formas deportivas. La
+  accion principal cambia de texto segun el estado —"Comenzar vuelta",
+  "Continuar vuelta · hoyo N", "Revisar tarjeta"— porque "Continuar" en un hoyo 1
+  sin empezar es mentira y "Comenzar" con quince hoyos apuntados asusta.
+- **Scorecard completo en rejilla CSS** con control segmentado Ida / Vuelta /
+  Total, etiquetas de fila fijas y totales OUT / IN / TOTAL siempre
+  identificables. No es una `<table>`: a 320 px una tabla de 18 columnas es
+  ilegible. El marcado lleva `role="table"`, `role="row"` y `role="cell"`, asi
+  que un lector de pantalla lo recorre como la tabla que conceptualmente es. El
+  scroll horizontal, cuando hace falta, se queda DENTRO del bloque.
+- **Teclado 3 × 3** para 1-9, con la fila de acciones separada por una linea.
+  La separacion no es estetica: sin ella, buscar el 9 con el pulgar y darle a
+  "borrar" es cuestion de tiempo.
+- **Leaderboard oficial** con posicion destacada, puntos con la jerarquia mas
+  alta, oro / plata / bronce en el podio y separacion clara del resto.
+- **Panel de administracion** como cuadro de mando: estado en cifras,
+  incidencias con enlace al sitio donde se resuelven, y las acciones peligrosas
+  en su propio bloque al final.
+- **Estados** rediseñados: vacio, carga, error, sin conexion, guardando,
+  pendiente, sincronizado y conflicto. Ninguno depende solo del color: todos
+  llevan icono y texto.
+- Areas tactiles de 48 px, foco visible, `prefers-reduced-motion` respetado y
+  animaciones breves que no calculan, guardan ni deciden nada.
+
+#### Paleta de jugador
+
+Los trece tonos pastel pasan a acentos profundos y moderadamente saturados
+(esmeralda, terracota, azul atlantico, ocre, burdeos, petroleo, oliva, cobre,
+marino…). El color de jugador se lee sobre blanco, al sol, en una barra de 4 px:
+un pastel ahi no se distingue de otro pastel.
+
+La conversion es determinista y esta en la migracion: cada pastel antiguo tiene
+un unico destino, asi que dos ejecuciones dan el mismo resultado y ningun jugador
+cambia de color dos veces. Un color elegido a mano por el administrador no
+coincide con ninguno de los antiguos y **se conserva intacto**.
+
+El test que lo protege no enumera los pastel antiguos: mide luminancia relativa
+WCAG y rechaza cualquier color demasiado claro para llevar texto blanco encima.
+
+### Eliminado
+
+- **Liquid Glass**, `backdrop-filter` como estilo general, tarjetas de cristal,
+  transparencias decorativas, desenfoques de fondo, gradientes y paleta pastel,
+  sombras difusas, botones translucidos y la estetica iOS Glass.
+- La clase `.glass` **no se ha redefinido como opaca: se ha eliminado**, para que
+  cualquier resto de marcado antiguo se vea raro y salte a la vista en vez de
+  disimular.
+- Un gradiente oscuro sobre una imagen para garantizar contraste sigue
+  permitido: cumple una funcion de legibilidad, no decora.
+
+### Base de datos
+
+- `Competition.maxHandicapIndexTenths` (`Int?`, decimas) y
+  `Competition.scoreResetVersion` (`Int`, por omision 0).
+- `CompetitionPlayer.appliedHandicapIndexTenths` (`Int?`, decimas).
+- `SyncMutation.scoreGeneration` (`Int`, por omision 0), y `operation`
+  documentado como `WRITE` | `CLEAR`.
+- `HoleScore` **no cambia**: ya distinguia vacio (`grossStrokes` nulo e
+  `isPickup` falso) de raya (`isPickup` verdadero). No se usa ningun valor
+  numerico especial para representar vacio.
+- Migracion incremental en `prisma/sql/migrations/002-limite-hcp-y-vaciado.sql`,
+  transaccional y re-ejecutable, con relleno del hándicap aplicable, cinco
+  restricciones `CHECK` nuevas y la conversion de colores.
+- `prisma/sql/schema.sql` regenerado con `npm run gen:sql`.
+
+### Decisiones tomadas y por que
+
+- **Decimas enteras y no `Decimal` para el limite.** El pliego sugeria
+  `Decimal?`. El limite es una entrada del motor de hándicap, y la regla de este
+  esquema es que nada que decida una clasificacion pasa por coma flotante. 26,4
+  se guarda como 264.
+- **Sin columna booleana "esta limitado".** Es la comparacion de
+  `appliedHandicapIndexTenths` con `handicapIndexTenths`. Una tercera columna
+  podria discrepar de las dos primeras. La condicion se calcula en un unico
+  sitio, `describeHandicapCap`.
+- **`QUEUE_SCHEMA_VERSION` se queda en 1.** Los campos nuevos de la cola offline
+  son opcionales y con valor por omision, asi que una cola guardada por la 1.1
+  sigue siendo legible. Subir la version pondria en cuarentena resultados que
+  solo existen en el movil de un jugador.
+- **Sin tecla `10+`.** La referencia visual la tiene, pero el conjunto de valores
+  permitidos es una regla deportiva de esta edicion y cambiarla no estaba
+  pedido. `PLAYER_KEYPAD` sigue siendo 1-9 y raya.
+- **Sin fotografia del campo.** No hay ninguna imagen de Ulzama con derechos
+  comprobados en el repositorio, y bajar una de internet no es una opcion. La
+  cabecera es grafica: verde profundo, curvas de nivel en SVG y tipografia
+  editorial. `TournamentHero` ya acepta `photoUrl` con su gradiente de contraste
+  para el dia que exista una foto autorizada.
+- **`stablefordPoints` sigue siendo no anulable.** El pliego pedia
+  conceptualmente `null` para un hoyo vacio. La distincion real la llevan
+  `grossStrokes IS NULL AND isPickup = false` mas `isConfirmed = false`; hacer la
+  columna anulable obligaria a tocar exportaciones y restricciones sin ganar
+  ninguna garantia.
+
+### Cambios tecnicos imprescindibles fuera del alcance pedido
+
+Dos, ambos necesarios para que el rediseno llegue a producirse:
+
+1. **Eliminado el arbol de codigo duplicado de la raiz.** El repositorio traia
+   dos copias: `app/`, `components/`, `lib/`, `middleware.ts` y `styles/` en la
+   raiz, y otra vez todo bajo `src/`. No eran iguales: `src/` era la 1.1.0 con el
+   arreglo del middleware, y la copia de la raiz era anterior y seguia
+   declarando las paginas como solo GET. Next da prioridad a `app/` de la raiz
+   sobre `src/app` y lo ignora, asi que rediseñar `src/` y dejar los duplicados
+   habria dejado el rediseno sin efecto en produccion. `tsconfig.json` ya
+   apuntaba solo a `src/**` con el alias `@/* -> ./src/*`, asi que `src/` era la
+   fuente correcta y la copia de la raiz era codigo muerto o, en el caso de
+   `app/`, codigo viejo que se estaba compilando.
+2. **Creados `.env.example` y `.gitignore`.** No venian en el paquete y la suite
+   de tests los lee: un test comprueba que no se declaran variables de entorno
+   fantasma y otro que `prisma/seed-credentials.json` sigue ignorado. Sin ellos,
+   cuatro tests fallaban antes de tocar nada. Si los tuyos difieren, quedate con
+   los tuyos.
+
 ## [1.1.0] - 2026-09-17
 
 **Encontrado el fallo del login.** No era la base de datos, ni el hash, ni

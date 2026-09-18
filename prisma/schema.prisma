@@ -180,8 +180,18 @@ model Competition {
   category                 PlayerCategory         @default(CABALLEROS)
   handicapAllowancePercent Int                    @default(95)
   handicapRoundingPolicy   HandicapRoundingPolicy @default(ROUND_TWICE)
-  // Version de regla usada, para poder reconstruir un calculo antiguo.
-  handicapRuleVersion      String
+  // Limite maximo de hándicap exacto aplicable, en DECIMAS. 26,4 -> 264.
+  // null = sin limite. NO sustituye el hándicap exacto de nadie: se usa como
+  // entrada del calculo cuando el del jugador es mayor (ver lib/golf/handicap-cap.ts).
+  //
+  // Int en decimas y no Decimal a proposito: es una entrada del motor de
+  // hándicap, y la regla de este esquema es que nada que decida una
+  // clasificacion pasa por coma flotante.
+  maxHandicapIndexTenths   Int?
+  // Generacion de resultados. La incrementa el vaciado de tarjetas, y sirve
+  // para que una operacion offline creada ANTES del vaciado no pueda resucitar
+  // un resultado borrado al recuperar cobertura (ver lib/sync/generation.ts).
+  scoreResetVersion        Int                    @default(0)
   status                   CompetitionStatus      @default(DRAFT)
   classificationStatus     ClassificationStatus   @default(HIDDEN)
   createdAt                DateTime               @default(now())
@@ -278,7 +288,15 @@ model CompetitionPlayer {
   userId        String
   snapshotId    String?
   // Hándicap exacto en DECIMAS. 20,7 -> 207. Plus +2,4 -> -24.
+  // Es el dato del jugador y NUNCA se sobreescribe: el limite de hándicap no lo
+  // toca, y el desempate de la clasificacion sigue usando este valor.
   handicapIndexTenths Int?
+  // Hándicap exacto APLICABLE, en decimas: min(handicapIndexTenths, limite).
+  // Sin limite es igual al exacto. Se guarda porque es la entrada real del
+  // calculo y sin ella no se puede reconstruir un hándicap de juego antiguo.
+  // La condicion "esta limitado" no se guarda: es appliedHandicapIndexTenths
+  // distinto de handicapIndexTenths, y duplicarla permitiria que discrepasen.
+  appliedHandicapIndexTenths Int?
   // Intermedios del calculo, en CENTESIMAS, para auditoria.
   courseHandicapRawHundredths  Int?
   courseHandicap               Int?
@@ -400,8 +418,14 @@ model SyncMutation {
   userId           String
   entityType       String
   entityId         String
+  // WRITE (apuntar golpes o raya) o CLEAR (dejar el hoyo vacio).
   operation        String
   payloadHash      String
+  // Generacion de resultados sobre la que se creo la operacion. Si no coincide
+  // con Competition.scoreResetVersion, la operacion es anterior a un vaciado y
+  // se rechaza en vez de aplicarse: es lo que impide que un movil sin cobertura
+  // devuelva a la vida un resultado ya borrado.
+  scoreGeneration  Int        @default(0)
   status           SyncStatus @default(PENDING)
   rejectionReason  String?
   createdAt        DateTime   @default(now())

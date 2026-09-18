@@ -3,8 +3,13 @@
 **I Peñita Golf Championship – Ulzama-Bariain 2026**
 Individual Stableford · Club de Golf Ulzama (4401) · recorrido Ulzama · barras amarillas · caballeros
 
-Estado: **completa**. Lista para subir a GitHub y desplegar en Vercel.
+Estado: **completa**, version 1.2.0. Lista para subir a GitHub y desplegar en Vercel.
 Empieza por `docs/primer-despliegue.md`.
+
+> **Actualizando desde la 1.1.0**: aplica primero
+> `prisma/sql/migrations/002-limite-hcp-y-vaciado.sql` en Neon y **despues**
+> despliega el codigo. Al reves, la aplicacion arranca y falla en la primera
+> lectura, porque `appliedHandicapIndexTenths` todavia no existiria.
 
 ---
 
@@ -83,22 +88,31 @@ src/lib/seed/
 prisma/schema.prisma        Modelo de datos completo (24 modelos, 11 enums).
 prisma/seed.ts              Seed conectado a Prisma.
 prisma/sql/constraints.sql  Restricciones CHECK que Prisma no puede expresar.
+prisma/sql/migrations/      Migraciones incrementales, re-ejecutables, para Neon.
 data/ulzama.snapshot.json   Datos del campo con procedencia de las dos fuentes.
-src/styles/tokens.css       Paleta pastel y liquid glass con fallback sólido.
+src/styles/tokens.css       Capa de tokens: paleta premium, tipografía, formas.
+src/components/ui/          Sistema de componentes: botones, insignias, estados.
+docs/design-system.md       Dirección visual, paleta, tipografía y patrones.
+docs/design-system.md       Dirección visual, paleta, tipografía y patrones.
+docs/guia-administrativa.md Límite de HCP, borrado de hoyo y vaciado de tarjetas.
+docs/offline-sync.md        Cola offline, conflictos y generación de resultados.
 docs/                       Trazabilidad, proveedores, hándicap, seed, despliegue.
 ```
 
 ## Verificación ejecutada
 
 ```
-451 tests · 451 pasando · 94 suites
+609 tests · 609 pasando · 115 suites
 Guardianes estáticos: fronteras de empaquetado y referencias a Prisma
-26 módulos de lógica · type-check estricto · 0 errores
-40 tests de render sobre React 19
-38 tests de exportación, con los PDF leídos de vuelta
+Tests de render sobre React 19
+Exportaciones verificadas leyendo los PDF de vuelta
 26 rutas, todas con regla de autorización declarada y verificada
 npm run verify → referencias, tipos y tests de una pasada
 ```
+
+En la version 1.2.0 se han anadido 94 tests: el limite de hándicap (26), el
+borrado de hoyo con su guardia contra datos offline antiguos (36), el vaciado de
+tarjetas (31) y un guardian de contraste sobre la paleta de jugador.
 
 Lo más relevante: la fórmula del hándicap se ha comprobado contra la **Tabla de
 Equivalencias EGA oficial de la RFEG para Ulzama** incluida en la ficha adjunta.

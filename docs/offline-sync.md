@@ -159,3 +159,92 @@ Siempre visible en la cabecera, con etiqueta accesible para lector de pantalla:
 | Error al sincronizar | Una operación agotó los reintentos |
 
 El error gana a «sin conexión»: son problemas distintos y se arreglan distinto.
+
+---
+
+## 11. Borrar un resultado sin conexión
+
+Borrar el resultado de un hoyo es una operación de la cola como cualquier otra,
+con `operation: 'CLEAR'` en lugar de `'WRITE'`.
+
+Lo único que la distingue: **vacío no es raya**. Un hoyo vacío no cuenta como
+completado, no genera puntos e impide finalizar la tarjeta; una raya es un
+resultado válido que cuenta, vale 0 y permite finalizar. Una operación `CLEAR`
+que llegue con golpes o con raya dentro se rechaza como estado imposible, porque
+si se aceptase la diferencia entre "todavía no lo he jugado" y "levanté la bola"
+dependería de cuál de los dos campos mirase cada pantalla.
+
+Es idempotente por su `clientMutationId`, igual que una escritura: reenviarla
+desde la cola no da error ni deja el hoyo en un estado raro.
+
+El registro del hoyo **se conserva** con los campos vacíos en lugar de
+desaparecer. Eliminarlo perdería quién lo tocó por última vez y con qué versión,
+y con ello la detección de conflictos: otro dispositivo con una versión antigua
+podría escribir encima sin que nadie lo marcase.
+
+## 12. Generación de resultados: la guardia contra datos antiguos
+
+Este es el mecanismo que impide que un resultado borrado resucite solo.
+
+### El problema
+
+Un móvil apunta nueve hoyos sin cobertura. El administrador vacía las tarjetas
+del campeonato. El móvil recupera la conexión y envía sus nueve operaciones.
+
+Esas nueve operaciones son legítimas: son de su dueño, con golpes válidos y con
+una versión base coherente. Sin guardia, el servidor las aplicaría sin
+pestañear, y habría resultados borrados reapareciendo solos horas después, en
+mitad de la entrega de premios.
+
+### La solución
+
+`Competition.scoreResetVersion` es la **generación de resultados**. Empieza en 0
+y la incrementa cada vaciado de tarjetas.
+
+Cada operación de la cola viaja con la generación sobre la que se creó
+(`scoreGeneration`). El servidor compara:
+
+```text
+si scoreGeneration de la operación < scoreResetVersion del campeonato:
+    rechazar con STALE_GENERATION
+```
+
+El rechazo ocurre **antes** de la autorización y de la validación. Es
+deliberado: una operación obsoleta y además mal formada tiene que reportarse
+como obsoleta, porque esa es la causa real y es lo que el jugador necesita saber.
+
+### En el vaciado
+
+La generación se incrementa **primero**, dentro de la transacción. Dentro de una
+transacción el orden no cambia lo que ve el exterior, pero sí lo que ve cualquier
+escritura que llegue mientras está corriendo: la fila de `Competition` queda
+bloqueada desde ese momento, así que una operación de un móvil que entre a mitad
+espera y se encuentra ya con la generación nueva. Es lo que evita que un
+resultado se cuele entre el borrado y el fin del vaciado.
+
+Las operaciones `PENDING` que ya estaban en la tabla se marcan como `REJECTED`
+con motivo `STALE_GENERATION`. Las ya aplicadas se dejan como están: son
+historia, y reescribirla sería mentir sobre lo que pasó.
+
+### En el móvil
+
+`invalidateStaleGenerations(queue, generacionActual)` marca como `STALE` todo lo
+pendiente de una generación anterior. Esas operaciones:
+
+- **no se envían** — `nextBatch` las salta;
+- **no se borran** — quedan en la cola con su motivo, porque nada desaparece en
+  silencio en esta aplicación;
+- **no detienen la cola** de lo que venga detrás, que es de la generación nueva y
+  tiene todo el derecho a subir;
+- **no bloquean el cierre de sesión**: no están pendientes de enviar, así que no
+  hay nada que perder al salir.
+
+### Compatibilidad con la versión 1.1
+
+`operation` y `scoreGeneration` son **opcionales** en `HoleMutation`, con valores
+por omisión `'WRITE'` y `0`. Así una cola guardada por la versión anterior sigue
+siendo legible sin tocar nada en el móvil.
+
+Por eso `QUEUE_SCHEMA_VERSION` **se queda en 1**. Subirla pondría en cuarentena
+resultados que solo existen en el móvil de un jugador, y eso es exactamente lo
+que la sección 41 del pliego prohíbe.

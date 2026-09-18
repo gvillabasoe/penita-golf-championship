@@ -9,7 +9,13 @@
 set -u
 
 # Archivos que se mencionan a proposito y NO deben existir en el repositorio.
-EXCLUIDOS="prisma/seed-credentials.json"
+#
+#   prisma/seed-credentials.json    contrasenas iniciales en claro.
+#   prisma/sql/datos-iniciales.sql  generado por `npm run gen:seed-sql`. Lleva
+#                                   hashes de contrasenas reales dentro, asi que
+#                                   se genera, se pega en Neon y se borra. Esta
+#                                   en .gitignore y no se versiona nunca.
+EXCLUIDOS="prisma/seed-credentials.json prisma/sql/datos-iniciales.sql"
 
 # Documentos cuyo contenido es, por definicion, una lista de archivos que
 # todavia no existen. Escanearlos daria falsos positivos.
