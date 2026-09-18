@@ -102,7 +102,7 @@ docs/                       Trazabilidad, proveedores, hándicap, seed, desplieg
 ## Verificación ejecutada
 
 ```
-631 tests · 631 pasando · 118 suites
+633 tests · 633 pasando · 119 suites
 Guardianes estáticos: fronteras de empaquetado y referencias a Prisma
 Tests de render sobre React 19
 Exportaciones verificadas leyendo los PDF de vuelta

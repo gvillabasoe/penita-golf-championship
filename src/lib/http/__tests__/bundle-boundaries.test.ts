@@ -436,3 +436,97 @@ describe('cobertura de la sonda de diagnostico', () => {
     assert.equal((diagnose.match(/appPath/g) ?? []).length >= returns, true);
   });
 });
+
+/**
+ * Props que cruzan de servidor a cliente.
+ *
+ * ---------------------------------------------------------------------------
+ * Por que existe este bloque
+ * ---------------------------------------------------------------------------
+ * En el rediseno de la v1.2.0, la tarjeta completa paso de ser un componente de
+ * servidor a uno de cliente, y tres pantallas le seguian pasando las distancias
+ * de los hoyos como `Map<number, number>`. Mientras el componente era de
+ * servidor el `Map` nunca cruzaba ninguna frontera; en cuanto dejo de serlo,
+ * tuvo que atravesar el serializador de React.
+ *
+ * Es una clase de error que ningun test de unidad detecta: el componente
+ * funciona perfectamente por separado y el `Map` es el tipo correcto para lo que
+ * hace. El problema es DONDE se construye.
+ *
+ * Este guardian recorre las pantallas de servidor y comprueba que ningun
+ * componente de cliente recibe un `Map`, un `Set` o una funcion.
+ */
+describe('frontera de props: servidor -> cliente', () => {
+  /** Componentes exportados desde un archivo `'use client'`. */
+  function clientComponents(): Map<string, string> {
+    const byName = new Map<string, string>();
+    for (const file of listFiles(
+      SRC,
+      (candidate) =>
+        (candidate.endsWith('.tsx') || candidate.endsWith('.ts')) &&
+        !candidate.includes('__tests__'),
+    )) {
+      const source = readFileSync(file, 'utf8');
+      if (!source.slice(0, 400).includes("'use client'")) continue;
+      for (const match of source.matchAll(/export function (\w+)/g)) {
+        byName.set(match[1], relative(ROOT, file));
+      }
+    }
+    return byName;
+  }
+
+  /** Pantallas y layouts que corren en el servidor. */
+  function serverScreens(): string[] {
+    return listFiles(
+      join(SRC, 'app'),
+      (candidate) => candidate.endsWith('page.tsx') || candidate.endsWith('layout.tsx'),
+    ).filter((file) => !readFileSync(file, 'utf8').slice(0, 400).includes("'use client'"));
+  }
+
+  const clients = clientComponents();
+
+  test('hay componentes de cliente y pantallas de servidor que comprobar', () => {
+    assert.ok(clients.size > 8, `solo ${clients.size} componentes de cliente`);
+    assert.ok(serverScreens().length > 8, 'no se han encontrado pantallas de servidor');
+  });
+
+  test('ningun componente de cliente recibe un Map, un Set ni una funcion', () => {
+    const problems: string[] = [];
+
+    for (const screen of serverScreens()) {
+      const source = readFileSync(screen, 'utf8');
+
+      for (const name of clients.keys()) {
+        // El uso completo del componente, hasta el cierre de su etiqueta.
+        const usage = new RegExp(`<${name}\\b([\\s\\S]{0,1200}?)/?>`, 'g');
+        let match: RegExpExecArray | null;
+
+        while ((match = usage.exec(source)) !== null) {
+          const props = match[1];
+
+          for (const [pattern, kind] of [
+            [/new Map\(/, 'un Map construido en linea'],
+            [/new Set\(/, 'un Set construido en linea'],
+            // `context.distances` es el Map del contexto de la competicion. Se
+            // nombra explicitamente porque es el que provoco el fallo.
+            [/\bdistances=\{/, 'las distancias como Map (pasa context.snapshot.holes)'],
+            [/=\{\s*\([^)]*\)\s*=>/, 'una funcion'],
+            [/=\{\s*function\b/, 'una funcion'],
+          ] as Array<[RegExp, string]>) {
+            if (pattern.test(props)) {
+              problems.push(
+                `${relative(ROOT, screen)}: <${name}> recibe ${kind}`,
+              );
+            }
+          }
+        }
+      }
+    }
+
+    assert.deepEqual(
+      [...new Set(problems)],
+      [],
+      'estos valores no atraviesan el serializador de React: la pantalla revienta al renderizar',
+    );
+  });
+});

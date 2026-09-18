@@ -181,7 +181,7 @@ export default async function FlightPage() {
 
               <ScorecardGrid
                 results={card.results}
-                distances={context.distances}
+                holes={context.snapshot.holes}
                 totals={card.totals}
                 playerName={card.displayName}
               />

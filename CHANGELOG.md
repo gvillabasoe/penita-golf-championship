@@ -243,7 +243,46 @@ WCAG y rechaza cualquier color demasiado claro para llevar texto blanco encima.
   Apareció en el `tsc` del despliegue, con un mensaje que hablaba de
   `CompetitionUpdateInput` y no de un campo borrado.
 
+- **La tarjeta completa recibia un `Map` desde el servidor.** `ScorecardGrid` es
+  un componente de cliente y tres pantallas —Mi tarjeta, Ver partido y Admin ·
+  Tarjetas— le pasaban las distancias de los hoyos como `Map<number, number>`.
+  Mientras la tarjeta era un componente de servidor el `Map` nunca cruzaba
+  ninguna frontera; al pasar a cliente, tuvo que atravesar el serializador de
+  React y la pantalla reventaba al renderizar, cayendo en `error.tsx`.
+
+  Ahora recibe `context.snapshot.holes`, que ya existe, es un objeto plano y
+  lleva la distancia dentro. El indice se construye en el cliente. `ScorecardList`
+  sigue recibiendo el `Map` porque sigue siendo un componente de servidor.
+
+- **La pantalla de error descartaba el diagnostico cuando mas hacia falta.**
+  `/api/diagnostico` responde 200 si todo esta listo y **503 si no lo esta**, con
+  el motivo dentro. La primera version de la consulta ignoraba toda respuesta que
+  no fuese `ok`, asi que se quedaba callada exactamente en el unico caso en el que
+  sirve para algo.
+
 ### Anadido (guardianes de la regresion anterior)
+
+- **`src/app/error.tsx` consulta el diagnostico.** Antes decia lo que el jugador
+  necesita saber —que sus resultados no se han perdido— y ahi se quedaba. Para
+  quien tiene que arreglarlo era un callejon sin salida: un digest es un hash del
+  mensaje, no se puede descifrar, y obligaba a abrir los registros de Vercel desde
+  el movil en mitad del campo.
+
+  La aplicacion ya sabia el motivo. Ahora la pantalla muestra, debajo del aviso al
+  jugador y en letra pequena, la causa probable, la version desplegada, el paso
+  que falla y su codigo de Prisma. Y cuando el codigo es `P2021` o `P2022` —tabla
+  o columna que no existe— dice directamente lo que pasa: se ha desplegado el
+  codigo antes de aplicar la migracion.
+
+  Si el diagnostico tampoco responde, se traga el fallo y la pantalla se queda
+  como estaba. Una pantalla de error que revienta al cargar deja al jugador sin
+  ninguna salida.
+
+- **Guardian de props que cruzan de servidor a cliente**, en
+  `bundle-boundaries.test.ts`: recorre las pantallas de servidor y falla si un
+  componente de cliente recibe un `Map`, un `Set` o una funcion. Verificado
+  reintroduciendo el fallo.
+
 
 - **`src/lib/data/__tests__/schema-fields.test.ts`**: fija los campos que el
   dominio necesita para funcionar, con su tipo. Si alguno desaparece del esquema,

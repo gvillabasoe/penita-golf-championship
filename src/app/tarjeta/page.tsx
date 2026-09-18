@@ -258,7 +258,7 @@ export default async function ScorecardPage() {
           </div>
           <ScorecardGrid
             results={card.results}
-            distances={context.distances}
+            holes={context.snapshot.holes}
             totals={card.totals}
             playerName={card.displayName}
             initialView={played > 9 ? 'IN' : 'OUT'}

@@ -26,10 +26,10 @@
  * cambiado el color y el grosor del contorno.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { PointsCell, ScoreNumber } from './score';
-import type { HoleResult, ScorecardTotals } from '@/lib/golf/types';
+import type { HoleResult, HoleSnapshot, ScorecardTotals } from '@/lib/golf/types';
 
 type View = 'OUT' | 'IN' | 'TOTAL';
 
@@ -41,7 +41,20 @@ const VIEWS: Array<{ id: View; label: string; from: number; to: number }> = [
 
 export interface ScorecardGridProps {
   results: HoleResult[];
-  distances: Map<number, number>;
+  /**
+   * Hoyos del campo, de donde sale la distancia de cada uno.
+   *
+   * Se recibe el ARRAY y no un `Map<number, number>` a proposito. Este
+   * componente es de cliente, y lo que un componente de servidor le pasa tiene
+   * que atravesar el serializador de React. Un `Map` es justo la clase de valor
+   * que ahi da problemas, y la version anterior no lo sufria porque la tarjeta
+   * era un componente de servidor y el `Map` nunca cruzaba la frontera.
+   *
+   * El array de hoyos ya existe en el contexto de la competicion, es un objeto
+   * plano y lleva la distancia dentro, asi que no hay nada que convertir en las
+   * pantallas: se pasa `context.snapshot.holes` y ya esta.
+   */
+  holes: HoleSnapshot[];
   totals: ScorecardTotals;
   /** Nombre del jugador, para la etiqueta accesible de la tabla. */
   playerName?: string;
@@ -51,12 +64,18 @@ export interface ScorecardGridProps {
 
 export function ScorecardGrid({
   results,
-  distances,
+  holes: courseHoles,
   totals,
   playerName,
   initialView = 'OUT',
 }: ScorecardGridProps) {
   const [view, setView] = useState<View>(initialView);
+
+  // El indice se construye aqui, en el cliente, a partir del array recibido.
+  const distances = useMemo(
+    () => new Map(courseHoles.map((hole) => [hole.holeNumber, hole.distance])),
+    [courseHoles],
+  );
   const current = VIEWS.find((candidate) => candidate.id === view) ?? VIEWS[0];
 
   const holes = results.filter(
