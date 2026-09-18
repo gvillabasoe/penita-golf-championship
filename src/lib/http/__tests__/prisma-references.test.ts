@@ -266,6 +266,160 @@ describe('campos del primer nivel', () => {
   });
 });
 
+/**
+ * Campos de `data` y de `where`.
+ *
+ * ---------------------------------------------------------------------------
+ * Por que se anadio esto
+ * ---------------------------------------------------------------------------
+ * En la v1.2.0 una edicion del esquema **borro `Competition.handicapRuleVersion`**
+ * sin querer, y este archivo no lo detecto: comprobaba `select`, `include` y
+ * `orderBy`, pero no `data` ni `where`, que es justo donde se escribia el campo.
+ * El fallo aparecio en el `tsc` del despliegue, con un mensaje que hablaba de
+ * `CompetitionUpdateInput` y no de un campo borrado.
+ *
+ * Las claves del primer nivel de `data` y de `where` pertenecen al MISMO modelo
+ * de la llamada, asi que se pueden comprobar sin resolver relaciones. Las de
+ * `update`, `create` y `data` dentro de un `upsert` tambien: son el mismo
+ * modelo.
+ *
+ * Los operadores de Prisma no son campos y se excluyen por nombre. La lista es
+ * explicita a proposito: si Prisma anade uno nuevo, este test falla y hay que
+ * mirarlo, que es preferible a un filtro laxo que deje pasar una errata.
+ */
+const PRISMA_OPERATORS = new Set([
+  'AND',
+  'OR',
+  'NOT',
+  'connect',
+  'connectOrCreate',
+  'disconnect',
+  'set',
+  'update',
+  'updateMany',
+  'upsert',
+  'create',
+  'createMany',
+  'delete',
+  'deleteMany',
+  'increment',
+  'decrement',
+  'multiply',
+  'divide',
+  'push',
+]);
+
+/**
+ * Claves de un objeto literal, ignorando lo que solo LO PARECE.
+ *
+ * `topLevelKeys` basta para `select` e `include`, donde los valores son `true`.
+ * Para `data` y `where` no: ahi hay cadenas, plantillas, comentarios y
+ * ternarios, y los cuatro producen falsos positivos.
+ *
+ *   identifier: `ip:${ip}`                  ->  "ip" parecia una clave
+ *   confirmedAt: isClear ? null : new Date() ->  "null" parecia una clave
+ *   // Un hoyo vacio NO esta confirmado: ... ->  "confirmado" parecia una clave
+ *
+ * Los tres salieron en la primera version de este guardian. Un falso positivo
+ * en un guardian es peor que un hueco conocido: se acaba ignorando el test
+ * entero.
+ *
+ * Asi que primero se borran comentarios y contenido de literales, y despues solo
+ * cuenta como clave lo que va precedido de `{` o de `,`, que es como se escribe
+ * una clave de verdad y no como aparece la rama de un ternario.
+ */
+function objectFieldKeys(objectSource: string): string[] {
+  // 1. Fuera los comentarios.
+  let clean = objectSource.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+
+  // 2. Fuera el contenido de cadenas y plantillas, conservando la longitud para
+  //    no desplazar nada.
+  clean = clean.replace(/(['"`])(?:\\.|(?!\1)[\s\S])*\1/g, (literal) => ' '.repeat(literal.length));
+
+  const keys: string[] = [];
+  let depth = 0;
+
+  for (let i = 0; i < clean.length; i += 1) {
+    const char = clean[i];
+    if (char === '{' || char === '[' || char === '(') {
+      depth += 1;
+      continue;
+    }
+    if (char === '}' || char === ']' || char === ')') {
+      depth -= 1;
+      continue;
+    }
+    if (depth !== 1) continue;
+
+    const key = /^(\w+)\s*:/.exec(clean.slice(i));
+    if (!key) continue;
+
+    // 3. Una clave va detras de `{` o de `,`. La rama de un ternario, detras de
+    //    `?`, y por eso no cuenta.
+    let back = i - 1;
+    while (back >= 0 && /\s/.test(clean[back])) back -= 1;
+    const previous = back >= 0 ? clean[back] : '{';
+
+    if (previous === '{' || previous === ',') keys.push(key[1]);
+    i += key[0].length - 1;
+  }
+
+  return keys;
+}
+
+describe('campos de data y where', () => {
+  /** Objetos que llevan campos del modelo de la llamada, y nada mas. */
+  const FIELD_HOLDERS = new Set(['data', 'where', 'create', 'update']);
+
+  test('toda clave de data, where, create y update existe en el modelo', () => {
+    const problems: string[] = [];
+
+    for (const call of calls) {
+      if (!call.argument) continue;
+      const fields = schema.models.get(call.model);
+      if (!fields) continue;
+
+      for (const entry of topLevelKeys(call.argument)) {
+        if (!FIELD_HOLDERS.has(entry.key)) continue;
+
+        const nested = sliceObject(call.argument, entry.valueAt);
+        if (!nested) continue;
+
+        for (const inner of objectFieldKeys(nested)) {
+          // Una clave compuesta dentro de un `where` no es un campo: es el
+          // nombre que Prisma da a un @@unique de varias columnas.
+          if (schema.compoundKeys.has(inner)) continue;
+          if (PRISMA_OPERATORS.has(inner)) continue;
+          if (fields.has(inner)) continue;
+
+          problems.push(
+            `${call.file}: ${call.model}.${entry.key}.${inner} no existe (${call.operation})`,
+          );
+        }
+      }
+    }
+
+    assert.deepEqual(
+      [...new Set(problems)],
+      [],
+      'estos campos se escriben y no estan en el esquema: el build fallara en tsc',
+    );
+  });
+
+  test('se han encontrado objetos data o where que comprobar', () => {
+    // Sin esto, un fallo del analisis dejaria el guardian pasando en vacio, que
+    // es la forma mas silenciosa que tiene un test de no servir para nada.
+    let found = 0;
+    for (const call of calls) {
+      if (!call.argument) continue;
+      for (const entry of topLevelKeys(call.argument)) {
+        if (FIELD_HOLDERS.has(entry.key)) found += 1;
+      }
+    }
+    assert.ok(found > 30, `solo ${found} objetos de campos encontrados`);
+  });
+});
+
 describe('valores de enum', () => {
   test('todo literal en mayusculas asignado a un campo de enum existe', () => {
     // Solo en archivos que hablan con Prisma, y solo en los campos que el
