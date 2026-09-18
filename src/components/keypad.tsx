@@ -1,46 +1,98 @@
 /**
- * Teclado de resultados y hoja de confirmacion (seccion 36).
+ * Teclado de resultados y hoja de confirmacion (secciones 19, 20 y 36).
  *
- * El teclado tiene exactamente 1 a 9 y raya. Nada mas: ni ceros, ni dieces, ni
- * flechas de incremento. La lista sale de `PLAYER_KEYPAD`, que esta en el
- * dominio y tiene un test que fija su contenido, asi que la interfaz no puede
- * anadir teclas por su cuenta.
+ * ---------------------------------------------------------------------------
+ * Que teclas hay
+ * ---------------------------------------------------------------------------
+ * Exactamente 1 a 9 y raya. Ni ceros, ni dieces, ni flechas de incremento. La
+ * lista sale de `PLAYER_KEYPAD`, que vive en el dominio y tiene un test que fija
+ * su contenido, asi que la interfaz no puede anadir teclas por su cuenta.
  *
- * Areas tactiles de 44 px como minimo, fondo opaco y una sola columna.
+ * La referencia visual incluye un `10+`. NO se ha anadido: el conjunto de
+ * valores permitidos es una regla deportiva de esta edicion y cambiarlo no
+ * estaba pedido. Un 10 se mete hoy como raya o lo corrige el administrador, que
+ * si tiene margen hasta 20.
+ *
+ * ---------------------------------------------------------------------------
+ * Distribucion
+ * ---------------------------------------------------------------------------
+ * 3 x 3 para las cifras, y una fila de acciones separada por una linea: raya y,
+ * cuando el hoyo ya tiene resultado, borrar. La separacion no es estetica: sin
+ * ella, buscar el 9 con el pulgar y darle a "borrar" es cuestion de tiempo.
+ *
+ * El boton de borrar solo aparece si se pasa `onClear`. Asi el teclado sigue
+ * siendo el mismo de siempre —diez teclas— en un hoyo todavia sin apuntar.
  */
 
 'use client';
 
 import { PLAYER_KEYPAD, type ConfirmationSummary } from '@/lib/scorecard/session';
+import { IconTrash } from '@/components/ui/icons';
 
 export interface KeypadProps {
   /** Valor ya seleccionado, para marcarlo. */
   selected?: number | 'PICKUP' | null;
   disabled?: boolean;
   onSelect?: (value: number | 'PICKUP') => void;
+  /**
+   * Borrar el resultado del hoyo. Cuando no se pasa, el boton no existe: un
+   * hoyo sin resultado no tiene nada que borrar.
+   */
+  onClear?: () => void;
 }
 
-export function Keypad({ selected = null, disabled = false, onSelect }: KeypadProps) {
-  return (
-    <div className="score-keypad solid" role="group" aria-label="Golpes en el hoyo">
-      {PLAYER_KEYPAD.map((value) => {
-        const isPickup = value === 'PICKUP';
-        const label = isPickup ? 'Raya, levantar la bola' : `${value} golpes`;
+export function Keypad({
+  selected = null,
+  disabled = false,
+  onSelect,
+  onClear,
+}: KeypadProps) {
+  const numbers = PLAYER_KEYPAD.filter((value): value is number => value !== 'PICKUP');
+  const hasPickup = PLAYER_KEYPAD.includes('PICKUP');
 
-        return (
+  return (
+    <div className="score-keypad" role="group" aria-label="Golpes en el hoyo">
+      {numbers.map((value) => (
+        <button
+          key={String(value)}
+          type="button"
+          className={`score-keypad__key${selected === value ? ' score-keypad__key--selected' : ''}`}
+          aria-label={`${value} golpes`}
+          aria-pressed={selected === value}
+          disabled={disabled}
+          onClick={onSelect ? () => onSelect(value) : undefined}
+        >
+          {value}
+        </button>
+      ))}
+
+      <div className="score-keypad__actions">
+        {hasPickup ? (
           <button
-            key={String(value)}
             type="button"
-            className={`score-keypad__key${isPickup ? ' score-keypad__key--pickup' : ''}${selected === value ? ' score-keypad__key--selected' : ''}`}
-            aria-label={label}
-            aria-pressed={selected === value}
+            className={`score-keypad__key score-keypad__key--pickup${selected === 'PICKUP' ? ' score-keypad__key--selected' : ''}`}
+            aria-label="Raya, levantar la bola"
+            aria-pressed={selected === 'PICKUP'}
             disabled={disabled}
-            onClick={onSelect ? () => onSelect(value) : undefined}
+            onClick={onSelect ? () => onSelect('PICKUP') : undefined}
           >
-            {isPickup ? '\u2014' : value}
+            {'\u2014'}
           </button>
-        );
-      })}
+        ) : null}
+
+        {onClear ? (
+          <button
+            type="button"
+            className="score-keypad__key score-keypad__key--clear"
+            aria-label="Borrar el resultado de este hoyo"
+            disabled={disabled}
+            onClick={onClear}
+          >
+            <IconTrash size={18} />
+            <span>Borrar resultado</span>
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -52,11 +104,17 @@ export interface ConfirmationSheetProps {
   onConfirm?: () => void;
   onCancel?: () => void;
   onToggleExtra?: (checked: boolean) => void;
+  /** Texto del boton principal cuando la accion no es confirmar un resultado. */
+  confirmLabel?: string;
 }
 
 /**
- * Resumen previo obligatorio: hoyo, par, golpes recibidos, golpes introducidos,
- * bruto, neto y puntos. Todo antes de tocar "Confirmar resultado".
+ * Resumen previo obligatorio: hoyo, par, stroke index, distancia, golpes
+ * recibidos, golpes introducidos, bruto, neto y puntos. Todo antes de tocar
+ * "Confirmar resultado".
+ *
+ * Superficie solida y a tamano de hoja inferior, no un modal diminuto: en movil
+ * un dialogo pequeno obliga a leer siete cifras en un area donde no caben.
  *
  * Un resultado poco habitual (hoyo en uno, eagle, un 8 en un par 3) pide una
  * casilla extra, pero **nunca bloquea** un resultado valido: la seccion 44 es
@@ -69,12 +127,13 @@ export function ConfirmationSheet({
   onConfirm,
   onCancel,
   onToggleExtra,
+  confirmLabel = 'Confirmar resultado',
 }: ConfirmationSheetProps) {
   const blocked = summary.requiresExtraConfirmation && !extraConfirmed;
 
   return (
     <div
-      className="confirmation solid"
+      className="confirmation"
       role="dialog"
       aria-modal="true"
       aria-label={`Confirmar el hoyo ${summary.holeNumber}`}
@@ -136,7 +195,7 @@ export function ConfirmationSheet({
           disabled={blocked}
           onClick={onConfirm}
         >
-          Confirmar resultado
+          {confirmLabel}
         </button>
       </div>
     </div>

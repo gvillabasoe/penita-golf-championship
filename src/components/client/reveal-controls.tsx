@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { controlReveal } from '@/lib/actions/admin';
 import type { RevealAction } from '@/lib/reveal/controller';
+import { Alert } from '@/components/ui';
 
 const LABELS: Record<RevealAction, string> = {
   START: 'Iniciar revelacion',
@@ -43,7 +44,7 @@ export function RevealControls({
   }
 
   return (
-    <section className="card stack" aria-label="Controles de revelacion">
+    <section className="stack" aria-label="Controles de revelacion">
       {actions.map((item) => (
         <div key={item.action} className="stack">
           <button
@@ -58,9 +59,9 @@ export function RevealControls({
         </div>
       ))}
       {error ? (
-        <p className="alert" role="alert">
+        <Alert tone="danger" role="alert">
           {error}
-        </p>
+        </Alert>
       ) : null}
     </section>
   );

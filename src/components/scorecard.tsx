@@ -6,7 +6,9 @@
  * fila muestra los seis datos obligatorios: numero, par, stroke index, golpes
  * recibidos, golpes brutos y puntos.
  *
- * Fondo opaco en toda la tarjeta: se usa jugando, al sol, con una mano.
+ * Fondo opaco en toda la tarjeta: se usa jugando, al sol, con una mano. Ya no
+ * hace falta la clase `.solid` del sistema anterior, que existia para cancelar
+ * el cristal: en la v1.2.0 no hay nada translucido que cancelar.
  */
 
 import { PointsCell, ScoreNumber, StrokesReceivedDots } from './score';
@@ -96,7 +98,7 @@ export interface NineSummaryProps {
 
 export function NineSummary({ label, summary }: NineSummaryProps) {
   return (
-    <div className="nine-summary solid">
+    <div className="nine-summary">
       <span className="nine-summary__label">{label}</span>
       <span aria-label={`${summary.numericStrokes} golpes`}>{summary.numericStrokes}</span>
       <span aria-label={`${summary.points} puntos Stableford`}>{summary.points} pts</span>
@@ -125,7 +127,7 @@ export function TotalsPanel({ totals }: TotalsPanelProps) {
   const { total } = totals;
 
   return (
-    <section className="totals-panel solid" aria-label="Totales de la tarjeta">
+    <section className="totals-panel" aria-label="Totales de la tarjeta">
       <NineSummary label="Ida (1-9)" summary={totals.out} />
       <NineSummary label="Vuelta (10-18)" summary={totals.in} />
 
@@ -200,7 +202,7 @@ export function ScorecardList({
       ));
 
   return (
-    <div className="scorecard solid">
+    <div className="scorecard">
       {readOnly ? (
         <p className="scorecard__read-only" role="note">
           Solo lectura

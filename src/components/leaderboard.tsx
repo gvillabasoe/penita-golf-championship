@@ -18,7 +18,7 @@ export interface SaveStatusBadgeProps {
 export function SaveStatusBadge({ status }: SaveStatusBadgeProps) {
   return (
     <span
-      className={`save-status save-status--${status.state.toLowerCase()} glass`}
+      className={`save-status save-status--${status.state.toLowerCase()}`}
       role="status"
       aria-live="polite"
       aria-label={status.ariaLabel}
@@ -166,7 +166,7 @@ export function Leaderboard({ rows, revealOrder, state, role }: LeaderboardProps
 
   if (message !== null && visibleGroups === 0) {
     return (
-      <div className="leaderboard leaderboard--hidden glass" role="status">
+      <div className="leaderboard leaderboard--hidden" role="status">
         <p>{message}</p>
       </div>
     );

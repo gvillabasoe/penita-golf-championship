@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { finishScorecard } from '@/lib/actions/scorecard';
+import { Alert } from '@/components/ui';
 
 export function FinishCardButton({
   canFinish,
@@ -28,11 +29,9 @@ export function FinishCardButton({
   }
 
   return (
-    <div className="card stack">
+    <div className="form-section">
       {!canFinish && message ? (
-        <p className="alert" role="status">
-          {message}
-        </p>
+        <Alert role="status">{message}</Alert>
       ) : null}
       <button
         type="button"
@@ -43,9 +42,9 @@ export function FinishCardButton({
         {busy ? 'Finalizando...' : 'Finalizar tarjeta'}
       </button>
       {error ? (
-        <p className="alert" role="alert">
+        <Alert tone="danger" role="alert">
           {error}
-        </p>
+        </Alert>
       ) : null}
     </div>
   );

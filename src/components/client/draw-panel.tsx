@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { previewDraw, saveDraw } from '@/lib/actions/admin';
+import { Alert } from '@/components/ui';
 
 /**
  * Sorteo con semilla visible.
@@ -52,7 +53,7 @@ export function DrawPanel() {
   }
 
   return (
-    <section className="card stack" aria-label="Sorteo">
+    <section className="admin-section" aria-label="Sorteo">
       <h2>Sorteo</h2>
 
       <div className="field">
@@ -60,7 +61,7 @@ export function DrawPanel() {
         <input id="seed" type="text" value={seed} onChange={(e) => setSeed(e.target.value)} />
       </div>
 
-      <div className="summary-actions">
+      <div className="button-row">
         <button type="button" className="button button--secondary" disabled={busy} onClick={doPreview}>
           {busy ? 'Sorteando...' : 'Sortear'}
         </button>
@@ -108,9 +109,12 @@ export function DrawPanel() {
       ) : null}
 
       {feedback ? (
-        <p className={feedback.ok ? 'muted' : 'alert'} role={feedback.ok ? 'status' : 'alert'}>
+        <Alert
+          tone={feedback.ok ? 'success' : 'danger'}
+          role={feedback.ok ? 'status' : 'alert'}
+        >
           {feedback.text}
-        </p>
+        </Alert>
       ) : null}
     </section>
   );

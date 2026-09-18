@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { setHandicap } from '@/lib/actions/admin';
+import { Alert } from '@/components/ui';
 
 export function HandicapForm({
   competitionPlayerId,
@@ -46,9 +47,12 @@ export function HandicapForm({
         {busy ? 'Guardando...' : 'Guardar hándicap'}
       </button>
       {feedback ? (
-        <p className={feedback.ok ? 'muted' : 'alert'} role={feedback.ok ? 'status' : 'alert'}>
+        <Alert
+          tone={feedback.ok ? 'success' : 'danger'}
+          role={feedback.ok ? 'status' : 'alert'}
+        >
           {feedback.text}
-        </p>
+        </Alert>
       ) : null}
     </div>
   );

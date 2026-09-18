@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { reviewScorecard } from '@/lib/actions/scorecard';
+import { Alert } from '@/components/ui';
 
 export function ReviewButton({
   competitionPlayerId,
@@ -30,7 +31,7 @@ export function ReviewButton({
   }
 
   return (
-    <div className="card stack">
+    <div className="form-section">
       <div className="field">
         <label htmlFor={`notas-${competitionPlayerId}`}>Observaciones (opcional)</label>
         <textarea
@@ -40,7 +41,7 @@ export function ReviewButton({
           onChange={(event) => setNotes(event.target.value)}
         />
       </div>
-      <div className="summary-actions">
+      <div className="button-row">
         <button
           type="button"
           className="button button--primary"
@@ -59,9 +60,9 @@ export function ReviewButton({
         </button>
       </div>
       {error ? (
-        <p className="alert" role="alert">
+        <Alert tone="danger" role="alert">
           {error}
-        </p>
+        </Alert>
       ) : null}
     </div>
   );
