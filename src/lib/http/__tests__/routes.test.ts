@@ -27,8 +27,9 @@ describe('denegar por omision', () => {
   });
 
   test('un metodo no declarado tampoco pasa', () => {
-    // /clasificacion es solo GET. Un POST no puede colarse.
-    const result = ask('/clasificacion', 'POST');
+    // Una pagina admite GET y POST (POST es como Next transporta las Server
+    // Actions). PUT y DELETE no tienen ningun sentido en una pagina.
+    const result = ask('/clasificacion', 'PUT');
     assert.equal(result.outcome, 'NOT_FOUND');
     if (result.outcome === 'NOT_FOUND') assert.equal(result.reason, 'METHOD_NOT_DECLARED');
   });
@@ -255,16 +256,37 @@ describe('coherencia del manifiesto', () => {
     }
   });
 
-  test('ninguna ruta de escritura es publica', () => {
+  test('las rutas publicas que admiten escritura son exactamente tres', () => {
+    /**
+     * Lista explicita en vez de una excepcion difusa.
+     *
+     * Una ruta publica que acepta POST es la superficie de ataque mas barata que
+     * tiene la aplicacion, asi que no puede haber ninguna por descuido. Las tres
+     * que hay estan justificadas:
+     *
+     *  - /login y /sin-conexion son PAGINAS, y Next transporta las Server
+     *    Actions como POST a la URL de la pagina. Sin POST no se puede entrar.
+     *  - /api/auth/login es el propio inicio de sesion.
+     *
+     * Si aparece una cuarta, este test falla y hay que justificarla aqui.
+     */
+    const PERMITIDAS = ['^\\/login$', '^\\/sin-conexion$', '^\\/api\\/auth\\/login$'];
+
+    const publicasConEscritura = ROUTES.filter(
+      (rule) => rule.access.kind === 'PUBLIC' && rule.methods.some((m) => m !== 'GET'),
+    ).map((rule) => rule.pattern.source);
+
+    assert.deepEqual(publicasConEscritura.sort(), [...PERMITIDAS].sort());
+  });
+
+  test('ninguna ruta publica admite PUT, PATCH ni DELETE', () => {
     for (const rule of ROUTES) {
       if (rule.access.kind !== 'PUBLIC') continue;
-      const escribe = rule.methods.some((m) => m !== 'GET');
-      if (escribe) {
-        // La unica excepcion legitima es el propio inicio de sesion.
-        assert.match(
-          rule.pattern.source,
-          /auth\\\/login/,
-          `ruta publica con escritura: ${rule.pattern.source}`,
+      for (const method of ['PUT', 'PATCH', 'DELETE']) {
+        assert.equal(
+          rule.methods.includes(method),
+          false,
+          `${rule.pattern.source} admite ${method} siendo publica`,
         );
       }
     }
@@ -348,6 +370,7 @@ describe('decision del middleware (runtime edge, sin base de datos)', () => {
 
   test('un metodo no declarado tampoco pasa', () => {
     assert.deepEqual(ask('/clasificacion', 'DELETE'), { action: 'NOT_FOUND' });
+    assert.deepEqual(ask('/clasificacion', 'PUT'), { action: 'NOT_FOUND' });
   });
 
   test('el middleware nunca concede acceso de admin por si solo', () => {
@@ -362,6 +385,90 @@ describe('decision del middleware (runtime edge, sin base de datos)', () => {
         .replace(/\(([^)]+)\)/, (_, group: string) => group.split('|')[0]);
       const decision = middlewareDecision({ path: muestra, method: 'GET', hasSessionCookie: true });
       assert.notEqual(decision.action, 'ALLOW', `${muestra} concederia acceso sin comprobar rol`);
+    }
+  });
+});
+
+/**
+ * Regresion: las Server Actions tienen que llegar al servidor.
+ *
+ * Next envia las Server Actions como POST a la MISMA URL de la pagina. Declarar
+ * las paginas como solo GET hacia que el middleware devolviese 404 a cada
+ * accion: el login fallaba identico con la contrasena correcta y con una
+ * incorrecta porque **la accion no se ejecutaba nunca**.
+ *
+ * Lo peor es que los dos tests de "metodo no declarado" comprobaban un POST a
+ * /clasificacion y exigian 404. Daban el defecto por bueno. Es la tercera vez
+ * que me pasa en este proyecto, y aqui costo varios turnos de diagnostico
+ * mirando la base de datos, que estaba perfecta.
+ */
+describe('Server Actions: POST a rutas de pagina', () => {
+  const PAGINAS_CON_ACCION = [
+    { path: '/login', publica: true },
+    { path: '/tarjeta', publica: false },
+    { path: '/tarjeta/7', publica: false },
+    { path: '/partido', publica: false },
+    { path: '/clasificacion', publica: false },
+    { path: '/admin/jugadores', publica: false },
+  ];
+
+  test('el middleware deja pasar el POST de una Server Action', () => {
+    for (const pagina of PAGINAS_CON_ACCION) {
+      const decision = middlewareDecision({
+        path: pagina.path,
+        method: 'POST',
+        hasSessionCookie: !pagina.publica,
+      });
+      assert.notEqual(
+        decision.action,
+        'NOT_FOUND',
+        `POST a ${pagina.path} se rechaza: la Server Action nunca llegaria`,
+      );
+    }
+  });
+
+  test('sin cookie, el POST a /login pasa: es donde se inicia sesion', () => {
+    // Si esto falla, no hay forma de entrar en la aplicacion.
+    assert.deepEqual(
+      middlewareDecision({ path: '/login', method: 'POST', hasSessionCookie: false }),
+      { action: 'ALLOW' },
+    );
+  });
+
+  test('TODA regla de pagina admite POST', () => {
+    // Guardian general: una pagina nueva sin POST rompe sus acciones en
+    // silencio, y el sintoma no apunta a la ruta por ningun lado.
+    const esPagina = (source: string) =>
+      !source.includes('api') &&
+      !source.includes('_next') &&
+      !source.includes('icons') &&
+      !source.includes('manifest') &&
+      !source.includes('sw');
+
+    const sinPost = ROUTES.filter(
+      (rule) => esPagina(rule.pattern.source) && !rule.methods.includes('POST'),
+    ).map((rule) => rule.pattern.source);
+
+    assert.deepEqual(sinPost, [], 'estas paginas romperian sus Server Actions');
+  });
+
+  test('admitir POST no relaja el nivel de acceso', () => {
+    // Lo unico que cambia es el metodo. Un jugador sigue sin poder entrar en
+    // admin, ni con GET ni con POST.
+    assert.equal(ask('/admin/jugadores', 'POST').outcome, 'NOT_FOUND');
+    assert.equal(
+      authorizeRequest({ path: '/tarjeta', method: 'POST', session: null }).outcome,
+      'REDIRECT_TO_LOGIN',
+    );
+    assert.equal(
+      authorizeRequest({ path: '/admin', method: 'POST', session: ADMIN }).outcome,
+      'ALLOW',
+    );
+  });
+
+  test('PUT y DELETE siguen sin tener sentido en una pagina', () => {
+    for (const method of ['PUT', 'DELETE', 'PATCH']) {
+      assert.equal(ask('/tarjeta', method).outcome, 'NOT_FOUND', `${method} deberia rechazarse`);
     }
   });
 });

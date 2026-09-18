@@ -2,6 +2,65 @@
 
 Formato basado en Keep a Changelog. Versionado semantico.
 
+## [1.1.0] - 2026-09-17
+
+**Encontrado el fallo del login.** No era la base de datos, ni el hash, ni
+Prisma. Era mi middleware.
+
+### El fallo
+
+Next envia las Server Actions como **POST a la misma URL de la pagina** que las
+contiene. El formulario de login vive en /login, asi que al pulsar el boton se
+hace `POST /login`.
+
+En el manifiesto de rutas, todas las paginas estaban declaradas como
+`READ_ONLY`, es decir solo GET. El middleware, que **deniega por omision**,
+respondia 404 a cada Server Action. El cliente recibia un 404 donde esperaba el
+resultado de la accion, lanzaba, y salia la pantalla de error.
+
+**La accion no llegaba a ejecutarse nunca.** De ahi que todas las pistas
+apuntasen en falso:
+
+- Daba lo mismo la contrasena correcta que una incorrecta: nadie la comprobaba.
+- `loginPath` y `appPath` salian correctos: la base de datos estaba perfecta y
+  nadie la consultaba.
+- `/api/diagnostico` funcionaba: es un GET.
+- El panel de administracion habria funcionado: `/admin` era la unica regla con
+  `ANY_METHOD`.
+
+Estaba roto el login, el teclado de resultados, finalizar tarjeta y revisar: todo
+lo que pasa por una Server Action fuera de /admin.
+
+### Corregido
+
+- Las rutas de pagina admiten `GET` y `POST` (`PAGE_METHODS`). **El nivel de
+  acceso no cambia**: /login sigue siendo publico y el resto sigue exigiendo
+  sesion. Lo unico que se admite es el metodo con el que Next transporta las
+  acciones, y la accion vuelve a comprobar sesion y rol en el servidor.
+- `PUT`, `PATCH` y `DELETE` siguen rechazados en las paginas.
+
+### Y lo que mas escuece
+
+**Los dos tests de "metodo no declarado" comprobaban un POST a /clasificacion y
+exigian un 404.** Daban el defecto por bueno. Es la tercera vez en este proyecto
+que un test mio valida un error en lugar de detectarlo —antes fueron el plural de
+las rayas y el solape de rutas— y esta ha costado varios turnos mirando una base
+de datos que estaba impecable.
+
+### Anadido
+
+Seis guardianes, verificados reintroduciendo el bug (saltan cuatro):
+
+- El middleware deja pasar el POST de una Server Action en las seis paginas que
+  tienen alguna.
+- Sin cookie, el POST a /login pasa: si no, no hay forma de entrar.
+- **Toda** regla de pagina admite POST. Una pagina nueva sin POST rompe sus
+  acciones en silencio y el sintoma no apunta a la ruta por ningun lado.
+- Admitir POST no relaja el acceso: un jugador sigue recibiendo 404 en /admin.
+- Las rutas publicas que admiten escritura son **exactamente tres**, con lista
+  explicita en vez de una excepcion difusa. Si aparece una cuarta, falla.
+- Ninguna ruta publica admite PUT, PATCH ni DELETE.
+
 ## [1.0.10] - 2026-09-17
 
 `loginPath` salio `ok` y la aplicacion seguia fallando. La sonda tenia un hueco.

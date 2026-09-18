@@ -41,6 +41,30 @@ const ANY_METHOD = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 const READ_ONLY = ['GET'] as const;
 
 /**
+ * Metodos de una ruta de PAGINA: GET y POST.
+ *
+ * ---------------------------------------------------------------------------
+ * Por que una pagina tiene que aceptar POST
+ * ---------------------------------------------------------------------------
+ * Next envia las Server Actions como **POST a la misma URL de la pagina** que
+ * las contiene, con una cabecera `Next-Action`. El formulario de login vive en
+ * /login, asi que al pulsar el boton se hace `POST /login`.
+ *
+ * Declarar las paginas como solo GET hacia que el middleware devolviese 404 a
+ * cada Server Action. El cliente recibia un 404 donde esperaba el resultado de
+ * la accion, lanzaba, y salia la pantalla de error. **La accion no llegaba a
+ * ejecutarse nunca**, asi que daba igual la contrasena y las sondas del
+ * diagnostico salian correctas: la base de datos estaba perfecta y nadie la
+ * consultaba.
+ *
+ * El nivel de acceso NO cambia. `/login` sigue siendo publico y el resto sigue
+ * exigiendo sesion; lo unico que se admite es el metodo con el que Next
+ * transporta las acciones. Y la propia accion vuelve a comprobar la sesion y el
+ * rol en el servidor, que es donde de verdad se protege.
+ */
+const PAGE_METHODS = ['GET', 'POST'] as const;
+
+/**
  * Manifiesto completo. El orden importa: gana la primera coincidencia, asi que
  * las reglas mas especificas van primero.
  */
@@ -48,7 +72,7 @@ export const ROUTES: readonly RouteRule[] = [
   // --- Publico -------------------------------------------------------------
   {
     pattern: /^\/login$/,
-    methods: READ_ONLY,
+    methods: PAGE_METHODS,
     access: { kind: 'PUBLIC' },
     description: 'Pantalla de acceso',
   },
@@ -66,7 +90,7 @@ export const ROUTES: readonly RouteRule[] = [
   },
   {
     pattern: /^\/sin-conexion$/,
-    methods: READ_ONLY,
+    methods: PAGE_METHODS,
     access: { kind: 'PUBLIC' },
     description: 'Pantalla sin conexion de la PWA',
   },
@@ -109,25 +133,25 @@ export const ROUTES: readonly RouteRule[] = [
   },
   {
     pattern: /^\/$/,
-    methods: READ_ONLY,
+    methods: PAGE_METHODS,
     access: { kind: 'AUTHENTICATED' },
     description: 'Inicio',
   },
   {
     pattern: /^\/tarjeta(\/[0-9]{1,2})?$/,
-    methods: READ_ONLY,
+    methods: PAGE_METHODS,
     access: { kind: 'AUTHENTICATED' },
     description: 'Mi tarjeta y el detalle de un hoyo',
   },
   {
     pattern: /^\/partido$/,
-    methods: READ_ONLY,
+    methods: PAGE_METHODS,
     access: { kind: 'AUTHENTICATED' },
     description: 'Ver partido',
   },
   {
     pattern: /^\/clasificacion$/,
-    methods: READ_ONLY,
+    methods: PAGE_METHODS,
     access: { kind: 'AUTHENTICATED' },
     description: 'Clasificacion',
   },
