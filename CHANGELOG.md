@@ -7,6 +7,85 @@ Formato basado en Keep a Changelog. Versionado semantico.
 > cambios que se corrige a si mismo deja de servir para saber que paso. Los dos
 > sistemas quedaron ELIMINADOS en la 1.2.0, como se detalla justo debajo.
 
+## [1.3.0] - 2026-09-24
+
+Refinamiento completo de la experiencia movil sobre el sistema visual premium
+introducido en la 1.2.0. No se han cambiado reglas deportivas, permisos ni datos
+del campeonato.
+
+### Corregido
+
+#### Continuidad hoyo a hoyo
+
+- Al confirmar un resultado, la aplicacion navega directamente al hoyo siguiente.
+- Tras confirmar el hoyo 18, vuelve a la tarjeta completa.
+- El boton del resumen previo indica ahora **“Confirmar y continuar”**.
+- La navegacion invalida todas las rutas de `/tarjeta` para que el siguiente hoyo
+  reciba la version actualizada de la tarjeta y no una vista visitada anteriormente
+  con un `baseVersion` obsoleto.
+- Se evita la doble confirmacion mientras el servidor esta guardando.
+
+#### Tarjeta completa
+
+- Corregida la rejilla que dejaba un gran bloque blanco a la derecha. Cada fila
+  (Par, SI, Metros, Golpes, Bruto y Puntos) es ahora una rejilla propia, con
+  columna de etiquetas y total fijas durante el desplazamiento interno.
+- Ida, Vuelta y Total conservan su semantica de tabla accesible y ya no fuerzan
+  desplazamiento horizontal de toda la pagina.
+
+### Modificado
+
+#### Mi tarjeta
+
+- Cabecera y heroe mas compactos, con diferenciacion clara entre puntos y hoyos
+  completados.
+- Acciones principales reorganizadas para uso con una mano.
+- Hándicaps, partido, ida, vuelta y rayas se presentan en bloques compactos y
+  responsive, sin estilos inline ni espacios vacios artificiales.
+- Lista hoyo a hoyo redisenada con cuatro columnas estables, mayor claridad del
+  resultado y de los puntos, y estados de sincronizacion dentro de la propia fila.
+
+#### Entrada de resultados
+
+- Nueva composicion mobile-first del hoyo, con contexto compacto, navegacion
+  anterior/siguiente y acceso permanente a Mi tarjeta.
+- Teclado numerico mas compacto, zonas tactiles claras y seleccion de alto
+  contraste.
+- La confirmacion y el borrado se muestran como hojas inferiores reales en movil,
+  con fondo de seguridad, acciones fijas y adaptacion a pantallas pequenas.
+- Abrir un hoyo ya guardado no abre automaticamente el resumen de confirmacion:
+  primero se muestra el valor existente y el jugador decide si quiere cambiarlo.
+
+#### Navegacion y estructura
+
+- Cabecera fija mas compacta.
+- Navegacion inferior convertida en un dock solido y flotante que respeta las
+  areas seguras.
+- Ancho y espaciado unificados en Mi tarjeta, Mi partido, Clasificacion, Login y
+  Administracion.
+- Panel administrativo preparado para aprovechar mas ancho en tablet y escritorio
+  sin perder el patron mobile-first.
+
+### Accesibilidad y movimiento
+
+- Se mantiene una version funcional sin animaciones con `prefers-reduced-motion`.
+- Las hojas de confirmacion conservan foco visual, contraste y acciones tactiles.
+- El scorecard mantiene roles de tabla, cabeceras y etiquetas accesibles.
+
+### Repositorio
+
+- Restaurados `.gitignore` y `.env.example`, que estaban referenciados por las
+  pruebas y la documentación de despliegue pero no venían incluidos en el ZIP
+  fuente.
+- La plantilla de entorno declara únicamente `DATABASE_URL`, `DIRECT_URL` y
+  `NEXT_PUBLIC_APP_URL`; no contiene secretos.
+
+### Base de datos
+
+- Sin cambios de esquema.
+- Sin migraciones nuevas.
+- Sin modificaciones de datos deportivos.
+
 ## [1.2.0] - 2026-09-18
 
 Tres funcionalidades nuevas y el rediseno completo de la interfaz.

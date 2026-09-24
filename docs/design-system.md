@@ -1,12 +1,30 @@
 # Sistema de diseño
 
-Peñita Golf Championship · v1.2.0
+Peñita Golf Championship · v1.3.0
 
 Este documento describe el sistema visual que sustituye por completo al anterior.
 Lo que se fue: Liquid Glass, superficies translúcidas, desenfoques de fondo,
 gradientes y paleta pastel, sombras difusas y botones translúcidos.
 
 ---
+
+## Actualizacion 1.3.0: densidad y continuidad movil
+
+La version 1.3.0 mantiene la identidad premium de la 1.2.0, pero reduce altura,
+ruido y espacios muertos en las pantallas que se usan durante la vuelta.
+
+- Cabecera fija de 58 px y dock inferior flotante, solido y compatible con safe
+  areas.
+- Contenido principal limitado a 680 px y entrada de hoyo a 640 px para mantener
+  recorridos tactiles cortos.
+- Heroe mas compacto, con puntos y hoyos completados como datos distintos.
+- Teclado de 1 a 9 con celdas de 54-64 px segun el dispositivo.
+- Hojas inferiores reales para confirmar y borrar, en lugar de bloques insertados
+  en el flujo de la pagina.
+- Scorecard de ida/vuelta construido por filas independientes, con etiqueta y
+  total fijos dentro de su propio desplazamiento horizontal.
+- Al guardar, la experiencia continua en el hoyo siguiente; la interfaz no obliga
+  a regresar al resumen entre golpes.
 
 ## 1. Dirección visual
 

@@ -3,7 +3,7 @@
 **I Peñita Golf Championship – Ulzama-Bariain 2026**
 Individual Stableford · Club de Golf Ulzama (4401) · recorrido Ulzama · barras amarillas · caballeros
 
-Estado: **completa**, version 1.2.0. Lista para subir a GitHub y desplegar en Vercel.
+Estado: **completa**, version 1.3.0. Lista para subir a GitHub y desplegar en Vercel.
 Empieza por `docs/primer-despliegue.md`.
 
 > **Actualizando desde la 1.1.0**: aplica primero
@@ -12,6 +12,19 @@ Empieza por `docs/primer-despliegue.md`.
 > lectura, porque `appliedHandicapIndexTenths` todavia no existiria.
 
 ---
+
+## Novedades de la version 1.3.0
+
+- Al confirmar un hoyo se abre directamente el siguiente; al terminar el 18 se
+  vuelve a la tarjeta completa.
+- Nueva composicion mobile-first de Mi tarjeta, entrada de resultados, scorecard,
+  navegacion y panel administrativo.
+- Corregida la rejilla de la tarjeta completa que dejaba un bloque vacio a la
+  derecha.
+- Cabecera mas compacta, dock inferior solido y hojas de confirmacion adaptadas
+  a pantallas pequenas.
+- Sin cambios en las reglas Stableford, el reparto de golpes, los permisos ni el
+  esquema de base de datos.
 
 ## Qué hay aquí ahora mismo
 
@@ -99,7 +112,11 @@ docs/offline-sync.md        Cola offline, conflictos y generación de resultados
 docs/                       Trazabilidad, proveedores, hándicap, seed, despliegue.
 ```
 
-## Verificación ejecutada
+## Verificación
+
+### Base heredada de la versión 1.2.0
+
+El repositorio recibido documentaba esta validación previa:
 
 ```
 633 tests · 633 pasando · 119 suites
@@ -110,7 +127,24 @@ Exportaciones verificadas leyendo los PDF de vuelta
 npm run verify → referencias, tipos y tests de una pasada
 ```
 
-En la version 1.2.0 se han anadido 116 tests: el limite de hándicap (26), el
+### Validación de la versión 1.3.0 en este entorno
+
+Se han ejecutado correctamente:
+
+- Análisis sintáctico de los 128 archivos TypeScript/TSX.
+- Parseo de `tokens.css` y `globals.css` sin errores de sintaxis.
+- `scripts/check-references.sh`, sin referencias rotas.
+- Comprobaciones estáticas del avance al siguiente hoyo, hojas inferiores,
+  rejilla de scorecard y coherencia de versión.
+- Búsqueda de las contraseñas iniciales en texto plano, sin coincidencias.
+
+No se han podido ejecutar `npm install`, el typecheck completo, los tests, el
+lint ni `next build` porque el entorno de esta actualización no puede resolver
+`registry.npmjs.org`. Deben ejecutarse en un entorno con acceso a npm antes del
+despliegue. El archivo fuente recibido tampoco incluía `package-lock.json`, por
+lo que no se ha fabricado uno sin resolver las dependencias reales.
+
+En la version 1.2.0 se añadieron 116 tests: el limite de hándicap (26), el
 borrado de hoyo con su guardia contra datos offline antiguos (36), el vaciado de
 tarjetas (31) y un guardian de contraste sobre la paleta de jugador.
 
