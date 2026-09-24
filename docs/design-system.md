@@ -1,12 +1,47 @@
 # Sistema de diseño
 
-Peñita Golf Championship · v1.3.0
+Peñita Golf Championship · v1.4.0
 
 Este documento describe el sistema visual que sustituye por completo al anterior.
 Lo que se fue: Liquid Glass, superficies translúcidas, desenfoques de fondo,
 gradientes y paleta pastel, sombras difusas y botones translúcidos.
 
 ---
+
+## Actualizacion 1.4.0: clasificacion y administracion
+
+Esta version completa el rediseño mobile-first en las dos areas que aun
+conservaban patrones de escritorio.
+
+### Clasificacion
+
+- Las filas del leaderboard concentran posicion, identidad, HCP, HJ, golpes,
+  puntos y barra en una composicion compacta.
+- Los puntos se muestran dentro de un bloque de marcador, no como una cifra
+  suelta que fuerce una segunda fila.
+- El podio conserva oro, plata y bronce, pero utiliza la misma estructura base
+  que el resto para evitar saltos de altura y lectura.
+- El resumen superior utiliza chips compactos para modalidad y participantes.
+
+### Administracion
+
+- En movil, la navegacion interna utiliza un selector de seccion desplegable; no
+  existe una fila horizontal de nueve pestanas.
+- En escritorio, la misma informacion se presenta en una barra lateral fija.
+- Las secciones administrativas comparten una cabecera, un area de acciones y un
+  cuerpo con espaciado consistente.
+- Tablas y formularios permanecen contenidos dentro de su columna y solo las
+  tablas pueden desplazarse horizontalmente de forma local.
+
+### Identidad y entrada de resultados
+
+- La cabecera muestra el icono real de la aplicacion, generado a partir de
+  `assets/logo.png`, en lugar del monograma textual `PGC`.
+- Cuando un golpe seleccionado concede puntos Stableford, la tecla utiliza verde
+  profundo, borde oro y una etiqueta breve con los puntos. El color acompaña a
+  una etiqueta textual y no modifica el calculo.
+- Los resultados guardados y el resumen de confirmacion repiten ese enfasis para
+  que el jugador reconozca de inmediato un hoyo puntuable.
 
 ## Actualizacion 1.3.0: densidad y continuidad movil
 

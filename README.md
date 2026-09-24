@@ -3,7 +3,7 @@
 **I Peñita Golf Championship – Ulzama-Bariain 2026**
 Individual Stableford · Club de Golf Ulzama (4401) · recorrido Ulzama · barras amarillas · caballeros
 
-Estado: **completa**, version 1.3.0. Lista para subir a GitHub y desplegar en Vercel.
+Estado: **completa**, version 1.4.0. Lista para subir a GitHub y desplegar en Vercel.
 Empieza por `docs/primer-despliegue.md`.
 
 > **Actualizando desde la 1.1.0**: aplica primero
@@ -12,6 +12,22 @@ Empieza por `docs/primer-despliegue.md`.
 > lectura, porque `appliedHandicapIndexTenths` todavia no existiria.
 
 ---
+
+## Novedades de la version 1.4.0
+
+- Clasificacion reconstruida como un leaderboard compacto: posicion, jugador,
+  hándicaps, golpes, barra y puntos permanecen en una tarjeta de poca altura y
+  legible en movil.
+- Administracion reorganizada con selector de seccion en movil y barra lateral en
+  escritorio; se elimina la hilera horizontal de nueve pestanas.
+- Las secciones administrativas comparten ahora cabeceras, acciones y contenido
+  responsive, sin desbordamientos ni estilos inline.
+- La cabecera muestra el logotipo real de Peñita Golf Championship en lugar del
+  monograma textual `PGC`.
+- Al seleccionar un resultado que concede puntos Stableford, el numero y los
+  puntos previstos reciben un enfasis visible antes de confirmar.
+- Sin cambios en Prisma, migraciones, formulas de hándicap, Stableford, permisos,
+  participantes ni datos del campo.
 
 ## Novedades de la version 1.3.0
 
@@ -127,22 +143,29 @@ Exportaciones verificadas leyendo los PDF de vuelta
 npm run verify → referencias, tipos y tests de una pasada
 ```
 
-### Validación de la versión 1.3.0 en este entorno
+### Validación de la versión 1.4.0 en este entorno
 
 Se han ejecutado correctamente:
 
-- Análisis sintáctico de los 128 archivos TypeScript/TSX.
-- Parseo de `tokens.css` y `globals.css` sin errores de sintaxis.
+- Análisis sintáctico de los 129 archivos TypeScript/TSX mediante el parser de
+  TypeScript 5.8.3, sin errores.
+- Parseo real de `tokens.css` y `globals.css` con PostCSS, sin errores.
 - `scripts/check-references.sh`, sin referencias rotas.
-- Comprobaciones estáticas del avance al siguiente hoyo, hojas inferiores,
-  rejilla de scorecard y coherencia de versión.
-- Búsqueda de las contraseñas iniciales en texto plano, sin coincidencias.
+- Comprobaciones estáticas de la nueva navegación administrativa, el leaderboard
+  compacto, el logotipo de cabecera y el énfasis de resultados puntuables.
+- Comprobación de que `schema.prisma` y el histórico de migraciones no han
+  cambiado respecto a la 1.3.0.
+- Coherencia entre la versión de `package.json` y `APP_VERSION`.
+- Parseo de todos los JSON del repositorio.
+- Búsqueda de las 13 contraseñas iniciales en texto plano, sin coincidencias.
 
-No se han podido ejecutar `npm install`, el typecheck completo, los tests, el
-lint ni `next build` porque el entorno de esta actualización no puede resolver
-`registry.npmjs.org`. Deben ejecutarse en un entorno con acceso a npm antes del
-despliegue. El archivo fuente recibido tampoco incluía `package-lock.json`, por
-lo que no se ha fabricado uno sin resolver las dependencias reales.
+Se intentó resolver las dependencias para ejecutar el typecheck, lint, tests y
+`next build`, pero este entorno no puede acceder a `registry.npmjs.org`. El
+intento de typecheck confirma precisamente la ausencia local de React, Next,
+Prisma y sus tipos, no un fallo validable del código de esta versión. Estas
+comprobaciones deben repetirse en un entorno con acceso a npm antes del
+despliegue. El ZIP fuente tampoco incluía `package-lock.json`; no se ha
+fabricado uno sin poder resolver las versiones reales de las dependencias.
 
 En la version 1.2.0 se añadieron 116 tests: el limite de hándicap (26), el
 borrado de hoyo con su guardia contra datos offline antiguos (36), el vaciado de

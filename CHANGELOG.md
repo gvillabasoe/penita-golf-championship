@@ -7,6 +7,74 @@ Formato basado en Keep a Changelog. Versionado semantico.
 > cambios que se corrige a si mismo deja de servir para saber que paso. Los dos
 > sistemas quedaron ELIMINADOS en la 1.2.0, como se detalla justo debajo.
 
+## [1.4.0] - 2026-09-24
+
+Rediseño dirigido de las dos áreas que seguían sin adaptarse correctamente a
+móvil: Clasificación y Administración. También se sustituye el monograma de la
+cabecera por el logotipo real de la aplicación y se hace visible, antes de
+confirmar, cuándo un resultado concede puntos Stableford.
+
+### Modificado
+
+#### Clasificación
+
+- Sustituida la tarjeta alta de cada jugador por una fila de leaderboard compacta:
+  posición, identidad, hándicaps, golpes y puntos permanecen en una sola jerarquía
+  visual estable.
+- Los puntos dejan de quedar descolgados en una segunda línea y pasan a un bloque
+  compacto de alta legibilidad.
+- Añadido un resumen superior responsive con edición, modalidad y número de
+  jugadores.
+- Podio, colores, estados oculto/revelando/publicado y lógica de clasificación se
+  conservan sin cambios.
+- Ajustados ancho, espaciado, tipografía y barras para 320-430 px, tablet y
+  escritorio.
+
+#### Administración
+
+- Eliminada la fila horizontal de nueve pestañas que obligaba a desplazarse en
+  móvil.
+- En móvil, la sección activa se muestra en un selector desplegable táctil con
+  accesos compactos a todas las áreas.
+- En escritorio, la misma navegación se convierte en una barra lateral estable.
+- Rediseñadas las secciones administrativas con cabeceras, acciones y contenido
+  coherentes, sin estilos inline y con formularios/tablas contenidos dentro de su
+  ancho disponible.
+- Reorganizado el shell administrativo para evitar desbordamientos y mejorar la
+  lectura de dashboards, formularios y acciones críticas.
+
+#### Cabecera
+
+- El monograma textual “PGC” se sustituye por el logotipo real ya incluido en los
+  iconos públicos de la aplicación.
+- Se conserva la posibilidad de sustituir el logotipo por un control contextual,
+  como el botón de volver de la pantalla de hoyo.
+
+#### Introducción de resultados
+
+- Al seleccionar un número que concede puntos Stableford, la tecla adopta un
+  énfasis verde/oro y muestra los puntos que producirá.
+- Los resultados ya guardados que conceden puntos se identifican también con un
+  tratamiento visual específico.
+- El bloque de puntos del resumen de confirmación se resalta cuando el resultado
+  es puntuable.
+- Los cálculos Stableford no cambian: el nuevo comportamiento es exclusivamente
+  de presentación y accesibilidad.
+
+### Pruebas
+
+- Añadidas comprobaciones de render para el énfasis de una tecla puntuable y el
+  estado positivo del resumen de confirmación.
+- Conservadas las pruebas existentes de teclado, clasificación, revelación y
+  permisos.
+
+### Base de datos
+
+- Sin cambios de esquema.
+- Sin migraciones nuevas.
+- Sin modificación de resultados, hándicaps, campo, partidos ni reglas
+  deportivas.
+
 ## [1.3.0] - 2026-09-24
 
 Refinamiento completo de la experiencia movil sobre el sistema visual premium
