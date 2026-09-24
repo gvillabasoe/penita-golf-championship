@@ -53,10 +53,17 @@ export default async function LeaderboardPage() {
         action={<StatusBadge tone="onGreen">{status.label}</StatusBadge>}
       />
 
-      <main className="container stack page-content">
-        <p className="muted">
-          {context.edition} · Individual Stableford · {rows.length} jugadores
-        </p>
+      <main className="container stack page-content classification-page">
+        <section className="classification-overview" aria-label="Resumen de la clasificacion">
+          <div className="classification-overview__copy">
+            <p className="eyebrow">Clasificacion del campeonato</p>
+            <h2>{context.edition}</h2>
+          </div>
+          <div className="classification-overview__meta" aria-label="Datos de la competicion">
+            <span>Individual Stableford</span>
+            <span>{rows.length} jugadores</span>
+          </div>
+        </section>
 
         {/*
           Durante la revelacion todos los dispositivos tienen que ir a la vez, y

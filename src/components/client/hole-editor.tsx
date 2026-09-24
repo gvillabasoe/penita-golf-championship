@@ -107,7 +107,24 @@ export function HoleEditor({
         });
 
   const selectedLabel =
-    selected === null ? null : selected === 'PICKUP' ? 'Raya' : `${selected} golpes`;
+    selected === null
+      ? null
+      : selected === 'PICKUP'
+        ? 'Raya · 0 puntos'
+        : `${selected} golpes · ${summary?.stablefordPoints ?? 0} ${summary?.stablefordPoints === 1 ? 'punto' : 'puntos'}`;
+
+  const pointsByValue = Object.fromEntries(
+    Array.from({ length: 9 }, (_, index) => {
+      const value = index + 1;
+      const preview = resolveHole(hole, strokesReceived, {
+        holeNumber: hole.holeNumber,
+        grossStrokes: value,
+        isPickup: false,
+      });
+      return [value, preview.stablefordPoints];
+    }),
+  ) as Record<number, number>;
+
 
   async function confirm() {
     if (selected === null) return;
@@ -246,7 +263,23 @@ export function HoleEditor({
           <span className="hole-player__values">
             {hasSavedResult ? (
               <>
-                <ScoreNumber result={savedResult} />
+                <span
+                  className={`hole-player__saved-result${
+                    savedResult.stablefordPoints > 0 ? ' hole-player__saved-result--scoring' : ''
+                  }`}
+                  aria-label={
+                    savedResult.stablefordPoints > 0
+                      ? `${savedResult.stablefordPoints} ${savedResult.stablefordPoints === 1 ? 'punto' : 'puntos'} Stableford`
+                      : '0 puntos Stableford'
+                  }
+                >
+                  <ScoreNumber result={savedResult} />
+                  {savedResult.stablefordPoints > 0 ? (
+                    <span className="hole-player__saved-points" aria-hidden="true">
+                      +{savedResult.stablefordPoints} pts
+                    </span>
+                  ) : null}
+                </span>
                 <StatusBadge tone="green">Guardado</StatusBadge>
               </>
             ) : (
@@ -283,6 +316,7 @@ export function HoleEditor({
 
             <Keypad
               selected={selected ?? current}
+              pointsByValue={pointsByValue}
               disabled={busy}
               onSelect={(value) => {
                 setError(null);

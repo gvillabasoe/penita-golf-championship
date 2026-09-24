@@ -251,6 +251,13 @@ describe('teclado', () => {
     assert.match(html, /aria-label="5 golpes" aria-pressed="true"/);
   });
 
+  test('resalta el numero seleccionado cuando produce puntos Stableford', () => {
+    const html = render(<Keypad selected={5} pointsByValue={{ 5: 2 }} />);
+    assert.match(html, /score-keypad__key--scoring/);
+    assert.match(html, /aria-label="5 golpes, 2 puntos Stableford"/);
+    assert.match(html, />2 pts</);
+  });
+
   test('se puede deshabilitar entero con la tarjeta bloqueada', () => {
     const html = render(<Keypad disabled />);
     assert.equal((html.match(/disabled/g) ?? []).length, 10);
@@ -306,6 +313,7 @@ describe('hoja de confirmacion', () => {
     const html = render(<ConfirmationSheet summary={summary} />);
     assert.equal(html.includes('role="alert"'), false);
     assert.equal(html.includes('disabled'), false);
+    assert.match(html, /confirmation__points--positive/);
   });
 
   test('la raya muestra neto vacio, no un cero', () => {

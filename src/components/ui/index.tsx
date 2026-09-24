@@ -6,8 +6,9 @@
  * pantalla no vuelva a escribir un boton verde a mano, porque en cuanto hay dos
  * botones verdes escritos a mano acaban teniendo alturas distintas.
  *
- * Son componentes de servidor: sin `'use client'`, sin estado y sin efectos. Los
- * que necesitan interaccion viven en `components/client/`.
+ * Son componentes presentacionales: sin estado ni efectos. Pueden renderizarse
+ * desde Server Components o reutilizarse dentro de componentes de cliente; la
+ * interaccion y el estado siguen viviendo en `components/client/`.
  */
 
 import type { ReactNode } from 'react';
@@ -374,13 +375,15 @@ export function AdminSection({
   return (
     <section className="admin-section" aria-label={ariaLabel ?? title}>
       <header className="admin-section__header">
-        <div className="button-row" style={{ justifyContent: 'space-between' }}>
-          <h2>{title}</h2>
-          {action}
+        <div className="admin-section__heading">
+          <div className="admin-section__title-group">
+            <h2>{title}</h2>
+            {description ? <p className="muted">{description}</p> : null}
+          </div>
+          {action ? <div className="admin-section__action">{action}</div> : null}
         </div>
-        {description ? <p className="muted">{description}</p> : null}
       </header>
-      {children}
+      <div className="admin-section__content">{children}</div>
     </section>
   );
 }

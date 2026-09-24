@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { updateRules } from '@/lib/actions/admin';
-import { Alert } from '@/components/ui';
+import { AdminSection, Alert } from '@/components/ui';
 
 export function RulesForm({
   allowancePercent,
@@ -39,14 +39,11 @@ export function RulesForm({
   }
 
   return (
-    <section className="admin-section" aria-label="Reglas de calculo">
-      <h2>Reglas de calculo</h2>
-
-      <p className="muted">
-        Las dos politicas de redondeo difieren en {divergenceCount} de los 401 hándicaps entre 0,0
-        y 40,0, siempre por un golpe. ROUND_TWICE es la lectura literal del WHS y es lo que
-        calcula cualquier calculadora externa.
-      </p>
+    <AdminSection
+      title="Reglas de calculo"
+      description={`Las dos politicas de redondeo difieren en ${divergenceCount} de los 401 hándicaps entre 0,0 y 40,0, siempre por un golpe. ROUND_TWICE es la lectura literal del WHS y es lo que calcula cualquier calculadora externa.`}
+      ariaLabel="Reglas de calculo"
+    >
 
       <div className="field">
         <label htmlFor="allowance">Porcentaje de asignacion</label>
@@ -96,6 +93,6 @@ export function RulesForm({
           {feedback.text}
         </Alert>
       ) : null}
-    </section>
+    </AdminSection>
   );
 }

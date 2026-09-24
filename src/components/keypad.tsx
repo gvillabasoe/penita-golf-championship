@@ -34,6 +34,8 @@ export interface KeypadProps {
   selected?: number | 'PICKUP' | null;
   disabled?: boolean;
   onSelect?: (value: number | 'PICKUP') => void;
+  /** Puntos que produciria cada resultado numerico en este hoyo. */
+  pointsByValue?: Partial<Record<number, number>>;
   /**
    * Borrar el resultado del hoyo. Cuando no se pasa, el boton no existe: un
    * hoyo sin resultado no tiene nada que borrar.
@@ -46,25 +48,50 @@ export function Keypad({
   disabled = false,
   onSelect,
   onClear,
+  pointsByValue,
 }: KeypadProps) {
   const numbers = PLAYER_KEYPAD.filter((value): value is number => value !== 'PICKUP');
   const hasPickup = PLAYER_KEYPAD.includes('PICKUP');
 
   return (
     <div className="score-keypad" role="group" aria-label="Golpes en el hoyo">
-      {numbers.map((value) => (
-        <button
-          key={String(value)}
-          type="button"
-          className={`score-keypad__key${selected === value ? ' score-keypad__key--selected' : ''}`}
-          aria-label={`${value} golpes`}
-          aria-pressed={selected === value}
-          disabled={disabled}
-          onClick={onSelect ? () => onSelect(value) : undefined}
-        >
-          {value}
-        </button>
-      ))}
+      {numbers.map((value) => {
+        const points = pointsByValue?.[value] ?? 0;
+        const hasPointPreview = pointsByValue !== undefined;
+        const selectedWithPoints = selected === value && points > 0;
+        const classes = [
+          'score-keypad__key',
+          selected === value ? 'score-keypad__key--selected' : '',
+          selectedWithPoints ? 'score-keypad__key--scoring' : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
+
+        return (
+          <button
+            key={String(value)}
+            type="button"
+            className={classes}
+            aria-label={
+              hasPointPreview
+                ? points > 0
+                  ? `${value} golpes, ${points} ${points === 1 ? 'punto' : 'puntos'} Stableford`
+                  : `${value} golpes, 0 puntos Stableford`
+                : `${value} golpes`
+            }
+            aria-pressed={selected === value}
+            disabled={disabled}
+            onClick={onSelect ? () => onSelect(value) : undefined}
+          >
+            <span className="score-keypad__number">{value}</span>
+            {selectedWithPoints ? (
+              <span className="score-keypad__points-earned" aria-hidden="true">
+                {points} {points === 1 ? 'pt' : 'pts'}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
 
       <div className="score-keypad__actions">
         {hasPickup ? (
@@ -171,7 +198,7 @@ export function ConfirmationSheet({
             <dt>Neto</dt>
             <dd>{summary.netStrokes === null ? '\u2014' : summary.netStrokes}</dd>
           </div>
-          <div className="confirmation__points">
+          <div className={`confirmation__points${summary.stablefordPoints > 0 ? ' confirmation__points--positive' : ''}`}>
             <dt>Puntos Stableford</dt>
             <dd>{summary.stablefordPoints}</dd>
           </div>

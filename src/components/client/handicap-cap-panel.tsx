@@ -17,7 +17,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { removeHandicapCap, setHandicapCap } from '@/lib/actions/admin';
-import { Alert, FormField, StatusBadge } from '@/components/ui';
+import { AdminSection, Alert, FormField, StatusBadge } from '@/components/ui';
 import { IconCap } from '@/components/ui/icons';
 import { CAP_EXPLANATION, CAP_RECALCULATION_WARNING } from '@/lib/golf/handicap-cap';
 
@@ -82,18 +82,18 @@ export function HandicapCapPanel({
   }
 
   return (
-    <section className="admin-section" aria-label="Limite de hándicap">
-      <header className="admin-section__header">
-        <div className="button-row" style={{ justifyContent: 'space-between' }}>
-          <h2>Limite de hándicap</h2>
-          {currentLabel !== null ? (
-            <StatusBadge tone="gold">Limite {currentLabel}</StatusBadge>
-          ) : (
-            <StatusBadge tone="neutral">Sin limite</StatusBadge>
-          )}
-        </div>
-        <p className="muted">{CAP_EXPLANATION}</p>
-      </header>
+    <AdminSection
+      title="Limite de hándicap"
+      description={CAP_EXPLANATION}
+      ariaLabel="Limite de hándicap"
+      action={
+        currentLabel !== null ? (
+          <StatusBadge tone="gold">Limite {currentLabel}</StatusBadge>
+        ) : (
+          <StatusBadge tone="neutral">Sin limite</StatusBadge>
+        )
+      }
+    >
 
       {currentLabel !== null ? (
         <p className="muted">
@@ -219,6 +219,6 @@ export function HandicapCapPanel({
           </div>
         </div>
       ) : null}
-    </section>
+    </AdminSection>
   );
 }

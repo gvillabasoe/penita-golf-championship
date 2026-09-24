@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { previewDraw, saveDraw } from '@/lib/actions/admin';
-import { Alert } from '@/components/ui';
+import { AdminSection, Alert } from '@/components/ui';
 
 /**
  * Sorteo con semilla visible.
@@ -53,8 +53,11 @@ export function DrawPanel() {
   }
 
   return (
-    <section className="admin-section" aria-label="Sorteo">
-      <h2>Sorteo</h2>
+    <AdminSection
+      title="Sorteo"
+      description="Genera una propuesta reproducible antes de confirmar los partidos y sus horas."
+      ariaLabel="Sorteo"
+    >
 
       <div className="field">
         <label htmlFor="seed">Semilla (se deja vacia para una aleatoria)</label>
@@ -116,6 +119,6 @@ export function DrawPanel() {
           {feedback.text}
         </Alert>
       ) : null}
-    </section>
+    </AdminSection>
   );
 }

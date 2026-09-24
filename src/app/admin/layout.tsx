@@ -7,9 +7,10 @@ import { LogoutButton } from '@/components/client/logout-button';
 /**
  * Comprobacion de rol en servidor, para TODO el panel.
  *
- * Es la capa que protege. El middleware corre en edge y no puede leer la base
- * de datos, asi que solo delega. `requireAdmin` responde 404 si no procede: 404
- * y no 403, para no confirmar que la ruta existe.
+ * En movil la navegacion interna se convierte en un selector compacto. En
+ * escritorio pasa a una barra lateral; el contenido y las rutas son los mismos.
+ * La capa que protege continua siendo `requireAdmin` y cada accion vuelve a
+ * validar el rol en servidor.
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
@@ -18,9 +19,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <>
       <AppHeader screen="Administracion" action={<LogoutButton />} />
 
-      <main className="container container--admin stack page-content">
+      <main className="container container--admin admin-shell page-content">
         <AdminNav />
-        {children}
+        <div className="admin-shell__content">{children}</div>
       </main>
 
       <BottomNav role={admin.role} />

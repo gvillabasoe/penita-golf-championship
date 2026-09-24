@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { AdminSection } from '@/components/ui';
 import { IconAlert } from '@/components/ui/icons';
 
 /**
@@ -134,14 +135,11 @@ export default function ErrorScreen({
       </div>
 
       {/* Detalle para quien tiene que arreglarlo. */}
-      <section className="admin-section" aria-label="Diagnostico">
-        <header className="admin-section__header">
-          <h2>Para el organizador</h2>
-          <p className="muted">
-            Esto no lo necesita un jugador: es lo que hace falta para arreglarlo.
-          </p>
-        </header>
-
+      <AdminSection
+        title="Para el organizador"
+        description="Esto no lo necesita un jugador: es lo que hace falta para arreglarlo."
+        ariaLabel="Diagnostico"
+      >
         {diagnosis?.nextStep ? (
           <>
             <p>
@@ -215,7 +213,7 @@ export default function ErrorScreen({
         ) : (
           <p className="muted">Comprobando la instalacion...</p>
         )}
-      </section>
+      </AdminSection>
     </main>
   );
 }

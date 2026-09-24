@@ -1,15 +1,13 @@
 /**
  * Cabecera de la aplicacion.
  *
- * Solida y verde, nunca translucida. Muestra tres cosas segun el contexto: el
- * nombre corto del campeonato, la pantalla en la que estas y una accion
- * secundaria a la derecha (salir, volver, estado de guardado).
- *
- * El nombre corto va arriba y en pequeno, y la pantalla debajo y en grande: al
- * mirar el movil en mitad de una vuelta lo que hace falta saber es donde estas,
- * no en que aplicacion estas.
+ * Solida y verde, nunca translucida. Muestra el logotipo real de la app, el
+ * nombre corto del campeonato, la pantalla actual y una accion secundaria a la
+ * derecha. Las pantallas que necesitan un control contextual —por ejemplo,
+ * volver desde un hoyo— pueden sustituir el logotipo mediante `mark`.
  */
 
+import Image from 'next/image';
 import type { ReactNode } from 'react';
 
 export interface AppHeaderProps {
@@ -19,7 +17,7 @@ export interface AppHeaderProps {
   competition?: string;
   /** Accion secundaria, alineada a la derecha. */
   action?: ReactNode;
-  /** Sustituye el escudo por otro elemento, por ejemplo un boton de volver. */
+  /** Sustituye el logotipo por otro elemento, por ejemplo un boton de volver. */
   mark?: ReactNode;
   /** El titulo de la pantalla es el `h1` de la pagina. */
   asHeading?: boolean;
@@ -36,8 +34,15 @@ export function AppHeader({
     <header className="app-header">
       <div className="app-header__inner">
         {mark ?? (
-          <span className="app-header__mark" aria-hidden="true">
-            PGC
+          <span className="app-header__logo" aria-hidden="true">
+            <Image
+              src="/icons/icon-192.png"
+              alt=""
+              width={40}
+              height={40}
+              sizes="40px"
+              priority
+            />
           </span>
         )}
 
