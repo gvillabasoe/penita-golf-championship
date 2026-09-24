@@ -46,33 +46,41 @@ export function HoleRow({
   const content = (
     <>
       <span className="hole-row__number" aria-label={`Hoyo ${result.holeNumber}`}>
-        {result.holeNumber}
+        <span className="hole-row__number-label" aria-hidden="true">Hoyo</span>
+        <span>{result.holeNumber}</span>
       </span>
 
-      <span className="hole-row__meta">
-        <span aria-label={`Par ${result.par}`}>Par {result.par}</span>
-        <span aria-label={`Stroke index ${result.strokeIndex}`}>SI {result.strokeIndex}</span>
-        <span aria-label={`${distance} metros`}>{distance} m</span>
+      <span className="hole-row__body">
+        <span className="hole-row__meta">
+          <span aria-label={`Par ${result.par}`}>Par {result.par}</span>
+          <span aria-label={`Stroke index ${result.strokeIndex}`}>SI {result.strokeIndex}</span>
+          <span aria-label={`${distance} metros`}>{distance} m</span>
+        </span>
+        <span className="hole-row__support">
+          <StrokesReceivedDots strokesReceived={result.strokesReceived} />
+          {isPending ? (
+            <span className="hole-row__pending" aria-label="Pendiente de sincronizacion">
+              {'\u21bb'} Pendiente
+            </span>
+          ) : null}
+          {isOverridden ? (
+            <span className="hole-row__overridden" aria-label="Corregido por el administrador">
+              {'\u270e'} Corregido
+            </span>
+          ) : null}
+        </span>
       </span>
 
-      <StrokesReceivedDots strokesReceived={result.strokesReceived} />
-      <ScoreNumber result={result} />
-      <PointsCell
-        points={result.stablefordPoints}
-        isPickup={result.isPickup}
-        hasResult={hasResult}
-      />
-
-      {isPending ? (
-        <span className="hole-row__pending" aria-label="Pendiente de sincronizacion">
-          {'\u21bb'}
-        </span>
-      ) : null}
-      {isOverridden ? (
-        <span className="hole-row__overridden" aria-label="Corregido por el administrador">
-          {'\u270e'}
-        </span>
-      ) : null}
+      <span className="hole-row__result" aria-label="Resultado bruto">
+        <ScoreNumber result={result} />
+      </span>
+      <span className="hole-row__points" aria-label="Puntos Stableford">
+        <PointsCell
+          points={result.stablefordPoints}
+          isPickup={result.isPickup}
+          hasResult={hasResult}
+        />
+      </span>
     </>
   );
 

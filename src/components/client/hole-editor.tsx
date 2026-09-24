@@ -1,15 +1,12 @@
 'use client';
 
 /**
- * Entrada de resultados de un hoyo (secciones 19, 20 y 4).
+ * Entrada de resultados de un hoyo.
  *
- * Tres bloques, en este orden: cabecera del hoyo con los datos que hacen falta
- * para decidir, fila del jugador con lo que lleva, y teclado. Nada mas en
- * pantalla: se usa de pie, con una mano y con prisa.
- *
- * El borrado vive aqui y no en el teclado porque necesita su propia
- * confirmacion: borrar un resultado es destructivo y la seccion 4.2 lo pide
- * explicitamente.
+ * La pantalla esta pensada para una unica tarea: consultar el contexto del hoyo,
+ * introducir el resultado con una mano y continuar inmediatamente al siguiente.
+ * La navegacion general se mantiene fuera del componente; aqui solo aparecen los
+ * controles propios de la vuelta.
  */
 
 import { useRouter } from 'next/navigation';
@@ -67,7 +64,13 @@ export function HoleEditor({
   nextHole: number | null;
 }) {
   const router = useRouter();
-  const [selected, setSelected] = useState<number | 'PICKUP' | null>(current);
+
+  /**
+   * `selected` es solo el borrador de esta interaccion. El resultado ya guardado
+   * se muestra en la fila del jugador y se marca en el teclado, pero no abre la
+   * confirmacion nada mas entrar en un hoyo ya completado.
+   */
+  const [selected, setSelected] = useState<number | 'PICKUP' | null>(null);
   const [extraConfirmed, setExtraConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -103,6 +106,9 @@ export function HoleEditor({
           isPickup: selected === 'PICKUP',
         });
 
+  const selectedLabel =
+    selected === null ? null : selected === 'PICKUP' ? 'Raya' : `${selected} golpes`;
+
   async function confirm() {
     if (selected === null) return;
     setSaving(true);
@@ -124,7 +130,12 @@ export function HoleEditor({
       setError(result.error);
       return;
     }
-    router.push('/tarjeta');
+
+    /**
+     * El flujo de juego no vuelve al resumen despues de cada dato. Avanza al
+     * siguiente hoyo y solo regresa a la tarjeta al confirmar el 18.
+     */
+    router.push(nextHole === null ? '/tarjeta#tarjeta-completa' : `/tarjeta/${nextHole}`);
   }
 
   /**
@@ -151,8 +162,6 @@ export function HoleEditor({
       return;
     }
 
-    // La seleccion local tambien se vacia: si se quedase marcada, el teclado
-    // mostraria como elegido un valor que ya no esta guardado.
     setSelected(null);
     router.refresh();
   }
@@ -160,7 +169,7 @@ export function HoleEditor({
   const busy = saving || clearing;
 
   return (
-    <div className="stack">
+    <div className="hole-editor">
       <section className="hole-header" aria-label={`Hoyo ${hole.holeNumber}`}>
         <div className="hole-header__top">
           <span className="hole-header__number">
@@ -191,23 +200,29 @@ export function HoleEditor({
           </div>
         </div>
 
-        <div className="button-row">
+        <nav className="hole-step-nav" aria-label="Navegacion entre hoyos">
           {previousHole !== null ? (
-            <a className="button button--ghost" href={`/tarjeta/${previousHole}`}>
+            <a className="hole-step-nav__link" href={`/tarjeta/${previousHole}`}>
               <IconBack size={18} />
-              Hoyo {previousHole}
+              <span>Hoyo {previousHole}</span>
             </a>
-          ) : null}
-          <a className="button button--ghost" href="/tarjeta">
+          ) : (
+            <span className="hole-step-nav__placeholder" aria-hidden="true" />
+          )}
+
+          <a className="hole-step-nav__link hole-step-nav__link--card" href="/tarjeta">
             Mi tarjeta
           </a>
+
           {nextHole !== null ? (
-            <a className="button button--ghost" href={`/tarjeta/${nextHole}`}>
-              Hoyo {nextHole}
+            <a className="hole-step-nav__link" href={`/tarjeta/${nextHole}`}>
+              <span>Hoyo {nextHole}</span>
               <IconForward size={18} />
             </a>
-          ) : null}
-        </div>
+          ) : (
+            <span className="hole-step-nav__placeholder" aria-hidden="true" />
+          )}
+        </nav>
       </section>
 
       {!online ? <OfflineBanner /> : null}
@@ -219,7 +234,7 @@ export function HoleEditor({
             style={{ backgroundColor: playerColor }}
             aria-hidden="true"
           />
-          <div>
+          <div className="hole-player__identity">
             <p className="hole-player__name">{playerName}</p>
             <p className="muted">
               {playingHandicap === null ? 'Sin hándicap de juego' : `HJ ${playingHandicap}`}
@@ -253,46 +268,71 @@ export function HoleEditor({
             </Alert>
           ) : null}
 
-          <Keypad
-            selected={selected}
-            disabled={busy}
-            onSelect={setSelected}
-            onClear={hasSavedResult ? () => setAskClear(true) : undefined}
-          />
+          <section className="score-entry" aria-labelledby="score-entry-title">
+            <header className="score-entry__header">
+              <div>
+                <p className="eyebrow">Resultado bruto</p>
+                <h2 id="score-entry-title">Introduce tus golpes</h2>
+              </div>
+              {selectedLabel ? (
+                <StatusBadge tone="green">{selectedLabel}</StatusBadge>
+              ) : hasSavedResult ? (
+                <StatusBadge tone="neutral">Toca un valor para cambiar</StatusBadge>
+              ) : null}
+            </header>
+
+            <Keypad
+              selected={selected ?? current}
+              disabled={busy}
+              onSelect={(value) => {
+                setError(null);
+                setExtraConfirmed(false);
+                setSelected(value);
+              }}
+              onClear={hasSavedResult ? () => setAskClear(true) : undefined}
+            />
+
+            <p className="score-entry__hint">
+              Selecciona del 1 al 9 o marca raya. Veras el calculo antes de confirmar.
+            </p>
+          </section>
 
           {askClear ? (
-            <div
-              className="sheet sheet--danger"
-              role="dialog"
-              aria-modal="true"
-              aria-label={`Borrar el resultado del hoyo ${hole.holeNumber}`}
-            >
-              <span className="sheet__handle" aria-hidden="true" />
-              <p className="sheet__title">
-                {`¿Quieres borrar el resultado del hoyo ${hole.holeNumber}?`}
-              </p>
-              <p className="muted">
-                El hoyo volvera a quedar pendiente: no contara como jugado, no dara puntos y
-                habra que apuntar un resultado o una raya antes de finalizar la tarjeta.
-              </p>
-              <div className="button-row--split">
-                <button
-                  type="button"
-                  className="button button--secondary"
-                  disabled={clearing}
-                  onClick={() => setAskClear(false)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  className="button button--danger"
-                  disabled={clearing}
-                  onClick={confirmClear}
-                >
-                  <IconTrash size={18} />
-                  {clearing ? 'Borrando...' : 'Borrar resultado'}
-                </button>
+            <div className="sheet-overlay" role="presentation">
+              <div
+                className="sheet sheet--danger"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Borrar el resultado del hoyo ${hole.holeNumber}`}
+              >
+                <span className="sheet__handle" aria-hidden="true" />
+                <p className="sheet__eyebrow">Accion destructiva</p>
+                <p className="sheet__title">
+                  {`¿Borrar el resultado del hoyo ${hole.holeNumber}?`}
+                </p>
+                <p className="muted">
+                  El hoyo volvera a quedar pendiente: no contara como jugado, no dara puntos y
+                  habra que apuntar un resultado o una raya antes de finalizar la tarjeta.
+                </p>
+                <div className="button-row--split">
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    disabled={clearing}
+                    onClick={() => setAskClear(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--danger"
+                    disabled={clearing}
+                    onClick={confirmClear}
+                  >
+                    <IconTrash size={18} />
+                    {clearing ? 'Borrando...' : 'Borrar resultado'}
+                  </button>
+                </div>
               </div>
             </div>
           ) : null}
@@ -303,12 +343,13 @@ export function HoleEditor({
               extraConfirmed={extraConfirmed}
               onToggleExtra={setExtraConfirmed}
               onConfirm={confirm}
-              onCancel={() => setSelected(null)}
+              onCancel={() => {
+                setSelected(null);
+                setExtraConfirmed(false);
+              }}
+              confirmLabel={saving ? 'Guardando...' : 'Confirmar y continuar'}
+              disabled={saving}
             />
-          ) : null}
-
-          {!summary && !askClear ? (
-            <p className="muted">Elige los golpes o marca raya.</p>
           ) : null}
         </>
       )}

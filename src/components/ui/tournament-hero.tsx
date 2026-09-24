@@ -168,7 +168,8 @@ export function TournamentHero({
 
           <p className="hero__score">
             <span className="hero__score-value">{score}</span>
-            <span className="hero__score-unit">{scoreNote ?? scoreUnit}</span>
+            <span className="hero__score-unit">{scoreUnit}</span>
+            {scoreNote ? <span className="hero__score-note">{scoreNote}</span> : null}
           </p>
         </div>
 

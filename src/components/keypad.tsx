@@ -106,6 +106,8 @@ export interface ConfirmationSheetProps {
   onToggleExtra?: (checked: boolean) => void;
   /** Texto del boton principal cuando la accion no es confirmar un resultado. */
   confirmLabel?: string;
+  /** Bloquea las acciones mientras el servidor guarda el resultado. */
+  disabled?: boolean;
 }
 
 /**
@@ -128,75 +130,87 @@ export function ConfirmationSheet({
   onCancel,
   onToggleExtra,
   confirmLabel = 'Confirmar resultado',
+  disabled = false,
 }: ConfirmationSheetProps) {
-  const blocked = summary.requiresExtraConfirmation && !extraConfirmed;
+  const blocked = disabled || (summary.requiresExtraConfirmation && !extraConfirmed);
 
   return (
-    <div
-      className="confirmation"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Confirmar el hoyo ${summary.holeNumber}`}
-    >
-      <h2 className="confirmation__title">Hoyo {summary.holeNumber}</h2>
+    <div className="sheet-overlay" role="presentation">
+      <div
+        className="confirmation"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Confirmar el hoyo ${summary.holeNumber}`}
+      >
+        <span className="sheet__handle" aria-hidden="true" />
+        <p className="sheet__eyebrow">Revisa antes de guardar</p>
+        <h2 className="confirmation__title">Hoyo {summary.holeNumber}</h2>
 
-      <dl className="confirmation__grid">
-        <div>
-          <dt>Par</dt>
-          <dd>{summary.par}</dd>
-        </div>
-        <div>
-          <dt>Stroke index</dt>
-          <dd>{summary.strokeIndex}</dd>
-        </div>
-        <div>
-          <dt>Distancia</dt>
-          <dd>{summary.distance} m</dd>
-        </div>
-        <div>
-          <dt>Golpes recibidos</dt>
-          <dd aria-label={summary.strokesReceivedLabel}>{summary.strokesReceived}</dd>
-        </div>
-        <div>
-          <dt>Golpes</dt>
-          <dd>{summary.grossLabel}</dd>
-        </div>
-        <div>
-          <dt>Neto</dt>
-          <dd>{summary.netStrokes === null ? '\u2014' : summary.netStrokes}</dd>
-        </div>
-        <div className="confirmation__points">
-          <dt>Puntos Stableford</dt>
-          <dd>{summary.stablefordPoints}</dd>
-        </div>
-      </dl>
+        <dl className="confirmation__grid">
+          <div>
+            <dt>Par</dt>
+            <dd>{summary.par}</dd>
+          </div>
+          <div>
+            <dt>Stroke index</dt>
+            <dd>{summary.strokeIndex}</dd>
+          </div>
+          <div>
+            <dt>Distancia</dt>
+            <dd>{summary.distance} m</dd>
+          </div>
+          <div>
+            <dt>Golpes recibidos</dt>
+            <dd aria-label={summary.strokesReceivedLabel}>{summary.strokesReceived}</dd>
+          </div>
+          <div>
+            <dt>Golpes</dt>
+            <dd>{summary.grossLabel}</dd>
+          </div>
+          <div>
+            <dt>Neto</dt>
+            <dd>{summary.netStrokes === null ? '\u2014' : summary.netStrokes}</dd>
+          </div>
+          <div className="confirmation__points">
+            <dt>Puntos Stableford</dt>
+            <dd>{summary.stablefordPoints}</dd>
+          </div>
+        </dl>
 
-      {summary.requiresExtraConfirmation ? (
-        <div className="confirmation__extra alert" role="alert">
-          <p>{summary.extraConfirmationMessage}</p>
-          <label>
-            <input
-              type="checkbox"
-              checked={extraConfirmed}
-              onChange={onToggleExtra ? (event) => onToggleExtra(event.target.checked) : undefined}
-            />
-            Lo confirmo
-          </label>
-        </div>
-      ) : null}
+        {summary.requiresExtraConfirmation ? (
+          <div className="confirmation__extra alert" role="alert">
+            <p>{summary.extraConfirmationMessage}</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={extraConfirmed}
+                onChange={
+                  onToggleExtra ? (event) => onToggleExtra(event.target.checked) : undefined
+                }
+              />
+              Lo confirmo
+            </label>
+          </div>
+        ) : null}
 
-      <div className="confirmation__actions">
-        <button type="button" className="button button--secondary" onClick={onCancel}>
-          Volver
-        </button>
-        <button
-          type="button"
-          className="button button--primary"
-          disabled={blocked}
-          onClick={onConfirm}
-        >
-          {confirmLabel}
-        </button>
+        <div className="confirmation__actions">
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={disabled}
+            onClick={onCancel}
+          >
+            Volver
+          </button>
+          <button
+            type="button"
+            className="button button--primary"
+            disabled={blocked}
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
