@@ -11,4 +11,4 @@
  * una dependencia fragil para un dato de siete caracteres. Un constante y un
  * test que comprueba que no se desincroniza es mas robusto.
  */
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.4.0';
