@@ -339,7 +339,10 @@ async function writeHole(
     });
   });
 
-  revalidatePath('/tarjeta');
+  // Invalida tambien las rutas de los otros hoyos: tras guardar se navega al
+  // siguiente, que debe recibir la version nueva de la tarjeta y no una RSC
+  // visitada anteriormente con un `baseVersion` ya obsoleto.
+  revalidatePath('/tarjeta', 'layout');
   revalidatePath(`/tarjeta/${input.holeNumber}`);
   revalidatePath('/partido');
   revalidatePath('/clasificacion');

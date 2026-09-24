@@ -40,7 +40,7 @@ export default async function FlightPage() {
     return (
       <>
         <AppHeader screen="Mi partido" />
-        <main className="container stack">
+        <main className="container stack page-content">
           <StateBlock title="El campeonato todavia no esta configurado" icon={<IconUsers />}>
             Cuando el organizador confirme el campo y sortee los partidos, aqui aparecera el
             tuyo.
@@ -77,7 +77,7 @@ export default async function FlightPage() {
     <>
       <AppHeader screen={mine?.flightName ?? 'Mi partido'} />
 
-      <main className="container stack">
+      <main className="container stack page-content">
         {/* Cabecera del partido: hora de salida y campo. */}
         <section className="flight-card" aria-label="Datos del partido">
           <div className="flight-card__header">

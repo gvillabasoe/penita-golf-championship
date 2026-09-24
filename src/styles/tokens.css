@@ -1,6 +1,6 @@
 /* =============================================================================
    Peñita Golf Championship — capa de tokens
-   Sistema visual v1.2.0. Sustituye por completo al anterior.
+   Sistema visual v1.3.0. Refinamiento mobile-first y de jerarquia visual.
 
    ---------------------------------------------------------------------------
    Que se ha ido y por que
@@ -28,19 +28,19 @@
 
 :root {
   /* --- Superficies -------------------------------------------------------- */
-  --background: #f4f1e8;
+  --background: #f7f5ef;
   --surface: #ffffff;
-  --surface-subtle: #ece9e0;
-  --surface-sunken: #e4e0d5;
+  --surface-subtle: #f0eee7;
+  --surface-sunken: #e7e4da;
 
   /* --- Verde golf ---------------------------------------------------------
      La escala de la identidad. El 900 es el color de la aplicacion: cabeceras,
      botones principales y cualquier bloque que tenga que mandar. */
-  --golf-green-950: #071e16;
-  --golf-green-900: #0b2b1e;
-  --golf-green-800: #123d2b;
-  --golf-green-700: #1b563b;
-  --golf-green-600: #24704d;
+  --golf-green-950: #03251a;
+  --golf-green-900: #073524;
+  --golf-green-800: #0f4933;
+  --golf-green-700: #176044;
+  --golf-green-600: #247b57;
 
   --charcoal: #141916;
 
@@ -52,16 +52,16 @@
   --text-on-green: #eef2ea;
 
   /* --- Bordes ------------------------------------------------------------ */
-  --border: #d4d6d0;
-  --border-strong: #aeb4ae;
+  --border: #ddd9cf;
+  --border-strong: #b7b6af;
   --border-inverse: rgba(255, 255, 255, 0.22);
 
   /* --- Oro: acento premium ------------------------------------------------
      De uso contado. Marca el campeon, el dato de honor y poco mas. Si el oro
      aparece en cada boton deja de significar nada. */
-  --gold: #b6924a;
-  --gold-light: #d3b56e;
-  --gold-dark: #8c6f33;
+  --gold: #b99245;
+  --gold-light: #d8bc78;
+  --gold-dark: #826327;
 
   /* --- Colores funcionales ----------------------------------------------- */
   --success: #287a4a;
@@ -89,10 +89,10 @@
   /* --- Sombras -----------------------------------------------------------
      Muy contenidas y con tinte verde, no grises difusas. La jerarquia la
      sostienen el borde y el color, no la sombra. */
-  --shadow-xs: 0 1px 2px rgba(7, 30, 22, 0.06);
-  --shadow-sm: 0 1px 3px rgba(7, 30, 22, 0.08), 0 1px 2px rgba(7, 30, 22, 0.04);
-  --shadow-md: 0 2px 8px rgba(7, 30, 22, 0.1);
-  --shadow-lg: 0 8px 24px rgba(7, 30, 22, 0.14);
+  --shadow-xs: 0 1px 2px rgba(3, 37, 26, 0.05);
+  --shadow-sm: 0 2px 8px rgba(3, 37, 26, 0.07);
+  --shadow-md: 0 8px 24px rgba(3, 37, 26, 0.10);
+  --shadow-lg: 0 18px 48px rgba(3, 37, 26, 0.18);
 
   /* --- Estados de sincronizacion ----------------------------------------- */
   --state-synced-bg: var(--success-surface);
@@ -139,11 +139,11 @@
   --podium-bronze: #a9713c;
 
   /* --- Geometria --------------------------------------------------------- */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
+  --radius-xs: 5px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
   --radius-lg: 18px;
-  --radius-xl: 24px;
+  --radius-xl: 22px;
   --radius-pill: 999px;
 
   /* 48 px y no 44: se juega con guante fino y el movil en una mano. */
@@ -196,8 +196,8 @@
   /* --- Estructura -------------------------------------------------------- */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
-  --bottom-nav-height: 62px;
-  --content-max: 560px;
+  --bottom-nav-height: 66px;
+  --content-max: 680px;
 
   /* --- Movimiento -------------------------------------------------------- */
   --transition-fast: 120ms ease-out;

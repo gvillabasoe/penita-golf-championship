@@ -32,7 +32,7 @@ export default async function LeaderboardPage() {
     return (
       <>
         <AppHeader screen="Clasificacion" />
-        <main className="container stack">
+        <main className="container stack page-content">
           <StateBlock title="El campeonato todavia no esta configurado" icon={<IconTrophy />}>
             No hay clasificacion que mostrar hasta que el organizador confirme el campo y los
             jugadores empiecen a apuntar.
@@ -53,7 +53,7 @@ export default async function LeaderboardPage() {
         action={<StatusBadge tone="onGreen">{status.label}</StatusBadge>}
       />
 
-      <main className="container stack">
+      <main className="container stack page-content">
         <p className="muted">
           {context.edition} · Individual Stableford · {rows.length} jugadores
         </p>

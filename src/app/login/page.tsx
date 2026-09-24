@@ -51,7 +51,7 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="container stack" style={{ paddingTop: 'var(--space-5)' }}>
+    <main className="container stack login-page">
       {/* Identidad del campeonato. El unico bloque decorativo de la pantalla. */}
       <section className="hero" aria-label="I Peñita Golf Championship">
         <svg

@@ -107,7 +107,7 @@ export default function ErrorScreen({
         : null;
 
   return (
-    <main className="container stack">
+    <main className="container stack page-content">
       <div className="section-header">
         <h1>Algo ha fallado</h1>
       </div>

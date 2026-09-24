@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <>
       <AppHeader screen="Administracion" action={<LogoutButton />} />
 
-      <main className="container stack">
+      <main className="container container--admin stack page-content">
         <AdminNav />
         {children}
       </main>

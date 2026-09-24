@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/auth/server';
 import { getCompetition, getScorecard } from '@/lib/data/queries';
 import { HoleEditor } from '@/components/client/hole-editor';
+import { BottomNav } from '@/components/client/bottom-nav';
+import { AppHeader } from '@/components/ui/app-header';
+import { IconBack } from '@/components/ui/icons';
 import { canEditHole } from '@/lib/scorecard/session';
 
 export default async function HolePage({ params }: { params: Promise<{ hoyo: string }> }) {
@@ -17,8 +20,8 @@ export default async function HolePage({ params }: { params: Promise<{ hoyo: str
   const card = await getScorecard(context, user.competitionPlayerId);
   if (!card) notFound();
 
-  const hole = context.snapshot.holes.find((h) => h.holeNumber === holeNumber);
-  const result = card.results.find((r) => r.holeNumber === holeNumber);
+  const hole = context.snapshot.holes.find((candidate) => candidate.holeNumber === holeNumber);
+  const result = card.results.find((candidate) => candidate.holeNumber === holeNumber);
   if (!hole || !result) notFound();
 
   const permission = canEditHole({
@@ -30,24 +33,45 @@ export default async function HolePage({ params }: { params: Promise<{ hoyo: str
   });
 
   return (
-    <main className="container stack">
-      <HoleEditor
-        hole={hole}
-        strokesReceived={result.strokesReceived}
-        current={
-          result.isPickup ? 'PICKUP' : result.grossStrokes === null ? null : result.grossStrokes
+    <>
+      <AppHeader
+        screen={`Hoyo ${holeNumber}`}
+        mark={
+          <a
+            className="icon-button icon-button--onGreen"
+            href="/tarjeta"
+            aria-label="Volver a Mi tarjeta"
+          >
+            <IconBack size={20} />
+          </a>
         }
-        baseVersion={card.version}
-        canEdit={permission.canEdit}
-        blockedReason={permission.reason}
-        invalidatesReview={permission.invalidatesReview}
-        playerName={card.displayName}
-        playerColor={card.color}
-        playingHandicap={card.playingHandicap}
-        scoreGeneration={context.scoreGeneration}
-        previousHole={holeNumber > 1 ? holeNumber - 1 : null}
-        nextHole={holeNumber < 18 ? holeNumber + 1 : null}
       />
-    </main>
+
+      <main className="container hole-page">
+        <HoleEditor
+          hole={hole}
+          strokesReceived={result.strokesReceived}
+          current={
+            result.isPickup
+              ? 'PICKUP'
+              : result.grossStrokes === null
+                ? null
+                : result.grossStrokes
+          }
+          baseVersion={card.version}
+          canEdit={permission.canEdit}
+          blockedReason={permission.reason}
+          invalidatesReview={permission.invalidatesReview}
+          playerName={card.displayName}
+          playerColor={card.color}
+          playingHandicap={card.playingHandicap}
+          scoreGeneration={context.scoreGeneration}
+          previousHole={holeNumber > 1 ? holeNumber - 1 : null}
+          nextHole={holeNumber < 18 ? holeNumber + 1 : null}
+        />
+      </main>
+
+      <BottomNav role={user.role} />
+    </>
   );
 }

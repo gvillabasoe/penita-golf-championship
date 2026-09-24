@@ -53,7 +53,7 @@ export default async function ScorecardPage() {
     return (
       <>
         <AppHeader screen="Mi tarjeta" />
-        <main className="container stack">
+        <main className="container stack page-content">
           <StateBlock title="El campeonato todavia no esta configurado" icon={<IconFlag />}>
             El organizador tiene que confirmar la valoracion del campo antes de que se puedan
             apuntar resultados. Habla con el.
@@ -68,7 +68,7 @@ export default async function ScorecardPage() {
     return (
       <>
         <AppHeader screen="Mi tarjeta" />
-        <main className="container stack">
+        <main className="container stack page-content">
           <StateBlock title="No estas inscrito en esta edicion" icon={<IconUsers />}>
             Tu usuario existe, pero no figura entre los participantes del I Peñita Golf
             Championship. Habla con el organizador.
@@ -84,7 +84,7 @@ export default async function ScorecardPage() {
     return (
       <>
         <AppHeader screen="Mi tarjeta" />
-        <main className="container stack">
+        <main className="container stack page-content">
           <StateBlock title="No se encuentra tu tarjeta" variant="error" icon={<IconFlag />}>
             Estas inscrito pero no hay una tarjeta creada a tu nombre. Avisa al organizador.
           </StateBlock>
@@ -119,7 +119,7 @@ export default async function ScorecardPage() {
         action={<LogoutButton />}
       />
 
-      <main className="container stack">
+      <main className="container stack page-content">
         <TournamentHero
           course="Ulzama · Bariain"
           date={context.date ? dateFormat.format(context.date) : 'Fecha por confirmar'}
@@ -143,7 +143,7 @@ export default async function ScorecardPage() {
           }}
         />
 
-        <div className="stack--tight">
+        <div className="primary-actions">
           <ButtonLink href={cta.href} size="lg" block>
             {cta.label}
           </ButtonLink>
@@ -165,76 +165,75 @@ export default async function ScorecardPage() {
           </Alert>
         ) : null}
 
-        {/* Hándicaps. El exacto se muestra siempre; el aplicable solo cuando el
-            limite lo cambia, para no meter ruido a quien no le afecta. */}
-        <section className="surface" style={{ padding: 'var(--space-4)' }} aria-label="Mis hándicaps">
-          <div className="stat-grid">
-            <StatTile
-              label="HCP exacto"
-              value={card.handicapCap.exactLabel ?? '\u2014'}
-              ariaLabel={
-                card.handicapCap.exactLabel
-                  ? `Hándicap exacto ${card.handicapCap.exactLabel}`
-                  : 'Sin hándicap exacto'
-              }
-            />
-            {card.handicapCap.isCapped ? (
+        <div className="overview-grid">
+          {/* Hándicaps. El exacto se muestra siempre; el aplicable solo cuando el
+              limite lo cambia, para no meter ruido a quien no le afecta. */}
+          <section className="info-card" aria-label="Mis hándicaps">
+            <p className="eyebrow">Mi hándicap</p>
+            <div className="quick-stat-grid quick-stat-grid--handicap">
               <StatTile
-                label="HCP aplicable"
-                value={card.handicapCap.appliedLabel ?? '\u2014'}
-                ariaLabel={`Hándicap aplicable ${card.handicapCap.appliedLabel}`}
-              />
-            ) : null}
-            <StatTile
-              label="HCP de juego"
-              value={card.playingHandicap ?? '\u2014'}
-              accent
-              ariaLabel={
-                card.playingHandicap === null
-                  ? 'Sin hándicap de juego'
-                  : `Hándicap de juego ${card.playingHandicap}`
-              }
-            />
-          </div>
-
-          {card.handicapCap.badge ? (
-            <p className="muted" style={{ marginTop: 'var(--space-3)' }}>
-              <StatusBadge tone="gold">{card.handicapCap.badge}</StatusBadge>{' '}
-              El organizador ha fijado un maximo. Tu hándicap exacto se conserva y sigue
-              contando para el desempate.
-            </p>
-          ) : null}
-        </section>
-
-        {/* Mi partido */}
-        <section className="surface" style={{ padding: 'var(--space-4)' }} aria-label="Mi partido">
-          <p className="eyebrow">Mi partido</p>
-          {card.flightName ? (
-            <div
-              className="button-row"
-              style={{ marginTop: 'var(--space-2)', alignItems: 'center' }}
-            >
-              <DataChip label="Partido" value={card.flightName} />
-              <DataChip
-                label="Salida"
-                value={card.teeTime ? timeFormat.format(card.teeTime) : '\u2014'}
+                label="HCP exacto"
+                value={card.handicapCap.exactLabel ?? '\u2014'}
                 ariaLabel={
-                  card.teeTime
-                    ? `Hora de salida ${timeFormat.format(card.teeTime)}`
-                    : 'Sin hora de salida'
+                  card.handicapCap.exactLabel
+                    ? `Hándicap exacto ${card.handicapCap.exactLabel}`
+                    : 'Sin hándicap exacto'
                 }
               />
-              <DataChip label="Barras" value={context.teeColor.toLowerCase()} />
+              {card.handicapCap.isCapped ? (
+                <StatTile
+                  label="HCP aplicable"
+                  value={card.handicapCap.appliedLabel ?? '\u2014'}
+                  ariaLabel={`Hándicap aplicable ${card.handicapCap.appliedLabel}`}
+                />
+              ) : null}
+              <StatTile
+                label="HCP de juego"
+                value={card.playingHandicap ?? '\u2014'}
+                accent
+                ariaLabel={
+                  card.playingHandicap === null
+                    ? 'Sin hándicap de juego'
+                    : `Hándicap de juego ${card.playingHandicap}`
+                }
+              />
             </div>
-          ) : (
-            <p className="muted" style={{ marginTop: 'var(--space-2)' }}>
-              Todavia no tienes partido asignado. El organizador lo sortea antes de la salida.
-            </p>
-          )}
-        </section>
+
+            {card.handicapCap.badge ? (
+              <p className="info-card__note muted">
+                <StatusBadge tone="gold">{card.handicapCap.badge}</StatusBadge>{' '}
+                Tu hándicap exacto se conserva y sigue contando para el desempate.
+              </p>
+            ) : null}
+          </section>
+
+          {/* Mi partido */}
+          <section className="info-card" aria-label="Mi partido">
+            <p className="eyebrow">Mi partido</p>
+            {card.flightName ? (
+              <div className="round-info-grid">
+                <DataChip label="Partido" value={card.flightName} />
+                <DataChip
+                  label="Salida"
+                  value={card.teeTime ? timeFormat.format(card.teeTime) : '\u2014'}
+                  ariaLabel={
+                    card.teeTime
+                      ? `Hora de salida ${timeFormat.format(card.teeTime)}`
+                      : 'Sin hora de salida'
+                  }
+                />
+                <DataChip label="Barras" value={context.teeColor.toLowerCase()} />
+              </div>
+            ) : (
+              <p className="info-card__note muted">
+                Todavia no tienes partido asignado. El organizador lo sortea antes de la salida.
+              </p>
+            )}
+          </section>
+        </div>
 
         {/* Ida y vuelta */}
-        <div className="stat-grid">
+        <div className="quick-stat-grid">
           <StatTile
             label="Ida"
             value={card.totals.out.points}

@@ -9,7 +9,7 @@ import { IconFlag } from '@/components/ui/icons';
 
 export default function NotFound() {
   return (
-    <main className="container stack">
+    <main className="container stack page-content">
       <div className="state-block" role="status" style={{ marginTop: 'var(--space-6)' }}>
         <span className="state-block__icon">
           <IconFlag size={22} />

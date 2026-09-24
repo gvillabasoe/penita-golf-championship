@@ -4,7 +4,7 @@ export const metadata = { title: 'Sin conexion · Peñita Golf' };
 
 export default function OfflinePage() {
   return (
-    <main className="container stack">
+    <main className="container stack page-content">
       <div className="state-block" role="status" style={{ marginTop: 'var(--space-6)' }}>
         <span className="state-block__icon">
           <IconOffline size={22} />
