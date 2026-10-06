@@ -7,6 +7,69 @@ Formato basado en Keep a Changelog. Versionado semantico.
 > cambios que se corrige a si mismo deja de servir para saber que paso. Los dos
 > sistemas quedaron ELIMINADOS en la 1.2.0, como se detalla justo debajo.
 
+## [1.5.0] - 2026-09-24
+
+Tres funciones nuevas en el panel de administración. **Sin cambios en el esquema
+ni migraciones**: `Competition.date` y `Flight.teeTime` ya existían, y el alta
+usa los modelos `User` y `CompetitionPlayer` tal como están.
+
+### Añadido
+
+- **Alta de jugadores** en *Admin → Jugadores*, por si al final sois más.
+  Nombre, apellidos, contraseña y hándicap exacto (opcional: si aún no se sabe se
+  deja vacío y se fija después en su ficha).
+  - Con esa contraseña el jugador entra en la app desde ese momento: el selector
+    del login lista a todos los usuarios activos. La contraseña solo se guarda
+    hasheada y **no entra en la auditoría**.
+  - **Color aleatorio al guardar.** Primero, uno libre de la misma paleta que el
+    resto. La paleta tiene trece colores y la edición trece jugadores, así que
+    desde el decimocuarto se genera uno nuevo: oscuro, con contraste con el
+    blanco, y el más distinto de trescientos candidatos respecto a los ya usados.
+  - Mínimo de 6 caracteres en la contraseña, compatible con el patrón de la
+    edición (la más corta tiene siete).
+  - Rechaza nombres duplicados: dos jugadores iguales serían indistinguibles en
+    el selector del login.
+  - Si hay límite de HCP, el hándicap se calcula con él, igual que para el resto.
+  - La tarjeta se crea al apuntar el primer hoyo, igual que la de los demás.
+  - El jugador nuevo no está en ningún partido: hay que volver a sortear.
+
+- **Fecha del campeonato** en *Admin → Resumen*. Aparece en la tarjeta de cada
+  jugador y en las exportaciones, que ya la leían. Se puede quitar.
+  - Se guarda a las 12:00 UTC del día elegido: así, vista en Madrid, es el mismo
+    día en verano y en invierno.
+  - Si ya hay horas de salida, **se mueven al nuevo día conservando la hora de
+    reloj**. Sin esto, cambiar la fecha las dejaría apuntando al día antiguo.
+
+- **Hora de salida por partido** en *Admin → Partidos*. Un campo en cada partido,
+  en hora de Ulzama, que se aplica a la fecha del campeonato. Se puede quitar.
+  - Usa el desplazamiento real de Europe/Madrid de ese día, no un +02:00 fijo: el
+    servidor de Vercel corre en UTC y un desplazamiento fijo sería una hora de
+    error en horario de invierno.
+
+### Cambiado
+
+- **El sorteo se puede confirmar sin hora de salida.** Antes era obligatoria, y
+  sin saber la hora había que inventar una. Ahora la primera salida es opcional:
+  sin ella los partidos se guardan sin hora y se fija después en cada uno.
+  - `confirmDraw` admite `requireTeeTimes`, **por omisión `true`**: el
+    comportamiento anterior no cambia salvo cuando se deja la hora vacía.
+  - El resumen sigue avisando de los partidos sin hora como incidencia que impide
+    empezar, así que la regla de no empezar sin horas se mantiene.
+
+### Cambios técnicos mínimos
+
+- `ACCENT_RAMP` se exporta desde `src/lib/seed/roster.ts`, para que el alta use
+  la misma paleta que los participantes iniciales y no una paralela. Es el único
+  cambio en ese archivo.
+
+### Tests
+
+23 nuevos: validación de la ficha (incluido que lo validado se hashea y permite
+entrar), color aleatorio (libre de la paleta, aleatorio, legible, y para los
+jugadores 14 a 20 más distinguible que los colores originales entre sí), fecha y
+horas (mediodía UTC, desplazamiento de Madrid en verano e invierno, ida y vuelta,
+traslado de fecha cruzando el cambio de hora), y el sorteo sin horas.
+
 ## [1.4.0] - 2026-09-24
 
 Rediseño dirigido de las dos áreas que seguían sin adaptarse correctamente a

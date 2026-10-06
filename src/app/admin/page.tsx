@@ -5,6 +5,8 @@ import { assertReadyToPlay } from '@/lib/golf/competition-config';
 import { AdminSection, Alert, StateBlock, StatTile, StatusBadge } from '@/components/ui';
 import { IconAlert, IconCheck, IconSliders } from '@/components/ui/icons';
 import { formatTenths } from '@/lib/golf/decimal';
+import { CompetitionDateForm } from '@/components/client/competition-date-form';
+import { dateInputInMadrid } from '@/lib/admin/schedule';
 
 export const metadata = { title: 'Admin · Resumen' };
 
@@ -87,6 +89,8 @@ export default async function AdminSummaryPage() {
         />
         <StatTile label="Puntos totales" value={totalPoints} accent />
       </div>
+
+      <CompetitionDateForm current={context.date ? dateInputInMadrid(context.date) : ''} />
 
       {issues.length === 0 ? (
         <Alert tone="success" role="status">

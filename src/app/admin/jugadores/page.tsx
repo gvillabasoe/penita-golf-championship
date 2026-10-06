@@ -1,5 +1,6 @@
 import { getAllScorecards, getCompetition } from '@/lib/data/queries';
 import { HandicapForm } from '@/components/client/handicap-form';
+import { CreatePlayerForm } from '@/components/client/create-player-form';
 import { AdminSection, StateBlock, StatusBadge } from '@/components/ui';
 import { IconUsers } from '@/components/ui/icons';
 import { formatTenths } from '@/lib/golf/decimal';
@@ -52,9 +53,11 @@ export default async function AdminPlayersPage() {
         </p>
       ) : null}
 
+      <CreatePlayerForm />
+
       {cards.length === 0 ? (
         <StateBlock title="Todavia no hay jugadores inscritos" icon={<IconUsers />}>
-          El seed crea los participantes de la edicion. Ver docs/seed-credentials.md.
+          Añade el primero con el formulario de arriba.
         </StateBlock>
       ) : null}
 

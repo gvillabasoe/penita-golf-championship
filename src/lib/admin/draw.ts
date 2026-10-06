@@ -385,6 +385,15 @@ export function confirmDraw(params: {
   actorId: string;
   actorRole: Role;
   now?: Date;
+  /**
+   * Si hay que exigir hora de salida en todos los partidos para confirmar.
+   *
+   * Por omision si, como hasta ahora. Se puede confirmar el sorteo sin horas
+   * cuando todavia no se conoce la hora: se fijan despues en cada partido, y el
+   * resumen del panel sigue avisando de los partidos sin hora como incidencia
+   * que impide empezar.
+   */
+  requireTeeTimes?: boolean;
 }): ConfirmResult {
   const now = params.now ?? new Date();
   const errors: string[] = [];
@@ -396,7 +405,7 @@ export function confirmDraw(params: {
   const issues = validateFlights({
     flights: params.proposal.flights,
     players: params.players,
-    requireTeeTimes: true,
+    requireTeeTimes: params.requireTeeTimes ?? true,
   });
   for (const issue of issues.filter((i) => i.severity === 'ERROR')) {
     errors.push(issue.message);

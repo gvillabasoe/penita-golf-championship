@@ -39,7 +39,11 @@ export interface RosterEntry {
  * Por que profundos y no pastel: el color de jugador se lee sobre blanco, al
  * sol, en una barra de 4 px. Un pastel ahi no se distingue de otro pastel.
  */
-const ACCENT_RAMP = [
+/**
+ * Exportada para que el alta de jugadores desde el panel elija el color de la
+ * misma paleta que los participantes iniciales, y no de una paralela.
+ */
+export const ACCENT_RAMP = [
   '#1b563b', // verde esmeralda oscuro
   '#8c3b2e', // terracota
   '#1d4e79', // azul atlantico

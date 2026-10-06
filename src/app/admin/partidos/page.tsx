@@ -1,6 +1,10 @@
 import { getCompetition, getFlights } from '@/lib/data/queries';
+import Link from 'next/link';
+
 import { DrawPanel } from '@/components/client/draw-panel';
-import { AdminSection, StateBlock, StatusBadge } from '@/components/ui';
+import { TeeTimeForm } from '@/components/client/tee-time-form';
+import { AdminSection, Alert, StateBlock, StatusBadge } from '@/components/ui';
+import { timeInputInMadrid } from '@/lib/admin/schedule';
 import { IconUsers } from '@/components/ui/icons';
 import { formatTenths } from '@/lib/golf/decimal';
 
@@ -30,6 +34,14 @@ export default async function AdminFlightsPage() {
         <h1>Partidos</h1>
         <StatusBadge tone="neutral">{flights.length} partidos</StatusBadge>
       </div>
+
+      {context.date === null ? (
+        <Alert tone="warning" role="status">
+          Para fijar las horas de salida, fija antes la fecha del campeonato en{' '}
+          <Link href="/admin">Resumen</Link>. Puedes sortear igualmente: los partidos se guardan sin
+          hora.
+        </Alert>
+      ) : null}
 
       <DrawPanel />
 
@@ -82,6 +94,13 @@ export default async function AdminFlightsPage() {
               </li>
             ))}
           </ul>
+
+          <TeeTimeForm
+            flightId={flight.id}
+            flightName={flight.name}
+            current={flight.teeTime ? timeInputInMadrid(flight.teeTime) : ''}
+            hasCompetitionDate={context.date !== null}
+          />
         </AdminSection>
       ))}
     </div>

@@ -316,6 +316,36 @@ describe('mover jugadores y confirmar', () => {
     assert.equal(result.ok, false);
     assert.equal(result.errors.length, 4);
   });
+
+  test('sin horas se puede confirmar si se pide expresamente, para fijarlas despues', () => {
+    // Cuando aun no se sabe a que hora se sale, el sorteo se guarda sin horas y
+    // se fijan despues en cada partido. Por omision se siguen exigiendo.
+    const proposal = drawFlights({ players, seed: 'sin-horas' });
+    const sinPedir = confirmDraw({ proposal, players, actorId: 'admin', actorRole: 'ADMIN' });
+    assert.equal(sinPedir.ok, false, 'por omision se siguen exigiendo las horas');
+
+    const result = confirmDraw({
+      proposal,
+      players,
+      actorId: 'admin',
+      actorRole: 'ADMIN',
+      requireTeeTimes: false,
+    });
+    assert.equal(result.ok, true);
+    assert.ok(result.audit);
+  });
+
+  test('sin horas, un jugador que no es admin sigue sin poder confirmar', () => {
+    const proposal = drawFlights({ players, seed: 'sin-horas' });
+    const result = confirmDraw({
+      proposal,
+      players,
+      actorId: 'u1',
+      actorRole: 'PLAYER',
+      requireTeeTimes: false,
+    });
+    assert.equal(result.ok, false);
+  });
 });
 
 describe('control de la revelacion', () => {

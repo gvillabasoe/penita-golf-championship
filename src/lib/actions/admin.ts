@@ -31,6 +31,16 @@ import {
   type ResetScopeCard,
 } from '../admin/reset';
 import { assignTeeTimes, confirmDraw, drawFlights, validateFlights } from '../admin/draw';
+import { pickPlayerColor, validateNewPlayer, type NewPlayerField } from '../admin/players';
+import {
+  competitionDateFromInput,
+  dateInputInMadrid,
+  madridInstant,
+  moveTeeTimeToDate,
+  parseTimeInput,
+  ScheduleInputError,
+} from '../admin/schedule';
+import { hashPassword } from '../auth/password';
 import { applyRevealAction, type RevealAction } from '../reveal/controller';
 import { rankingFingerprint } from '../golf/ranking';
 import { randomBytes } from 'node:crypto';
@@ -313,10 +323,16 @@ export async function saveDraw(
     isActive: p.isActive,
   }));
 
+  // La hora de la primera salida es opcional: si todavia no se conoce, los
+  // partidos se guardan sin hora y se fija despues en cada uno.
+  const withTeeTimes = firstTeeTime.trim() !== '';
+
   let proposal;
   try {
     proposal = drawFlights({ players: drawPlayers, seed });
-    proposal.flights = assignTeeTimes(proposal.flights, firstTeeTime, intervalMinutes);
+    if (withTeeTimes) {
+      proposal.flights = assignTeeTimes(proposal.flights, firstTeeTime, intervalMinutes);
+    }
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : 'Sorteo fallido.' };
   }
@@ -324,7 +340,7 @@ export async function saveDraw(
   const issues = validateFlights({
     flights: proposal.flights,
     players: drawPlayers,
-    requireTeeTimes: true,
+    requireTeeTimes: withTeeTimes,
   });
   const errors = issues.filter((issue) => issue.severity === 'ERROR');
   if (errors.length > 0) return { ok: false, error: errors.map((e) => e.message).join(' ') };
@@ -334,6 +350,7 @@ export async function saveDraw(
     players: drawPlayers,
     actorId: admin.userId,
     actorRole: 'ADMIN',
+    requireTeeTimes: withTeeTimes,
   });
   if (!confirmation.ok) return { ok: false, error: confirmation.errors.join(' ') };
 
@@ -370,9 +387,16 @@ export async function saveDraw(
     }
   });
 
+  revalidatePath('/admin');
   revalidatePath('/admin/partidos');
   revalidatePath('/partido');
-  return { ok: true, message: `${proposal.flights.length} partidos guardados. Semilla: ${seed}` };
+  revalidatePath('/tarjeta');
+  return {
+    ok: true,
+    message: withTeeTimes
+      ? `${proposal.flights.length} partidos guardados. Semilla: ${seed}`
+      : `${proposal.flights.length} partidos guardados sin hora de salida. Fija la hora en cada partido cuando la sepais. Semilla: ${seed}`,
+  };
 }
 
 /** Corrige un hoyo. Exige motivo y queda marcado como correccion. */
@@ -739,6 +763,294 @@ export async function removeHandicapCap(): Promise<AdminResult> {
       impact.length === 0
         ? 'Limite retirado. Ningun jugador estaba limitado.'
         : `Limite retirado. ${impact.length} jugador(es) vuelven a competir con su hándicap exacto.`,
+  };
+}
+
+// ===========================================================================
+// Alta de jugadores
+// ===========================================================================
+
+export type CreatePlayerResult =
+  | { ok: true; message: string; color: string }
+  | { ok: false; error: string; fieldErrors?: Partial<Record<NewPlayerField, string>> };
+
+/**
+ * Da de alta un jugador nuevo: usuario con su contrasena e inscripcion en el
+ * campeonato actual, con un color elegido al azar.
+ *
+ * Con esa contrasena puede entrar en la app desde ese momento: el selector del
+ * login lista a todos los usuarios activos.
+ *
+ * Su tarjeta no se crea aqui. Se crea al apuntar el primer hoyo, exactamente
+ * como la de los participantes iniciales, para que no haya dos caminos.
+ *
+ * La contrasena solo se guarda hasheada y NO entra en la auditoria.
+ */
+export async function createPlayer(input: {
+  firstName: string;
+  lastName: string;
+  password: string;
+  handicap: string;
+}): Promise<CreatePlayerResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+  if (context.status === 'CLOSED') {
+    return { ok: false, error: 'El campeonato esta cerrado: no se pueden inscribir jugadores.' };
+  }
+
+  const validation = validateNewPlayer(input);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      error: 'Revisa los campos marcados.',
+      fieldErrors: validation.fieldErrors,
+    };
+  }
+
+  // Dos jugadores con el mismo nombre serian indistinguibles en el selector del
+  // login, y el seed casa a los usuarios por nombre normalizado.
+  const duplicate = await prisma.user.findFirst({
+    where: { normalizedName: validation.normalizedName },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return {
+      ok: false,
+      error: 'Ya existe un jugador con ese nombre.',
+      fieldErrors: { lastName: 'Ya existe un jugador con este nombre y apellidos.' },
+    };
+  }
+
+  const existing = await prisma.competitionPlayer.findMany({
+    where: { competitionId: context.competitionId },
+    select: { color: true },
+  });
+  const color = pickPlayerColor(existing.map((row) => row.color));
+  const passwordHash = await hashPassword(validation.password);
+
+  const handicap =
+    validation.handicapIndexTenths === null
+      ? null
+      : handicapFieldsFor(validation.handicapIndexTenths, context.maxHandicapIndexTenths, context);
+
+  await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        firstName: validation.firstName,
+        lastName: validation.lastName,
+        displayName: validation.displayName,
+        normalizedName: validation.normalizedName,
+        passwordHash,
+        role: 'PLAYER',
+        defaultColor: color,
+      },
+      select: { id: true },
+    });
+
+    const player = await tx.competitionPlayer.create({
+      data: {
+        competitionId: context.competitionId,
+        userId: user.id,
+        snapshotId: context.snapshot.snapshotId,
+        color,
+        ...(handicap
+          ? { handicapIndexTenths: validation.handicapIndexTenths, ...handicap.data }
+          : {}),
+      },
+      select: { id: true },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        competitionId: context.competitionId,
+        actorId: admin.userId,
+        action: 'PLAYER_CREATED',
+        entityType: 'CompetitionPlayer',
+        entityId: player.id,
+        // Sin contrasena ni hash: la auditoria nunca los lleva.
+        afterData: toJson({
+          userId: user.id,
+          displayName: validation.displayName,
+          color,
+          handicapIndexTenths: validation.handicapIndexTenths,
+          playingHandicap: handicap?.calculation.playingHandicap ?? null,
+        }),
+      },
+    });
+  });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/jugadores');
+  revalidatePath('/admin/partidos');
+  revalidatePath('/admin/tarjetas');
+  revalidatePath('/clasificacion');
+  revalidatePath('/login');
+
+  const handicapText =
+    handicap === null
+      ? 'Sin hándicap todavia: fijalo en su ficha.'
+      : `Hándicap de juego: ${handicap.calculation.playingHandicap}.`;
+
+  return {
+    ok: true,
+    color,
+    message: `${validation.displayName} inscrito. ${handicapText} Todavia no esta en ningun partido: vuelve a sortear en Partidos para incluirle.`,
+  };
+}
+
+// ===========================================================================
+// Fecha del campeonato
+// ===========================================================================
+
+/**
+ * Fija la fecha del campeonato. Vacio la quita.
+ *
+ * Si ya hay horas de salida, se mueven al nuevo dia conservando la hora de
+ * reloj: si el partido 1 salia a las 09:10, sigue saliendo a las 09:10 del dia
+ * nuevo. Sin esto, cambiar la fecha dejaria las salidas apuntando al dia
+ * antiguo.
+ */
+export async function setCompetitionDate(rawDate: string): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+  if (context.status === 'CLOSED') {
+    return { ok: false, error: 'El campeonato esta cerrado: la fecha no puede cambiarse.' };
+  }
+
+  const value = rawDate.trim();
+  let date: Date | null = null;
+  if (value !== '') {
+    try {
+      date = competitionDateFromInput(value);
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof ScheduleInputError ? error.message : 'Fecha no valida.',
+      };
+    }
+  }
+
+  const flights =
+    date === null
+      ? []
+      : await prisma.flight.findMany({
+          where: { competitionId: context.competitionId, teeTime: { not: null } },
+          select: { id: true, teeTime: true },
+        });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.competition.update({
+      where: { id: context.competitionId },
+      data: { date },
+    });
+
+    for (const flight of flights) {
+      if (!flight.teeTime) continue;
+      await tx.flight.update({
+        where: { id: flight.id },
+        data: { teeTime: moveTeeTimeToDate(flight.teeTime, value) },
+      });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        competitionId: context.competitionId,
+        actorId: admin.userId,
+        action: 'COMPETITION_DATE_SET',
+        entityType: 'Competition',
+        entityId: context.competitionId,
+        beforeData: toJson({ date: context.date ? dateInputInMadrid(context.date) : null }),
+        afterData: toJson({ date: date ? value : null, teeTimesMoved: flights.length }),
+      },
+    });
+  });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/partidos');
+  revalidatePath('/tarjeta');
+  revalidatePath('/partido');
+
+  if (date === null) return { ok: true, message: 'Fecha retirada. El campeonato queda sin fecha.' };
+  return {
+    ok: true,
+    message:
+      flights.length > 0
+        ? `Fecha guardada. ${flights.length} hora(s) de salida movidas al nuevo dia.`
+        : 'Fecha guardada.',
+  };
+}
+
+// ===========================================================================
+// Hora de salida de un partido
+// ===========================================================================
+
+/**
+ * Fija la hora de salida de un partido ("HH:MM", hora de Ulzama). Vacio la quita.
+ *
+ * La hora se combina con la fecha del campeonato, asi que hace falta haberla
+ * fijado antes en el resumen.
+ */
+export async function setFlightTeeTime(flightId: string, rawTime: string): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+  if (context.status === 'CLOSED') {
+    return { ok: false, error: 'El campeonato esta cerrado: las horas no pueden cambiarse.' };
+  }
+
+  const flight = await prisma.flight.findUnique({
+    where: { id: flightId },
+    select: { id: true, competitionId: true, name: true, teeTime: true },
+  });
+  if (!flight || flight.competitionId !== context.competitionId) {
+    return { ok: false, error: 'Partido no encontrado.' };
+  }
+
+  const value = rawTime.trim();
+  let teeTime: Date | null = null;
+  if (value !== '') {
+    if (!context.date) {
+      return {
+        ok: false,
+        error: 'Fija primero la fecha del campeonato en Resumen: la hora se aplica a ese dia.',
+      };
+    }
+    try {
+      parseTimeInput(value);
+      teeTime = madridInstant(dateInputInMadrid(context.date), value);
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof ScheduleInputError ? error.message : 'Hora no valida.',
+      };
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.flight.update({ where: { id: flight.id }, data: { teeTime } });
+    await tx.auditLog.create({
+      data: {
+        competitionId: context.competitionId,
+        actorId: admin.userId,
+        action: 'FLIGHT_TEE_TIME_SET',
+        entityType: 'Flight',
+        entityId: flight.id,
+        beforeData: toJson({ teeTime: flight.teeTime?.toISOString() ?? null }),
+        afterData: toJson({ teeTime: teeTime?.toISOString() ?? null, local: value || null }),
+      },
+    });
+  });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/partidos');
+  revalidatePath('/partido');
+  revalidatePath('/tarjeta');
+
+  return {
+    ok: true,
+    message: teeTime ? `${flight.name}: salida a las ${value}.` : `${flight.name}: hora retirada.`,
   };
 }
 

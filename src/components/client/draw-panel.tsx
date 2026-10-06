@@ -36,14 +36,16 @@ export function DrawPanel() {
   }
 
   async function doSave() {
-    if (firstTeeTime === '') {
-      setFeedback({ ok: false, text: 'Hace falta la hora de la primera salida.' });
-      return;
-    }
     setBusy(true);
-    // La hora llega como "2026-06-13T09:00" sin zona: se le anade la de Madrid
-    // en verano, para no depender de la zona del servidor (Vercel corre en UTC).
-    const result = await saveDraw(seed, `${firstTeeTime}:00+02:00`, Number(interval));
+    // La hora es opcional: si aun no se conoce, los partidos se guardan sin hora
+    // y se fija despues en cada uno. Cuando se da, llega como "2026-06-13T09:00"
+    // sin zona y se le anade la de Madrid en verano, para no depender de la zona
+    // del servidor (Vercel corre en UTC).
+    const result = await saveDraw(
+      seed,
+      firstTeeTime === '' ? '' : `${firstTeeTime}:00+02:00`,
+      Number(interval),
+    );
     setBusy(false);
     setFeedback(result.ok ? { ok: true, text: result.message ?? 'Guardado.' } : { ok: false, text: result.error });
     if (result.ok) {
@@ -84,13 +86,16 @@ export function DrawPanel() {
           </ul>
 
           <div className="field">
-            <label htmlFor="teeTime">Primera salida</label>
+            <label htmlFor="teeTime">Primera salida (opcional)</label>
             <input
               id="teeTime"
               type="datetime-local"
               value={firstTeeTime}
               onChange={(e) => setFirstTeeTime(e.target.value)}
             />
+            <p className="field__help">
+              Si aún no sabéis la hora, déjalo vacío: podrás fijarla después en cada partido.
+            </p>
           </div>
 
           <div className="field">
@@ -106,7 +111,7 @@ export function DrawPanel() {
           </div>
 
           <button type="button" className="button button--primary" disabled={busy} onClick={doSave}>
-            Confirmar partidos y horas
+            {firstTeeTime === '' ? 'Confirmar partidos' : 'Confirmar partidos y horas'}
           </button>
         </>
       ) : null}
