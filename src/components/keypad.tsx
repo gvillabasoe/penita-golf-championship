@@ -103,7 +103,12 @@ export function Keypad({
             disabled={disabled}
             onClick={onSelect ? () => onSelect('PICKUP') : undefined}
           >
-            {'\u2014'}
+            {/* El guion solo no se entiende de un vistazo: se acompaña de la
+                palabra. La etiqueta accesible del boton ya lo dice entero. */}
+            <span className="score-keypad__number">{'\u2014'}</span>
+            <span className="score-keypad__pickup-label" aria-hidden="true">
+              Raya
+            </span>
           </button>
         ) : null}
 

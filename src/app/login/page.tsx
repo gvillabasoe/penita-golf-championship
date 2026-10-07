@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { redirect } from 'next/navigation';
 
 import { getCurrentUser } from '@/lib/auth/server';
@@ -71,16 +72,21 @@ export default async function LoginPage({
         </svg>
 
         <div className="hero__body">
+          {/* El escudo real, el mismo del icono de la app: es la pantalla de
+              identidad y el primer sitio donde se ve. */}
+          <span className="hero__crest" aria-hidden="true">
+            <Image src="/icons/icon-192.png" alt="" width={72} height={72} sizes="72px" priority />
+          </span>
           <p className="hero__meta">
             <span>I edicion</span>
-            <span>Ulzama · Bariain 2026</span>
+            <span>Ulzama-Bariain, 2026</span>
           </p>
           <p className="hero__course">
             Peñita Golf
             <br />
             Championship
           </p>
-          <p className="muted">Individual Stableford · 18 hoyos</p>
+          <p className="muted">Individual Stableford a 18 hoyos</p>
         </div>
       </section>
 

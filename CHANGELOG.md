@@ -7,6 +7,86 @@ Formato basado en Keep a Changelog. Versionado semantico.
 > cambios que se corrige a si mismo deja de servir para saber que paso. Los dos
 > sistemas quedaron ELIMINADOS en la 1.2.0, como se detalla justo debajo.
 
+## [2.0.0] - 2026-10-07
+
+Rediseño completo de la interfaz: sistema visual **"Escudo"**. Sin cambios en la
+lógica deportiva, los permisos, los datos, el esquema ni las migraciones. Versión
+mayor porque cambia la identidad entera de la aplicación, no porque rompa nada.
+
+### Por qué
+
+El sistema de la 1.2–1.5 cumplía casi punto por punto la lista de rasgos de una
+interfaz generada por defecto: fondo crema con serif de display, etiquetas en
+versalitas espaciadas sobre cada bloque, metadatos unidos con punto medio y el
+contenido troceado en tarjetas idénticas con la misma sombra. Y la hoja de estilos
+había crecido apilando tres rediseños: 3.900 líneas con reglas que se anulaban.
+
+### Cambiado
+
+- **Identidad sacada del propio torneo.** Marino y marfil del escudo de la Peñita;
+  amarillo de las barras desde las que se juega; rojo para el bajo par, como en
+  los leaderboards de golf; fondo porcelana frío en lugar de crema, porque al sol
+  el crema amarillea.
+- **El amarillo significa una sola cosa: "estás aquí".** Hoyo en juego, pestaña
+  activa, tu fila en el partido, posición recién revelada. El oro del podio se
+  pinta como metal para no confundirse con él.
+- **Tipografía: Archivo y Archivo Narrow.** Una familia, dos anchos. El estrecho
+  hace que nueve hoyos y sus etiquetas quepan en 320 px sin bajar el cuerpo.
+  Sustituye a Inter y Fraunces. Sin versalitas en etiquetas.
+- **Tarjeta héroe como portatarjetas.** Tapa marino con el campo y los puntos,
+  cartulina impresa con los 18 hoyos escritos y sus formas, y el hoyo en juego
+  marcado en amarillo. Es la pieza memorable y el único sitio donde se gasta la
+  audacia; el resto va plano y callado.
+- **Luz cenital única.** Filo blanco interior y sombra en dos capas teñida de
+  marino, solo en lo que flota: tarjeta héroe, dock y hojas. Las secciones van
+  planas con filete.
+- **Clasificación como tablero único**, con filas separadas por filete, la
+  posición del podio en una medalla de metal y una banda que separa los tres
+  primeros. Se oculta la etiqueta "puesto"/"Oro" bajo la posición, que repetía
+  lo que ya dicen la cifra y la medalla (era `aria-hidden`).
+- **Teclado con relieve**: teclas que se hunden al pulsar, selección en marino,
+  en verde si da puntos. La tecla de raya añade la palabra "Raya" junto al guion.
+- **Dock flotante** de material marino al 92 % con desenfoque, que pasa a sólido
+  con transparencia reducida, más contraste o sin soporte de `backdrop-filter`.
+- **Iconografía redibujada**: mismos nombres de exportación, trazo propio y glifos
+  de golf (bandera en el green, marcador de podio). El icono de la sección activa
+  se rellena.
+- **Login con el escudo** en la tapa, y corrección del texto secundario, que con
+  el gris de tinta casi no se leía sobre marino.
+- **Movimiento según Emil Kowalski**: curvas fuertes, pulsación a 0,97 en 140 ms,
+  hojas con la curva de cajón de iOS y `@starting-style`, hover solo con ratón.
+  Lo frecuente apenas se anima; la única ceremonia es la revelación, una vez por
+  torneo.
+- **Comportamiento nativo en móvil**: sin destello al tocar, sin retraso de doble
+  toque, controles sin selección de texto, inputs a 16 px, `viewport-fit=cover`
+  con áreas seguras, y `interactive-widget=resizes-content` para el teclado de
+  Android.
+- **Textos**: sin puntos medios en lo que se ve ("Par 72, 18 hoyos", "Continuar
+  en el hoyo 13") y el nombre oficial del campo, **Ulzama-Bariain**.
+- `src/styles/tokens.css` y `src/app/globals.css` reescritos desde cero en una
+  sola capa. `docs/design-system.md` reescrito.
+
+### Añadido
+
+- `TournamentHero` acepta `currentHole` (opcional) para marcar el hoyo en juego.
+
+### Verificado
+
+- 657 tests: todos pasan con `.env.example` y `.gitignore` presentes.
+- 128 archivos TS/TSX sin errores de sintaxis.
+- Las 242 clases del marcado tienen estilo.
+- Sin desbordamiento horizontal a 320, 360, 390 y 430 px en Mi tarjeta, hoyo,
+  confirmación, clasificación y login, renderizando los componentes reales con
+  Playwright.
+
+### Sin verificar
+
+- `next build`: la carga de `Archivo` y `Archivo_Narrow` con `next/font` solo la
+  confirma el build de Vercel.
+- Panel de administración: no se ha fotografiado.
+- Dispositivo real: áreas seguras, desenfoque del dock y hover pegado no se
+  reproducen en emulación.
+
 ## [1.5.0] - 2026-09-24
 
 Tres funciones nuevas en el panel de administración. **Sin cambios en el esquema

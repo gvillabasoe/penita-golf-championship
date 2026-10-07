@@ -132,13 +132,13 @@ export default async function AdminSummaryPage() {
             <tbody>
               <tr>
                 <th>Campo</th>
-                <td>Ulzama · barras {context.teeColor.toLowerCase()}</td>
+                <td>Ulzama, barras {context.teeColor.toLowerCase()}</td>
               </tr>
               <tr>
                 <th>Valoracion</th>
                 <td>
-                  Vc {formatTenths(context.snapshot.courseRatingTenths)} · Slope{' '}
-                  {context.snapshot.slopeRating} · Par {context.snapshot.parTotal}
+                  Valor de campo {formatTenths(context.snapshot.courseRatingTenths)}, slope{' '}
+                  {context.snapshot.slopeRating}, par {context.snapshot.parTotal}
                 </td>
               </tr>
               <tr>

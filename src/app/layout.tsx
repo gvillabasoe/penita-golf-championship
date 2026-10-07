@@ -1,38 +1,38 @@
 import type { Metadata, Viewport } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
+import { Archivo, Archivo_Narrow } from 'next/font/google';
 
 import './globals.css';
 import { ServiceWorkerRegistration } from '@/components/client/service-worker';
 
 /**
- * Dos familias y ninguna mas (seccion 11).
+ * Una familia, dos anchos (sistema "Escudo", v2.0.0).
  *
- * `next/font` las descarga en tiempo de compilacion y las sirve desde el propio
- * dominio, asi que no hay peticion a Google en tiempo de ejecucion ni salto de
- * maquetacion al cargar. Se exponen como variables CSS y toda la hoja de
- * estilos las consume desde `--font-display` y `--font-sans`.
+ *   Archivo         interfaz, texto y titulos
+ *   Archivo Narrow  cifras, tarjeta, clasificacion
  *
- * `fallback` esta escrito a proposito: si la fuente no llega, la aplicacion
- * tiene que seguir siendo legible en el hoyo 14, no bonita.
+ * El ancho estrecho no es un capricho: con el, nueve hoyos mas la columna de
+ * etiquetas caben en 320 px sin bajar el cuerpo de letra, y las cifras de un
+ * leaderboard se leen como en un marcador.
+ *
+ * Pesos explicitos y solo los que se usan: cada peso extra es peso que viaja
+ * por la cobertura del campo. `next/font` los sirve desde el propio dominio, sin
+ * peticiones a Google en tiempo de ejecucion. Los `fallback` estan escritos a
+ * mano: si la fuente no llega, la app tiene que seguir siendo legible.
  */
-const inter = Inter({
+const archivo = Archivo({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-inter',
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-archivo',
   fallback: ['system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
 });
 
-/**
- * Serif editorial para titulares y cifras grandes. Se cargan solo los dos pesos
- * que se usan: ninguna pantalla necesita mas, y cada peso extra es peso que
- * viaja por la cobertura del campo.
- */
-const fraunces = Fraunces({
+const archivoNarrow = Archivo_Narrow({
   subsets: ['latin'],
   display: 'swap',
-  weight: ['600', '700'],
-  variable: '--font-fraunces',
-  fallback: ['Iowan Old Style', 'Georgia', 'Times New Roman', 'serif'],
+  weight: ['500', '600', '700'],
+  variable: '--font-archivo-narrow',
+  fallback: ['Arial Narrow', 'Roboto Condensed', 'system-ui', 'sans-serif'],
 });
 
 export const metadata: Metadata = {
@@ -65,11 +65,18 @@ export const viewport: Viewport = {
   // El navy del escudo, no el verde de la interfaz: es el color de la barra de
   // estado al abrir desde la pantalla de inicio, y tiene que continuar el icono.
   themeColor: '#364f6e',
+  // La pagina llega hasta debajo de la muesca y de la barra de inicio; la
+  // cabecera y el dock se apartan con env(safe-area-inset-*). Sin esto, esos
+  // valores valen 0 y el dock flotante quedaria pegado al gesto de inicio.
+  viewportFit: 'cover',
+  // En Android el teclado encoge el viewport, como en iOS: los campos del
+  // administrador no quedan tapados.
+  interactiveWidget: 'resizes-content',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${inter.variable} ${fraunces.variable}`}>
+    <html lang="es" className={`${archivo.variable} ${archivoNarrow.variable}`}>
       <body>
         <div className="app-shell">{children}</div>
         <ServiceWorkerRegistration />

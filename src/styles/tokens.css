@@ -1,190 +1,156 @@
 /* =============================================================================
-   Peñita Golf Championship — capa de tokens
-   Sistema visual v1.4.0. Clasificacion y administracion mobile-first refinadas.
+   Peñita Golf Championship · tokens del sistema "Escudo" (v2.0.0)
+
+   Solo variables. Todo lo que pinta vive en src/app/globals.css.
 
    ---------------------------------------------------------------------------
-   Que se ha ido y por que
+   De donde sale cada decision
    ---------------------------------------------------------------------------
-   Fuera: Liquid Glass, `backdrop-filter` como estilo general, transparencias
-   decorativas, gradientes y paleta pastel, sombras difusas y botones
-   translucidos. Todo eso se veia bien en una captura y mal en el hoyo 14 con
-   el sol de frente, que es donde se usa esta aplicacion.
+   Del propio torneo, no de una paleta de moda:
 
-   Dentro: fondo marfil, verde golf profundo, carbon, oro como acento contado, y
-   superficies SOLIDAS. Un gradiente oscuro sobre una imagen para garantizar
-   contraste sigue permitido; un gradiente decorativo, no.
+     - El MARINO y el MARFIL son los del escudo de la Peñita (assets/logo.png,
+       fondo medido en #243C57, trazo en marfil).
+     - El AMARILLO es el de las barras desde las que se juega esta edicion.
+       Tiene una sola regla: significa "estas aqui". Hoyo actual, pestaña
+       activa, posicion recien revelada. Si aparece en cualquier otro sitio,
+       deja de significar nada.
+     - El ROJO para el bajo par es la convencion de los leaderboards de golf.
+     - El VERDE es la calle: puntos ganados y guardado correcto.
 
-   ---------------------------------------------------------------------------
-   Reglas que esta hoja hace cumplir
-   ---------------------------------------------------------------------------
-   - El color NUNCA es el unico portador de informacion: hay formas, numeros y
-     etiquetas accesibles.
-   - Toda superficie es opaca. No hay fallback que mantener porque no hay nada
-     translucido que pueda fallar.
-   - La tarjeta, los numeros y el teclado se leen al sol y se usan con una mano.
-   - Numeros tabulares en todo lo que se compara: resultados, hándicaps, puntos,
-     totales y horas.
+   El sistema anterior (crema + serif + verde y oro) era, punto por punto, el
+   estilo por defecto de las interfaces generadas. Este no lo es porque cada
+   color tiene una razon que solo vale para este campeonato.
    ========================================================================== */
 
 :root {
-  /* --- Superficies -------------------------------------------------------- */
-  --background: #f7f5ef;
+  color-scheme: light;
+
+  /* --- Marino del escudo ------------------------------------------------- */
+  --navy-950: #0d1826;
+  --navy-900: #14233a;
+  --navy-800: #1b2e47;
+  --navy-700: #243c57; /* fondo del escudo */
+  --navy-600: #2d4767;
+  --navy-500: #364f6e; /* marca: barra de estado */
+  --navy-400: #5b7290;
+  --navy-300: #8fa2b9;
+  --navy-200: #c4cfdc;
+  --navy-100: #e3e9f0;
+  --navy-50: #f2f5f9;
+
+  /* Trazo del escudo. Solo SOBRE marino: como fondo de pagina seria otra vez
+     la crema de siempre. */
+  --ivory: #f3ebdd;
+  --ivory-soft: rgba(243, 235, 221, 0.72);
+  --ivory-faint: rgba(243, 235, 221, 0.14);
+
+  /* --- Superficies ------------------------------------------------------- */
+  /* Porcelana fria: un blanco con un punto de azul. Al sol, el crema amarillea
+     y el blanco puro deslumbra; esto aguanta las dos cosas. */
+  --page: #eef1f5;
   --surface: #ffffff;
-  --surface-subtle: #f0eee7;
-  --surface-sunken: #e7e4da;
-
-  /* --- Verde golf ---------------------------------------------------------
-     La escala de la identidad. El 900 es el color de la aplicacion: cabeceras,
-     botones principales y cualquier bloque que tenga que mandar. */
-  --golf-green-950: #03251a;
-  --golf-green-900: #073524;
-  --golf-green-800: #0f4933;
-  --golf-green-700: #176044;
-  --golf-green-600: #247b57;
-
-  --charcoal: #141916;
+  --surface-2: #f6f8fb;
+  --surface-3: #ebeff4;
 
   /* --- Texto ------------------------------------------------------------- */
-  --text-primary: #141916;
-  --text-secondary: #626a65;
-  --text-tertiary: #8b938d;
-  --text-inverse: #ffffff;
-  --text-on-green: #eef2ea;
+  --ink: #121c27;
+  --ink-2: #4c5b6c;
+  --ink-3: #7b8898;
+  --ink-inverse: #ffffff;
 
-  /* --- Bordes ------------------------------------------------------------ */
-  --border: #ddd9cf;
-  --border-strong: #b7b6af;
-  --border-inverse: rgba(255, 255, 255, 0.22);
+  /* --- Filetes ----------------------------------------------------------- */
+  --line: #dde3ea;
+  --line-strong: #b8c2ce;
+  /* Alias con el nombre que usan algunos `style` en TSX. */
+  --border: var(--line);
+  --border-strong: var(--line-strong);
 
-  /* --- Oro: acento premium ------------------------------------------------
-     De uso contado. Marca el campeon, el dato de honor y poco mas. Si el oro
-     aparece en cada boton deja de significar nada. */
-  --gold: #b99245;
-  --gold-light: #d8bc78;
-  --gold-dark: #826327;
+  /* --- Tee amarillo: "estas aqui" ---------------------------------------- */
+  --tee: #f2c230;
+  --tee-deep: #a87b00; /* para texto: el amarillo puro no pasa contraste */
+  --tee-wash: #fff5d1;
+  --tee-ring: rgba(242, 194, 48, 0.42);
 
-  /* --- Colores funcionales ----------------------------------------------- */
-  --success: #287a4a;
-  --success-surface: #e6f0e7;
-  --warning: #c47b1c;
-  --warning-surface: #f8eedd;
-  --danger: #b42318;
-  --danger-surface: #fbeae8;
-  --danger-strong: #8f1c13;
-  --info: #24547a;
-  --info-surface: #e7eef4;
+  /* --- Calle: puntos y exito --------------------------------------------- */
+  --fairway: #1f7a4d;
+  --fairway-deep: #145c39;
+  --fairway-wash: #e3f2e9;
+
+  /* --- Rojo: bajo par y destructivo -------------------------------------- */
+  --birdie: #c8322c;
+  --birdie-deep: #9c201b;
+  --birdie-wash: #fcebea;
+
+  /* --- Aviso ------------------------------------------------------------- */
+  --amber: #a85f00;
+  --amber-wash: #fff1db;
+
+  /* --- Medallas: metal, no amarillo plano --------------------------------
+     El oro de la medalla se pinta con brillo radial para que se lea como
+     metal y no se confunda con el amarillo tee, que es un color plano. */
+  --medal-gold: #b8902f;
+  --medal-gold-hi: #f2dc94;
+  --medal-silver: #8e99a6;
+  --medal-silver-hi: #e8edf2;
+  --medal-bronze: #a4673a;
+  --medal-bronze-hi: #f0c7a0;
 
   /* --- Marca de la Peñita ------------------------------------------------
-     Navy y crema del escudo, medidos sobre assets/logo.png. NO son colores de
-     la interfaz: son el icono de la aplicacion, la barra de estado y la
-     pantalla de bienvenida, para que abrir la app desde el movil no parezca
-     otra aplicacion distinta.
-
-     Hay dos tests que comprueban que estos dos valores no se desincronizan del
-     manifest ni de scripts/generate-icons.ts. Si se cambian aqui, hay que
-     cambiarlos en los tres sitios. */
+     Dos tests comprueban que estos valores coinciden con el manifest y con
+     scripts/generate-icons.ts. Si cambian aqui, cambian en los tres sitios. */
   --color-brand: #364f6e;
   --color-brand-ink: #f4edde;
 
-  /* --- Sombras -----------------------------------------------------------
-     Muy contenidas y con tinte verde, no grises difusas. La jerarquia la
-     sostienen el borde y el color, no la sombra. */
-  --shadow-xs: 0 1px 2px rgba(3, 37, 26, 0.05);
-  --shadow-sm: 0 2px 8px rgba(3, 37, 26, 0.07);
-  --shadow-md: 0 8px 24px rgba(3, 37, 26, 0.10);
-  --shadow-lg: 0 18px 48px rgba(3, 37, 26, 0.18);
+  /* --- Luz ---------------------------------------------------------------
+     Una sola fuente, cenital. Cada superficie elevada lleva un filo blanco
+     interior arriba (la luz que toca el borde) y una sombra en dos capas: una
+     corta y dura de contacto, otra larga y difusa de ambiente. Teñidas de
+     marino, nunca gris neutro: una sombra gris sobre porcelana se ve sucia.
 
-  /* --- Estados de sincronizacion ----------------------------------------- */
-  --state-synced-bg: var(--success-surface);
-  --state-synced-fg: #1c5c37;
-  --state-saving-bg: var(--info-surface);
-  --state-saving-fg: #1c405e;
-  --state-offline-bg: var(--warning-surface);
-  --state-offline-fg: #8a5512;
-  --state-pending-bg: #f4eddc;
-  --state-pending-fg: #7a5f22;
-  --state-error-bg: var(--danger-surface);
-  --state-error-fg: var(--danger-strong);
-  --state-locked-bg: var(--surface-subtle);
-  --state-locked-fg: var(--text-secondary);
-
-  /* --- Resultado bruto ---------------------------------------------------
-     La FORMA informa, el color acompana. Circulo bajo par, cuadrado sobre par,
-     nada en el par. Un daltonico distingue circulo de cuadrado. */
-  --gross-par: var(--charcoal);
-  --gross-under: #1b563b;      /* birdie y eagle: verde golf */
-  --gross-albatros: #8c6f33;
-  --gross-over: #4d5852;       /* bogey y peores: grafito */
-  --gross-pickup: #b42318;
-
-  /* --- Puntos Stableford -------------------------------------------------
-     Escala de intensidad, no arcoiris: cuanto mejor el resultado neto, mas
-     profundo el fondo. */
-  --points-5-bg: #8c6f33;      /* albatros neto o mejor */
-  --points-5-fg: #ffffff;
-  --points-4-bg: #123d2b;      /* eagle neto */
-  --points-4-fg: #ffffff;
-  --points-3-bg: #24704d;      /* birdie neto */
-  --points-3-fg: #ffffff;
-  --points-2-bg: #dfe6dc;      /* par neto */
-  --points-2-fg: #141916;
-  --points-1-bg: #ece9e0;      /* bogey neto */
-  --points-1-fg: #626a65;
-  --points-0-bg: #e4e0d5;      /* doble bogey neto o peor */
-  --points-0-fg: #626a65;
-
-  /* --- Podio ------------------------------------------------------------- */
-  --podium-gold: #b6924a;
-  --podium-silver: #9aa3a8;
-  --podium-bronze: #a9713c;
-
-  /* --- Geometria --------------------------------------------------------- */
-  --radius-xs: 5px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  --radius-xl: 22px;
-  --radius-pill: 999px;
-
-  /* 48 px y no 44: se juega con guante fino y el movil en una mano. */
-  --tap-target: 48px;
-  --tap-target-min: 44px;
+     La elevacion se reserva para lo que FLOTA. Las secciones normales van
+     planas con filete: si todo tiene sombra, nada esta por encima de nada. */
+  --rim: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --rim-dark: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --elev-1: 0 1px 1px rgba(13, 24, 38, 0.04), 0 1px 3px rgba(13, 24, 38, 0.05);
+  --elev-2: 0 1px 2px rgba(13, 24, 38, 0.06), 0 14px 28px -14px rgba(13, 24, 38, 0.24);
+  --elev-3: 0 2px 6px rgba(13, 24, 38, 0.1), 0 28px 56px -18px rgba(13, 24, 38, 0.42);
+  /* Brillo sobre marino: la luz cae de arriba. */
+  --sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0) 55%);
 
   /* --- Tipografia --------------------------------------------------------
-     Dos familias y ninguna mas, cargadas con next/font en src/app/layout.tsx:
+     Una familia, dos anchos, cargada con next/font en src/app/layout.tsx:
+       Archivo        interfaz, texto y titulos
+       Archivo Narrow cifras, tarjeta, clasificacion
+     El ancho estrecho no es estetica: con el, nueve hoyos mas etiquetas caben
+     en 320 px sin bajar el cuerpo de letra. */
+  --font-sans: var(--font-archivo), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-narrow: var(--font-archivo-narrow), 'Arial Narrow', 'Roboto Condensed', var(--font-sans);
 
-       --font-display : Fraunces, serif editorial. Titulos del campeonato y
-                        cifras grandes. Uso limitado.
-       --font-sans    : Inter. Interfaz y datos.
+  /* Escala. El tracking depende del tamaño: negativo en lo grande, neutro en
+     el cuerpo, ligeramente positivo en lo pequeño. */
+  --fs-xs: 0.75rem;   /* 12 */
+  --fs-sm: 0.875rem;  /* 14 */
+  --fs-md: 1rem;      /* 16: minimo de cuerpo y de cualquier input */
+  --fs-lg: 1.125rem;  /* 18 */
+  --fs-xl: 1.375rem;  /* 22 */
+  --fs-2xl: 1.75rem;  /* 28 */
+  --fs-3xl: 2.25rem;  /* 36 */
+  --fs-num-hero: 3.5rem;
 
-     Los fallbacks estan escritos a mano por si la carga de la fuente falla: la
-     aplicacion tiene que seguir siendo legible sin ellas. */
-  --font-display: var(--font-fraunces), 'Iowan Old Style', Georgia, 'Times New Roman', serif;
-  --font-sans: var(--font-inter), system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-numeric: var(--font-inter), system-ui, sans-serif;
+  /* --- Geometria: los radios marcan jerarquia ----------------------------
+     No hay un radio para todo. La tarjeta heroe es la mas redonda, las filas
+     menos, los chips menos aun. Un radio unico es la firma del kit generico. */
+  --r-hero: 26px;
+  --r-section: 20px;
+  --r-row: 14px;
+  --r-key: 16px;
+  --r-chip: 10px;
+  --r-pill: 999px;
 
-  /* Escala tipografica. Nada del cuerpo por debajo de 16 px. */
-  --text-caption: 0.6875rem;  /* 11px: solo etiquetas en versalitas */
-  --text-label: 0.75rem;      /* 12px */
-  --text-sm: 0.875rem;        /* 14px */
-  --text-base: 1rem;          /* 16px */
-  --text-lg: 1.125rem;        /* 18px */
-  --text-xl: 1.375rem;        /* 22px */
-  --text-2xl: 1.75rem;        /* 28px */
-  --text-3xl: 2.25rem;        /* 36px */
-  --text-4xl: 3rem;           /* 48px */
+  /* 48 px: se juega con guante fino y el movil en una mano. */
+  --tap: 48px;
 
-  /* Cifras: la escala de datos es aparte de la de texto, porque un total no se
-     lee, se reconoce de un vistazo. */
-  --data-compact: 1rem;
-  --data-base: 1.25rem;
-  --data-large: 2rem;
-  --data-hero: 3.25rem;
-
-  --tracking-label: 0.08em;
-  --tracking-caption: 0.12em;
-
-  /* --- Espaciado --------------------------------------------------------- */
+  /* --- Espaciado (multiplos de 4) ---------------------------------------- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -194,345 +160,21 @@
   --space-7: 48px;
 
   /* --- Estructura -------------------------------------------------------- */
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
-  --bottom-nav-height: 66px;
-  --content-max: 680px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --header-h: 60px;
+  --dock-h: 64px;
+  --content-max: 600px;
 
-  /* --- Movimiento -------------------------------------------------------- */
-  --transition-fast: 120ms ease-out;
-  --transition-base: 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
+  /* --- Movimiento --------------------------------------------------------
+     Curvas fuertes: las de serie del CSS son demasiado blandas. Nunca ease-in
+     en interfaz: arranca lento justo cuando el usuario esta mirando. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-press: 140ms;
+  --dur-fast: 180ms;
+  --dur-sheet: 320ms;
 
-/* =============================================================================
-   Primitivas de superficie
-
-   Solidas, sin excepcion. La antigua clase `.glass` no existe: no se ha
-   redefinido como opaca, se ha eliminado, para que un resto de marcado antiguo
-   se vea raro y salte a la vista en vez de disimular.
-   ========================================================================== */
-
-.surface {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
-}
-
-.surface--flat {
-  box-shadow: none;
-}
-
-.surface--subtle {
-  background: var(--surface-subtle);
-  border-color: var(--border);
-  box-shadow: none;
-}
-
-/* Bloque verde: cabeceras, heroe y cualquier zona que tenga que mandar. */
-.surface--green {
-  background: var(--golf-green-900);
-  border: 1px solid var(--golf-green-800);
-  color: var(--text-on-green);
-}
-
-.surface--green .eyebrow,
-.surface--green .muted {
-  color: rgba(238, 242, 234, 0.72);
-}
-
-/* =============================================================================
-   Tipografia
-   ========================================================================== */
-
-.display {
-  font-family: var(--font-display);
-  font-weight: 600;
-  line-height: 1.08;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
-
-.display--hero {
-  font-size: var(--text-3xl);
-}
-
-/* Etiqueta en versalitas: la usa toda la interfaz para nombrar un dato. */
-.eyebrow {
-  font-family: var(--font-sans);
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.label {
-  font-size: var(--text-label);
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-
-/* Cualquier cifra que se compare con otra. */
-.data {
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
-  letter-spacing: -0.01em;
-}
-
-.data--large {
-  font-size: var(--data-large);
-  font-weight: 700;
-  line-height: 1;
-}
-
-.data--hero {
-  font-family: var(--font-display);
-  font-size: var(--data-hero);
-  font-weight: 600;
-  line-height: 0.92;
-  font-variant-numeric: tabular-nums;
-}
-
-/* =============================================================================
-   Resultado bruto: la forma es la que informa
-   Circulo = bajo par. Cuadrado = sobre par. Nada = par.
-   ========================================================================== */
-
-.score-number {
-  display: inline-grid;
-  place-items: center;
-  min-width: 34px;
-  min-height: 34px;
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-lg);
-  font-weight: 650;
-  color: var(--gross-par);
-  background: transparent;
-}
-
-.score-number--birdie,
-.score-number--eagle {
-  color: var(--gross-under);
-}
-.score-number--albatros,
-.score-number--hole-in-one {
-  color: var(--gross-albatros);
-}
-.score-number--bogey,
-.score-number--double,
-.score-number--triple {
-  color: var(--gross-over);
-}
-.score-number--pickup {
-  color: var(--gross-pickup);
-  font-weight: 700;
-}
-
-/* Contornos con box-shadow concentrico: no deforman el numero ni cambian el
-   area tactil. Grosor 2 px, que es lo que aguanta el sol. */
-.score-number--birdie {
-  border-radius: var(--radius-pill);
-  box-shadow: inset 0 0 0 2px currentColor;
-}
-.score-number--eagle,
-.score-number--albatros,
-.score-number--hole-in-one {
-  border-radius: var(--radius-pill);
-  box-shadow:
-    inset 0 0 0 2px currentColor,
-    inset 0 0 0 5px transparent,
-    inset 0 0 0 7px currentColor;
-}
-.score-number--bogey {
-  border-radius: var(--radius-xs);
-  box-shadow: inset 0 0 0 2px currentColor;
-}
-.score-number--double {
-  border-radius: var(--radius-xs);
-  box-shadow:
-    inset 0 0 0 2px currentColor,
-    inset 0 0 0 5px transparent,
-    inset 0 0 0 7px currentColor;
-}
-.score-number--triple {
-  border-radius: var(--radius-xs);
-  box-shadow:
-    inset 0 0 0 2px currentColor,
-    inset 0 0 0 4px transparent,
-    inset 0 0 0 6px currentColor,
-    inset 0 0 0 8px transparent,
-    inset 0 0 0 10px currentColor;
-}
-
-.score-number--compact {
-  min-width: 30px;
-  min-height: 30px;
-  font-size: var(--text-base);
-}
-
-/* =============================================================================
-   Puntos Stableford
-   ========================================================================== */
-
-.points-cell {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  min-width: 34px;
-  min-height: 34px;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-base);
-  font-weight: 700;
-  background: var(--surface);
-}
-
-.points-cell--5 { background: var(--points-5-bg); color: var(--points-5-fg); }
-.points-cell--4 { background: var(--points-4-bg); color: var(--points-4-fg); }
-.points-cell--3 { background: var(--points-3-bg); color: var(--points-3-fg); }
-.points-cell--2 { background: var(--points-2-bg); color: var(--points-2-fg); }
-.points-cell--1 { background: var(--points-1-bg); color: var(--points-1-fg); }
-.points-cell--0 { background: var(--points-0-bg); color: var(--points-0-fg); }
-
-/* La raya se distingue del 0 por una barra, no solo por el color. */
-.points-cell--pickup::after {
-  content: '';
-  position: absolute;
-  inset-inline: 7px;
-  block-size: 2px;
-  background: var(--gross-pickup);
-}
-
-/* Hoyo sin jugar: ni fondo ni cifra. Un hueco se tiene que ver como un hueco. */
-.points-cell--empty {
-  background: transparent;
-  color: var(--border-strong);
-  font-weight: 600;
-}
-
-/* =============================================================================
-   Golpes recibidos
-   ========================================================================== */
-
-.strokes-received {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-label);
-  font-weight: 600;
-  color: var(--golf-green-700);
-}
-
-.strokes-received--none {
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-.strokes-received--giving {
-  color: var(--info);
-}
-
-.strokes-received__count {
-  font-size: var(--text-caption);
-}
-
-/* =============================================================================
-   Accesibilidad y movimiento
-   ========================================================================== */
-
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 3px solid var(--golf-green-700);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-/* Sobre verde el foco verde no se ve. */
-.surface--green :where(a, button, input, select, textarea, [tabindex]):focus-visible,
-.app-header :where(a, button):focus-visible,
-.bottom-nav :where(a, button):focus-visible {
-  outline-color: var(--gold-light);
-}
-
-button,
-[role='button'] {
-  min-height: var(--tap-target-min);
-  font-family: inherit;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* Aparicion de tarjetas y transicion entre hoyos: breve y sin rebote. */
-@keyframes pgc-rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.rise {
-  animation: pgc-rise var(--transition-base) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rise {
-    animation: none;
-  }
-}
-
-/* La revelacion respeta prefers-reduced-motion: misma informacion, sin
-   desplazamiento y sin escala. */
-.reveal-card {
-  opacity: 0;
-  transform: translateY(10px);
-  transition:
-    opacity var(--transition-base),
-    transform var(--transition-base);
-}
-.reveal-card[data-revealed='true'] {
-  opacity: 1;
-  transform: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .reveal-card {
-    opacity: 0;
-    transform: none;
-  }
-  .reveal-card[data-revealed='true'] {
-    opacity: 1;
-  }
-}
-
-/* Texto solo para lectores de pantalla. */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
+  --focus-ring: 3px solid var(--navy-600);
 }

@@ -1,23 +1,26 @@
 /**
- * Heroe del campeonato y resumen compacto de la vuelta.
+ * Tarjeta heroe de Mi tarjeta.
  *
  * ---------------------------------------------------------------------------
- * Por que no hay fotografia
+ * La metafora
  * ---------------------------------------------------------------------------
- * La referencia visual apoya el resumen sobre una fotografia del campo, y es un
- * buen patron. Pero este proyecto no incluye ninguna imagen de Ulzama con los
- * derechos comprobados, y bajar una de internet no es una opcion: la seccion 14
- * lo prohibe explicitamente.
+ * Un portatarjetas de piel marino —el del escudo— con la tarjeta de juego
+ * impresa metida dentro. En la tapa, el campo y los puntos. En la cartulina,
+ * los 18 hoyos con los golpes "escritos" y las formas de siempre: circulo bajo
+ * par, cuadrado sobre par, raya para la bola levantada.
  *
- * Asi que la cabecera es grafica: verde profundo, curvas de nivel dibujadas en
- * SVG y tipografia editorial. El dia que exista una foto autorizada, este
- * componente ya la admite: `photoUrl` la pinta con `next/image` y el gradiente
- * oscuro que garantiza el contraste del texto encima. Hasta entonces el
- * parametro no se usa y la cabecera se sostiene sola.
+ * Es el unico sitio de la aplicacion donde se gasta la audacia visual. Todo lo
+ * demas va plano y callado para que esto se lea primero.
  *
- * El resumen de 18 hoyos conserva las formas deportivas (circulo bajo par,
- * cuadrado sobre par) en version reducida: es la misma informacion que la
- * tarjeta grande, no una decoracion.
+ * El hoyo en juego se marca en amarillo tee, que en todo el sistema significa
+ * una sola cosa: "estas aqui".
+ *
+ * ---------------------------------------------------------------------------
+ * Fotografia
+ * ---------------------------------------------------------------------------
+ * El proyecto no incluye ninguna imagen del campo con derechos comprobados, y
+ * no se descarga ninguna. `photoUrl` la admite el dia que exista, con el velo
+ * oscuro que garantiza el contraste del texto encima.
  */
 
 import type { GrossCategory, HoleResult } from '@/lib/golf/types';
@@ -28,33 +31,33 @@ const MINI_CLASS: Record<GrossCategory, string> = {
   ALBATROS: 'mini-hole__value--albatros',
   EAGLE: 'mini-hole__value--eagle',
   BIRDIE: 'mini-hole__value--birdie',
-  PAR: 'mini-hole__value--par',
+  PAR: '',
   BOGEY: 'mini-hole__value--bogey',
   DOUBLE_BOGEY: 'mini-hole__value--double',
   TRIPLE_BOGEY_OR_WORSE: 'mini-hole__value--triple',
   PICKUP: 'mini-hole__value--pickup',
 };
 
-/** Curvas de nivel. Decorativa y por tanto oculta al lector de pantalla. */
-function FairwayTexture() {
+/**
+ * Curvas de nivel finas, en el trazo marfil del escudo. Decorativas, y por
+ * tanto ocultas al lector de pantalla. El color lo pone la hoja de estilos.
+ */
+function ContourTexture() {
   return (
     <svg
       className="hero__texture"
-      viewBox="0 0 400 200"
+      viewBox="0 0 400 220"
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
       focusable="false"
     >
-      <g fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1">
-        <path d="M-20 172 C 60 140, 120 168, 200 132 S 340 108, 420 128" />
-        <path d="M-20 152 C 60 120, 130 150, 210 112 S 345 88, 420 106" />
-        <path d="M-20 132 C 70 100, 140 130, 220 92 S 350 68, 420 84" />
-        <path d="M-20 110 C 80 80, 150 108, 230 70 S 355 46, 420 60" />
-        <path d="M-20 86 C 90 58, 160 84, 240 48 S 360 26, 420 38" />
-      </g>
-      <g fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1">
-        <path d="M-20 62 C 100 36, 170 60, 250 26 S 365 6, 420 16" />
-        <path d="M-20 38 C 110 16, 180 36, 260 6" />
+      <g fill="none" strokeWidth="1">
+        <path d="M240 -10 C 300 30, 330 70, 420 80" />
+        <path d="M210 -10 C 280 44, 320 96, 420 108" />
+        <path d="M182 -10 C 262 58, 312 122, 420 136" />
+        <path d="M156 -10 C 246 72, 304 148, 420 164" />
+        <path d="M132 -10 C 232 86, 296 174, 420 192" />
+        <path d="M110 -10 C 220 100, 290 200, 420 222" />
       </g>
     </svg>
   );
@@ -64,29 +67,38 @@ export interface MiniNineProps {
   label: string;
   results: HoleResult[];
   total: number;
+  /** Hoyo en juego, para marcarlo. */
+  currentHole?: number;
 }
 
-/** Una de las dos filas de nueve hoyos, con su total al final. */
-export function MiniNine({ label, results, total }: MiniNineProps) {
+/** Una de las dos filas de la cartulina, con su total al final. */
+export function MiniNine({ label, results, total, currentHole }: MiniNineProps) {
   return (
     <div className="mini-nine" role="group" aria-label={label}>
       {results.map((result) => {
         const hasResult = result.grossStrokes !== null || result.isPickup;
+        const isCurrent = currentHole === result.holeNumber;
 
         return (
-          <span className="mini-hole" key={result.holeNumber}>
+          <span
+            className="mini-hole"
+            key={result.holeNumber}
+            data-current={isCurrent ? 'true' : undefined}
+          >
             <span className="mini-hole__number" aria-hidden="true">
               {result.holeNumber}
             </span>
             <span
               className={`mini-hole__value ${
                 hasResult ? MINI_CLASS[result.grossCategory] : 'mini-hole__value--empty'
-              }`}
+              }`.trim()}
               role="img"
               aria-label={
                 hasResult
                   ? `Hoyo ${result.holeNumber}: ${resultLabel(result)}`
-                  : `Hoyo ${result.holeNumber}: pendiente`
+                  : isCurrent
+                    ? `Hoyo ${result.holeNumber}: el siguiente por jugar`
+                    : `Hoyo ${result.holeNumber}: pendiente`
               }
             >
               {result.isPickup
@@ -99,10 +111,7 @@ export function MiniNine({ label, results, total }: MiniNineProps) {
         );
       })}
 
-      <span
-        className="mini-nine__total data"
-        aria-label={`${label}: ${total} puntos`}
-      >
+      <span className="mini-nine__total" aria-label={`${label}: ${total} puntos`}>
         {total}
       </span>
     </div>
@@ -110,11 +119,11 @@ export function MiniNine({ label, results, total }: MiniNineProps) {
 }
 
 export interface TournamentHeroProps {
-  /** Nombre del campo y recorrido. */
+  /** Nombre del campo. */
   course: string;
   /** Fecha formateada, ya en la zona del torneo. */
   date: string;
-  /** "18 hoyos · Par 72" */
+  /** Linea de apoyo del campo: par y numero de hoyos. */
   courseLine: string;
   /** Modalidad, barras y estado: se pintan como insignias. */
   chips?: React.ReactNode;
@@ -125,10 +134,9 @@ export interface TournamentHeroProps {
   scoreNote?: string;
   /** Las dos filas de nueve. Sin resultados todavia, se puede omitir. */
   nines?: { out: HoleResult[]; outTotal: number; in: HoleResult[]; inTotal: number };
-  /**
-   * Fotografia autorizada del campo. Cuando llegue, se pinta de fondo con el
-   * gradiente oscuro por encima. Mientras no exista, la cabecera es grafica.
-   */
+  /** Hoyo en juego. Se marca en amarillo tee en la cartulina. */
+  currentHole?: number;
+  /** Fotografia autorizada del campo, si algun dia existe. */
   photoUrl?: string;
 }
 
@@ -141,6 +149,7 @@ export function TournamentHero({
   scoreUnit = 'puntos',
   scoreNote,
   nines,
+  currentHole,
   photoUrl,
 }: TournamentHeroProps) {
   return (
@@ -152,34 +161,41 @@ export function TournamentHero({
           <span className="hero__scrim" />
         </>
       ) : (
-        <FairwayTexture />
+        <ContourTexture />
       )}
 
       <div className="hero__body">
-        <div className="hero__meta">
-          <span>{date}</span>
-          <span>{courseLine}</span>
-        </div>
-
-        <div className="hero__headline">
-          <div>
-            <p className="hero__course">{course}</p>
-          </div>
-
-          <p className="hero__score">
-            <span className="hero__score-value">{score}</span>
-            <span className="hero__score-unit">{scoreUnit}</span>
-            {scoreNote ? <span className="hero__score-note">{scoreNote}</span> : null}
+        <div className="hero__identity">
+          <p className="hero__course">{course}</p>
+          <p className="hero__meta">
+            <span>{date}</span>
+            <span>{courseLine}</span>
           </p>
         </div>
 
-        {chips ? <div className="hero__chips">{chips}</div> : null}
+        <p className="hero__score">
+          <span className="hero__score-value">{score}</span>
+          <span className="hero__score-unit">{scoreUnit}</span>
+          {scoreNote ? <span className="hero__score-note">{scoreNote}</span> : null}
+        </p>
       </div>
 
+      {chips ? <div className="hero__chips">{chips}</div> : null}
+
       {nines ? (
-        <div className="hero__nines">
-          <MiniNine label="Ida" results={nines.out} total={nines.outTotal} />
-          <MiniNine label="Vuelta" results={nines.in} total={nines.inTotal} />
+        <div className="hero__card">
+          <MiniNine
+            label="Ida"
+            results={nines.out}
+            total={nines.outTotal}
+            currentHole={currentHole}
+          />
+          <MiniNine
+            label="Vuelta"
+            results={nines.in}
+            total={nines.inTotal}
+            currentHole={currentHole}
+          />
         </div>
       ) : null}
     </section>

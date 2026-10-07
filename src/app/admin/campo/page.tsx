@@ -67,7 +67,7 @@ export default async function AdminCoursePage() {
               <tr>
                 <th>Recorrido</th>
                 <td>
-                  Ulzama · barras {context.teeColor.toLowerCase()} ·{' '}
+                  Ulzama, barras {context.teeColor.toLowerCase()},{' '}
                   {context.category.toLowerCase()}
                 </td>
               </tr>

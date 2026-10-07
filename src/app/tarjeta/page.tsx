@@ -110,7 +110,7 @@ export default async function ScorecardPage() {
       ? { label: 'Revisar tarjeta', href: '#tarjeta-completa' }
       : played === 0
         ? { label: 'Comenzar vuelta', href: `/tarjeta/${next}` }
-        : { label: `Continuar vuelta · hoyo ${next}`, href: `/tarjeta/${next}` };
+        : { label: `Continuar en el hoyo ${next}`, href: `/tarjeta/${next}` };
 
   return (
     <>
@@ -121,20 +121,26 @@ export default async function ScorecardPage() {
 
       <main className="container stack page-content">
         <TournamentHero
-          course="Ulzama · Bariain"
+          course="Ulzama-Bariain"
           date={context.date ? dateFormat.format(context.date) : 'Fecha por confirmar'}
-          courseLine={`18 hoyos · Par ${context.snapshot.parTotal}`}
+          courseLine={`Par ${context.snapshot.parTotal}, 18 hoyos`}
           score={card.totals.total.points}
           scoreNote={`${played}/18 hoyos`}
           chips={
             <>
               <StatusBadge tone="onGreen">Individual Stableford</StatusBadge>
-              <StatusBadge tone="onGreen">
+              {/* El punto de este chip es el color real de las barras. */}
+              <span
+                className={`badge badge--onGreen${
+                  context.teeColor === 'AMARILLAS' ? ' hero__tee' : ''
+                }`}
+              >
                 Barras {context.teeColor.toLowerCase()}
-              </StatusBadge>
+              </span>
               <CardStatusBadge status={card.status} />
             </>
           }
+          currentHole={next ?? undefined}
           nines={{
             out: card.results.filter((r) => r.holeNumber <= 9),
             outTotal: card.totals.out.points,

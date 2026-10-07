@@ -68,10 +68,10 @@ export default async function AdminScorecardsPage() {
           title={card.displayName}
           description={
             <>
-              {card.totals.total.points} puntos · {card.totals.total.holesPlayed}/18 hoyos ·{' '}
+              {card.totals.total.points} puntos, {card.totals.total.holesPlayed}/18 hoyos,{' '}
               {card.totals.total.pickups} rayas
               {card.overriddenHoles.length > 0
-                ? ` · corregidos: ${card.overriddenHoles.join(', ')}`
+                ? `. Corregidos: ${card.overriddenHoles.join(', ')}`
                 : ''}
             </>
           }
@@ -90,7 +90,7 @@ export default async function AdminScorecardsPage() {
           {card.handicapCap.badge ? (
             <p className="muted">
               <StatusBadge tone="gold">{card.handicapCap.badge}</StatusBadge> HCP exacto{' '}
-              {card.handicapCap.exactLabel} · HJ {card.playingHandicap ?? '\u2014'}
+              {card.handicapCap.exactLabel}, HJ {card.playingHandicap ?? '\u2014'}
             </p>
           ) : null}
 

@@ -119,7 +119,7 @@ prisma/seed.ts              Seed conectado a Prisma.
 prisma/sql/constraints.sql  Restricciones CHECK que Prisma no puede expresar.
 prisma/sql/migrations/      Migraciones incrementales, re-ejecutables, para Neon.
 data/ulzama.snapshot.json   Datos del campo con procedencia de las dos fuentes.
-src/styles/tokens.css       Capa de tokens: paleta premium, tipografía, formas.
+src/styles/tokens.css       Tokens del sistema "Escudo": color, luz, tipo, movimiento.
 src/components/ui/          Sistema de componentes: botones, insignias, estados.
 docs/design-system.md       Dirección visual, paleta, tipografía y patrones.
 docs/design-system.md       Dirección visual, paleta, tipografía y patrones.
@@ -135,7 +135,7 @@ docs/                       Trazabilidad, proveedores, hándicap, seed, desplieg
 El repositorio recibido documentaba esta validación previa:
 
 ```
-633 tests · 633 pasando · 119 suites
+657 tests · 657 pasando
 Guardianes estáticos: fronteras de empaquetado y referencias a Prisma
 Tests de render sobre React 19
 Exportaciones verificadas leyendo los PDF de vuelta

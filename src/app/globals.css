@@ -1,27 +1,35 @@
 @import '../styles/tokens.css';
 
 /* =============================================================================
-   Peñita Golf Championship — hoja de componentes
-   Sistema visual v1.4.0.
+   Peñita Golf Championship · hoja de componentes "Escudo" (v2.0.0)
 
-   Orden del archivo:
-     1. Base
-     2. Estructura y navegacion
-     3. Heroe del campeonato
+   Una sola capa, escrita de nuevo. La version anterior habia crecido apilando
+   tres rediseños uno encima de otro (3.900 lineas, con reglas que se anulaban
+   entre si); esta sustituye las tres.
+
+     1. Base y comportamiento nativo en movil
+     2. Estructura: contenedor, cabecera, dock
+     3. Tipografia y piezas pequeñas
      4. Botones
-     5. Insignias, chips y mosaicos de dato
-     6. Formularios y control segmentado
-     7. Tarjeta de juego: lista de hoyos y totales
-     8. Tarjeta de juego: rejilla completa (ida / vuelta / total)
-     9. Entrada de resultados: cabecera de hoyo, teclado y confirmacion
-    10. Clasificacion
-    11. Jugadores y partidos
-    12. Administracion
-    13. Estados: vacio, error, sin conexion, sincronizacion
+     5. Insignias, chips, mosaicos, progreso
+     6. Formularios
+     7. Tarjeta heroe
+     8. Mi tarjeta: bloques de resumen
+     9. Lista hoyo a hoyo y totales
+    10. Tarjeta completa en rejilla
+    11. Entrada de resultados
+    12. Teclado, hojas y confirmacion
+    13. Clasificacion
+    14. Partido y jugadores
+    15. Administracion
+    16. Estados y avisos
+    17. Movimiento y accesibilidad
    ========================================================================== */
 
 /* ---------------------------------------------------------------------------
-   1. Base
+   1. Base y comportamiento nativo en movil
+   Cada regla de este bloque corrige un sintoma concreto de "web dentro de un
+   navegador" (skill mobile-native). No se aplican por costumbre.
    ------------------------------------------------------------------------ */
 
 *,
@@ -30,81 +38,141 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Sin el destello gris de iOS/Android al tocar: es la marca mas ruidosa de
+     "esto es una web". Cada elemento tactil lleva su propio :active. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--background);
-  color: var(--text-primary);
+  background: var(--page);
+  color: var(--ink);
   font-family: var(--font-sans);
-  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  font-size: var(--text-base);
+  font-size: var(--fs-md);
   line-height: 1.5;
-  /* Textura muy leve de curvas de nivel: da cuerpo al marfil sin competir con
-     nada. No es decoracion sobre contenido, va detras de todo. */
-  background-image: radial-gradient(
-    circle at 50% 0%,
-    rgba(27, 86, 59, 0.05),
-    transparent 60%
-  );
-  background-repeat: no-repeat;
-  background-size: 100% 420px;
+  font-feature-settings: 'kern' 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
 h2,
-h3 {
-  margin: 0;
-  line-height: 1.2;
-}
-
-h1 {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-h2 {
-  font-size: var(--text-lg);
-  font-weight: 650;
-}
-
-h3 {
-  font-size: var(--text-base);
-  font-weight: 650;
-}
-
+h3,
 p {
   margin: 0;
 }
 
+h1 {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+
 a {
-  color: var(--golf-green-700);
+  color: var(--navy-600);
   text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
+}
+
+code {
+  font-family: var(--font-narrow);
+  font-size: 0.95em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-3);
+}
+
+/* Controles: sin retraso de doble toque, sin seleccionar su texto con una
+   pulsacion larga. El texto que es CONTENIDO sigue siendo seleccionable. */
+button,
+a,
+summary,
+[role='button'],
+.segmented__option,
+.score-keypad__key {
+  touch-action: manipulation;
+}
+
+button,
+summary,
+[role='button'],
+.button,
+.bottom-nav__link,
+.segmented__option,
+.score-keypad__key,
+.player-list__item {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* iOS amplia la pagina al enfocar un input de menos de 16 px y no la devuelve.
+   La solucion es el tamaño, nunca bloquear el zoom. */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: max(16px, var(--fs-md));
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .muted {
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---------------------------------------------------------------------------
-   2. Estructura y navegacion
+   2. Estructura: contenedor, cabecera, dock
+   El marino enmarca la pantalla arriba y abajo, como el escudo enmarca su
+   dibujo. Entre medias, porcelana y contenido.
    ------------------------------------------------------------------------ */
 
 .app-shell {
   min-height: 100dvh;
-  /* El contenido nunca queda debajo de la barra inferior. */
-  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + var(--space-5));
-  background: transparent;
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .container {
@@ -114,12 +182,14 @@ a {
   padding-inline: var(--space-4);
 }
 
-@media (min-width: 900px) {
-  /* En escritorio se ensancha, pero no se convierte en otra aplicacion: la
-     tarjeta sigue siendo la de mano. */
-  .container {
-    max-width: 720px;
-  }
+.container--admin {
+  max-width: 1180px;
+}
+
+.page-content {
+  padding-top: var(--space-4);
+  /* El contenido nunca queda debajo del dock flotante. */
+  padding-bottom: calc(var(--dock-h) + var(--safe-bottom) + var(--space-7));
 }
 
 .stack {
@@ -132,44 +202,60 @@ a {
   gap: var(--space-2);
 }
 
-/* Cabecera solida, no translucida, con el nombre corto del campeonato. */
+@media (max-width: 370px) {
+  .container {
+    padding-inline: var(--space-3);
+  }
+}
+
+/* Cabecera. Empieza en el mismo marino que la barra de estado (theme-color)
+   para que, abierta desde la pantalla de inicio, cabecera y barra sean una
+   sola pieza. */
 .app-header {
-  background: var(--golf-green-900);
-  color: var(--text-on-green);
-  border-bottom: 1px solid var(--golf-green-800);
+  position: sticky;
+  top: 0;
+  z-index: 50;
   padding-top: var(--safe-top);
+  background: var(--navy-500);
+  background-image: linear-gradient(180deg, var(--navy-500) 0%, var(--navy-600) 100%);
+  color: var(--ivory);
+  box-shadow: 0 1px 0 rgba(13, 24, 38, 0.25), 0 8px 20px -14px rgba(13, 24, 38, 0.6);
 }
 
 .app-header__inner {
   width: 100%;
   max-width: var(--content-max);
   margin-inline: auto;
-  padding: var(--space-3) var(--space-4);
+  min-height: var(--header-h);
+  padding: var(--space-2) var(--space-4);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
-  min-height: 56px;
 }
 
-@media (min-width: 900px) {
-  .app-header__inner {
-    max-width: 720px;
-  }
+/* En administracion el contenido es mas ancho; la cabecera lo acompaña para
+   que el escudo quede alineado con el panel y no flotando a su izquierda. */
+body:has(.container--admin) .app-header__inner {
+  max-width: 1180px;
 }
 
-.app-header__mark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--gold-light);
+.app-header__logo {
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 12px;
+  /* Filo de marfil al 25 %: el escudo recortado sobre el marino, sin caja. */
+  box-shadow: 0 0 0 1px rgba(243, 235, 221, 0.25), 0 2px 6px rgba(13, 24, 38, 0.35);
+}
+
+.app-header__logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .app-header__titles {
@@ -177,18 +263,21 @@ a {
 }
 
 .app-header__competition {
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: rgba(238, 242, 234, 0.66);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ivory-soft);
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-header__screen {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--text-on-green);
+  font-size: var(--fs-lg);
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: #ffffff;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -197,8 +286,12 @@ a {
 .app-header__action {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
   justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.app-header :where(a, button):focus-visible {
+  outline-color: var(--tee);
 }
 
 /* Cabecera de seccion dentro del contenido. */
@@ -207,262 +300,142 @@ a {
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-3);
-  padding-top: var(--space-5);
+  padding-top: var(--space-3);
 }
 
-.section-header + * {
-  margin-top: var(--space-3);
+.section-header h1,
+.section-header h2 {
+  letter-spacing: -0.02em;
 }
 
-/* Barra inferior: solida, borde superior discreto, icono y texto. */
+/* Dock inferior flotante.
+   Material marino casi opaco (92 %) con desenfoque: el contenido que pasa por
+   debajo se intuye, lo que da profundidad, pero el texto del dock se sigue
+   leyendo al sol. Con transparencia reducida o mas contraste, se vuelve solido
+   (seccion 17). */
 .bottom-nav {
   position: fixed;
-  inset-inline: 0;
-  bottom: 0;
-  z-index: 40;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding-bottom: var(--safe-bottom);
-  box-shadow: 0 -1px 3px rgba(7, 30, 22, 0.05);
+  left: 50%;
+  bottom: calc(var(--space-3) + var(--safe-bottom));
+  z-index: 60;
+  width: min(calc(100% - 2 * var(--space-3)), 420px);
+  transform: translateX(-50%);
+  border-radius: 22px;
+  background: rgba(20, 35, 58, 0.92);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: var(--rim-dark), var(--elev-3), 0 0 0 1px rgba(13, 24, 38, 0.4);
 }
 
 .bottom-nav__list {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  align-items: stretch;
-  height: var(--bottom-nav-height);
-  max-width: var(--content-max);
-  margin-inline: auto;
+  height: var(--dock-h);
+  margin: 0;
+  padding: 6px;
   list-style: none;
-  padding: 0 var(--space-2);
-  margin-block: 0;
 }
 
 .bottom-nav__link {
+  position: relative;
   display: grid;
-  grid-template-rows: auto auto;
   justify-items: center;
   align-content: center;
-  gap: 2px;
+  gap: 3px;
   height: 100%;
-  border-radius: var(--radius-md);
+  border-radius: 16px;
+  color: var(--ivory-soft);
   text-decoration: none;
-  color: var(--text-secondary);
-  font-size: var(--text-caption);
-  font-weight: 650;
-  letter-spacing: 0.02em;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  transition: color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
 }
 
+.bottom-nav__link:active {
+  transform: scale(0.96);
+}
+
+/* El icono activo va sobre una pastilla amarilla tee: "estas aqui". Se marca
+   con color, con forma y con el peso de la etiqueta; nunca solo con color. */
 .bottom-nav__icon {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 44px;
+  height: 28px;
+  padding: 3px 11px;
+  border-radius: var(--r-pill);
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 
-/* La seccion activa se marca con color Y con una barra: no solo color. */
 .bottom-nav__link[aria-current='page'] {
-  color: var(--golf-green-800);
-  position: relative;
+  color: #ffffff;
+  font-weight: 750;
 }
 
-.bottom-nav__link[aria-current='page']::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  inset-inline: 22%;
-  height: 3px;
-  border-radius: var(--radius-pill);
-  background: var(--golf-green-800);
+.bottom-nav__link[aria-current='page'] .bottom-nav__icon {
+  background: var(--tee);
+  color: var(--navy-900);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 2px 8px rgba(242, 194, 48, 0.3);
+}
+
+.icon-fill {
+  transition: fill-opacity var(--dur-fast) ease;
+}
+
+/* El icono de la seccion en la que estas se "llena". */
+.bottom-nav__link[aria-current='page'] .icon-fill,
+.admin-navigation__link[aria-current='page'] .icon-fill {
+  fill-opacity: 0.35;
+}
+
+.bottom-nav :where(a):focus-visible {
+  outline-color: var(--tee);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bottom-nav__link:hover {
+    color: #ffffff;
+  }
 }
 
 /* ---------------------------------------------------------------------------
-   3. Heroe del campeonato
-
-   Sin fotografia: el proyecto no incluye ninguna imagen del campo con derechos
-   comprobados, y meter una de internet no es una opcion. Lo que hay es una
-   cabecera grafica de verde profundo, curvas de nivel dibujadas en SVG y
-   tipografia editorial. En cuanto exista una foto autorizada, el heroe la
-   admite con un overlay oscuro (ver docs/design-system.md).
+   3. Tipografia y piezas pequeñas
    ------------------------------------------------------------------------ */
 
-.hero {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-xl);
-  background: var(--golf-green-900);
-  color: var(--text-on-green);
-  border: 1px solid var(--golf-green-800);
-  box-shadow: var(--shadow-md);
-}
-
-.hero__texture {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-/* Gradiente oscuro para asegurar contraste. Permitido a proposito: cumple una
-   funcion de legibilidad, no decora. */
-.hero__scrim {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(7, 30, 22, 0.1) 0%,
-    rgba(7, 30, 22, 0.55) 100%
-  );
-  pointer-events: none;
-}
-
-.hero__body {
-  position: relative;
-  padding: var(--space-5) var(--space-4) var(--space-4);
-  display: grid;
-  gap: var(--space-4);
-}
-
-.hero__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: rgba(238, 242, 234, 0.74);
-}
-
-.hero__course {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
+/* Etiqueta pequeña: frase normal, sin versalitas ni tracking. Las etiquetas en
+   mayusculas espaciadas sobre cada bloque son la firma de la plantilla. */
+.eyebrow,
+.sheet__eyebrow {
+  font-size: var(--fs-sm);
   font-weight: 600;
-  line-height: 1.05;
-  color: #ffffff;
+  color: var(--ink-2);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
-.hero__headline {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: var(--space-3);
-}
-
-.hero__score {
-  text-align: right;
-  line-height: 0.9;
-}
-
-.hero__score-value {
-  font-family: var(--font-display);
-  font-size: var(--data-hero);
-  font-weight: 600;
+.data {
+  font-family: var(--font-narrow);
   font-variant-numeric: tabular-nums;
-  color: #ffffff;
+  font-feature-settings: 'tnum' 1;
 }
 
-.hero__score-unit {
-  display: block;
-  font-family: var(--font-sans);
-  font-size: var(--text-caption);
+/* Cifras grandes: estrechas, pesadas y con tracking negativo, que es lo que
+   pide un numero cuando crece. */
+.num {
+  font-family: var(--font-narrow);
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: rgba(238, 242, 234, 0.74);
-}
-
-/* Fila de chips del heroe: modalidad, barras, estado. */
-.hero__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-/* Resumen compacto de los 18 hoyos, en dos filas de nueve. */
-.hero__nines {
-  position: relative;
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(7, 30, 22, 0.45);
-}
-
-.mini-nine {
-  display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr)) 44px;
-  align-items: stretch;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.mini-nine:last-child {
-  border-bottom: 0;
-}
-
-.mini-hole {
-  display: grid;
-  grid-template-rows: auto auto;
-  justify-items: center;
-  gap: 1px;
-  padding: var(--space-2) 0;
-  min-width: 0;
-}
-
-.mini-hole__number {
-  font-size: var(--text-caption);
-  font-variant-numeric: tabular-nums;
-  color: rgba(238, 242, 234, 0.6);
-}
-
-.mini-hole__value {
-  display: grid;
-  place-items: center;
-  min-width: 24px;
-  min-height: 24px;
-  font-size: var(--text-sm);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: #ffffff;
-}
-
-/* Las formas deportivas tambien en el resumen: circulo bajo par, cuadrado
-   sobre par. Sobre verde, el contorno es blanco. */
-.mini-hole__value--birdie,
-.mini-hole__value--eagle,
-.mini-hole__value--albatros,
-.mini-hole__value--hole-in-one {
-  border-radius: var(--radius-pill);
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.9);
-}
-
-.mini-hole__value--bogey,
-.mini-hole__value--double,
-.mini-hole__value--triple {
-  border-radius: 3px;
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.55);
-}
-
-.mini-hole__value--pickup {
-  color: var(--gold-light);
-}
-
-.mini-hole__value--empty {
-  color: rgba(238, 242, 234, 0.35);
-}
-
-.mini-nine__total {
-  display: grid;
-  place-items: center;
-  border-left: 1px solid rgba(255, 255, 255, 0.16);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: #ffffff;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 /* ---------------------------------------------------------------------------
    4. Botones
+   Luz cenital: el boton principal lleva un degradado de su propio tono (mas
+   claro arriba) y un filo interior blanco. Al pulsar pierde el filo y baja a
+   0,97: se nota que la interfaz ha oido el dedo.
    ------------------------------------------------------------------------ */
 
 .button {
@@ -470,98 +443,99 @@ a {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: var(--tap-target);
+  min-height: var(--tap);
   padding-inline: var(--space-5);
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-row);
   font-family: var(--font-sans);
-  font-size: var(--text-base);
-  font-weight: 650;
-  letter-spacing: 0.01em;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.15;
+  text-align: center;
   text-decoration: none;
   cursor: pointer;
   transition:
-    background-color var(--transition-fast),
-    border-color var(--transition-fast),
-    transform var(--transition-fast);
+    transform var(--dur-press) var(--ease-out),
+    background-color var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease,
+    border-color var(--dur-fast) ease;
 }
 
 .button:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
 
 .button:disabled {
   cursor: not-allowed;
 }
 
-/* Principal: verde golf profundo, texto blanco. */
 .button--primary {
-  background: var(--golf-green-900);
-  border-color: var(--golf-green-900);
-  color: var(--text-inverse);
-  box-shadow: var(--shadow-xs);
+  background: var(--navy-700);
+  background-image: linear-gradient(180deg, var(--navy-600) 0%, var(--navy-700) 100%);
+  border-color: var(--navy-800);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(13, 24, 38, 0.2),
+    0 8px 18px -10px rgba(13, 24, 38, 0.55);
 }
 
 .button--primary:active:not(:disabled) {
-  background: var(--golf-green-950);
+  background-image: none;
+  background-color: var(--navy-800);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
 }
 
-/* Deshabilitado VISIBLE: no basta con bajar la opacidad, porque al sol un
-   boton al 50 % sigue pareciendo pulsable. */
-.button--primary:disabled {
-  background: var(--surface-subtle);
-  border-color: var(--border-strong);
-  color: var(--text-tertiary);
-  box-shadow: none;
-}
-
-/* Secundario: fondo blanco, borde, texto oscuro. */
 .button--secondary {
   background: var(--surface);
-  border-color: var(--border-strong);
-  color: var(--text-primary);
+  border-color: var(--line-strong);
+  color: var(--navy-800);
+  box-shadow: var(--rim), var(--elev-1);
 }
 
 .button--secondary:active:not(:disabled) {
-  background: var(--surface-subtle);
+  background: var(--surface-2);
+  box-shadow: inset 0 1px 2px rgba(13, 24, 38, 0.08);
 }
 
-.button--secondary:disabled {
-  background: var(--surface-subtle);
-  color: var(--text-tertiary);
-  border-color: var(--border);
-}
-
-/* Fantasma: para acciones terciarias sobre fondo verde. */
+/* Sobre marino. */
 .button--ghost {
-  background: transparent;
-  border-color: rgba(255, 255, 255, 0.3);
-  color: var(--text-on-green);
-  padding-inline: var(--space-3);
+  background: rgba(243, 235, 221, 0.08);
+  border-color: rgba(243, 235, 221, 0.22);
+  color: var(--ivory);
 }
 
-/* Premium: oro. Uso contado, nunca para una accion cualquiera. */
+/* Acento: el amarillo tee, para la unica accion que marca "donde estas". */
 .button--premium {
-  background: var(--gold);
-  border-color: var(--gold-dark);
-  color: #1c1608;
+  background: var(--tee);
+  border-color: #d9a91c;
+  color: var(--navy-950);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 6px 16px -8px rgba(168, 123, 0, 0.6);
 }
 
-/* Destructivo: rojo profundo, siempre con confirmacion detras. */
 .button--danger {
-  background: var(--danger);
-  border-color: var(--danger-strong);
-  color: var(--text-inverse);
+  background: var(--birdie);
+  background-image: linear-gradient(180deg, #d4413a 0%, var(--birdie) 100%);
+  border-color: var(--birdie-deep);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 18px -10px rgba(156, 32, 27, 0.6);
 }
 
 .button--danger:active:not(:disabled) {
-  background: var(--danger-strong);
+  background-image: none;
+  background-color: var(--birdie-deep);
 }
 
-.button--danger:disabled {
-  background: var(--surface-subtle);
-  border-color: var(--border-strong);
-  color: var(--text-tertiary);
+/* Deshabilitado VISIBLE. Bajar la opacidad no basta: al sol, un boton al 50 %
+   sigue pareciendo pulsable. */
+.button--primary:disabled,
+.button--danger:disabled,
+.button--premium:disabled,
+.button--secondary:disabled {
+  background: var(--surface-3);
+  background-image: none;
+  border-color: var(--line);
+  color: var(--ink-3);
+  box-shadow: none;
 }
 
 .button--block {
@@ -570,311 +544,337 @@ a {
 
 .button--lg {
   min-height: 58px;
-  font-size: var(--text-lg);
+  border-radius: var(--r-key);
+  font-size: var(--fs-lg);
 }
 
 .button--sm {
-  min-height: var(--tap-target-min);
+  min-height: 40px;
   padding-inline: var(--space-3);
-  font-size: var(--text-sm);
+  border-radius: var(--r-chip);
+  font-size: var(--fs-sm);
 }
 
-/* Boton de solo icono: mantiene 48 px de area tactil. */
 .icon-button {
   display: inline-grid;
   place-items: center;
-  width: var(--tap-target);
-  height: var(--tap-target);
+  width: 44px;
+  height: 44px;
   padding: 0;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-row);
   background: var(--surface);
-  color: var(--text-primary);
+  color: var(--ink);
   cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-fast) ease;
 }
 
-.icon-button--danger {
-  border-color: var(--danger);
-  color: var(--danger);
-  background: var(--danger-surface);
+.icon-button:active {
+  transform: scale(0.94);
 }
 
 .icon-button--onGreen {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: transparent;
-  color: var(--text-on-green);
+  border-color: rgba(243, 235, 221, 0.22);
+  background: rgba(243, 235, 221, 0.08);
+  color: var(--ivory);
+}
+
+.icon-button--danger {
+  border-color: var(--birdie);
+  background: var(--birdie-wash);
+  color: var(--birdie-deep);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button--primary:hover:not(:disabled) {
+    background-image: linear-gradient(180deg, #34507a 0%, var(--navy-600) 100%);
+  }
+  .button--secondary:hover:not(:disabled) {
+    border-color: var(--navy-400);
+  }
+  .icon-button--onGreen:hover {
+    background: rgba(243, 235, 221, 0.16);
+  }
 }
 
 .button-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
 }
 
 .button-row--split {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.42fr) minmax(0, 1fr);
   gap: var(--space-2);
 }
 
+a.button {
+  text-decoration: none;
+}
+
 /* ---------------------------------------------------------------------------
-   5. Insignias, chips y mosaicos de dato
+   5. Insignias, chips, mosaicos y progreso
    ------------------------------------------------------------------------ */
 
+/* Insignia: pastilla con punto de estado. Frase normal, sin versalitas. El
+   punto repite el color en forma, para no depender solo del tono del fondo. */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: 3px var(--space-2);
-  border-radius: var(--radius-sm);
+  gap: 6px;
+  min-height: 26px;
+  padding: 3px 10px 3px 8px;
+  border-radius: var(--r-pill);
   border: 1px solid transparent;
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge:has(svg)::before {
+  display: none;
+}
+
 .badge--neutral {
-  background: var(--surface-subtle);
-  border-color: var(--border);
-  color: var(--text-secondary);
+  background: var(--surface-3);
+  color: var(--ink-2);
 }
 
 .badge--green {
-  background: var(--success-surface);
-  border-color: #bcd6c2;
-  color: var(--state-synced-fg);
+  background: var(--fairway-wash);
+  color: var(--fairway-deep);
 }
 
+/* "gold" se conserva como nombre en los componentes; aqui es el amarillo tee,
+   y se usa en las insignias que señalan algo propio del jugador (limite de
+   HCP, tarjeta finalizada). */
 .badge--gold {
-  background: #f6efdf;
-  border-color: var(--gold-light);
-  color: var(--gold-dark);
+  background: var(--tee-wash);
+  border-color: rgba(168, 123, 0, 0.22);
+  color: #6f5100;
 }
 
 .badge--warning {
-  background: var(--warning-surface);
-  border-color: #e4c894;
-  color: var(--state-offline-fg);
+  background: var(--amber-wash);
+  color: var(--amber);
 }
 
 .badge--danger {
-  background: var(--danger-surface);
-  border-color: #e7b4ae;
-  color: var(--danger-strong);
+  background: var(--birdie-wash);
+  color: var(--birdie-deep);
 }
 
 .badge--onGreen {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.24);
-  color: var(--text-on-green);
+  background: rgba(243, 235, 221, 0.12);
+  border-color: rgba(243, 235, 221, 0.18);
+  color: var(--ivory);
 }
 
-/* Chip de dato: etiqueta arriba, valor abajo. */
+/* Chip de dato: etiqueta encima, cifra debajo. */
 .chip {
   display: inline-flex;
   flex-direction: column;
-  gap: 1px;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--surface-subtle);
-  border: 1px solid var(--border);
+  gap: 2px;
   min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-chip);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
 }
 
 .chip__label {
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  color: var(--ink-2);
 }
 
 .chip__value {
-  font-family: var(--font-numeric);
+  font-family: var(--font-narrow);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-base);
+  font-size: var(--fs-lg);
   font-weight: 700;
-  color: var(--text-primary);
+  line-height: 1.1;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chip--onGreen {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(243, 235, 221, 0.07);
+  border-color: rgba(243, 235, 221, 0.14);
 }
 
 .chip--onGreen .chip__label {
-  color: rgba(238, 242, 234, 0.7);
+  color: var(--ivory-soft);
 }
 
 .chip--onGreen .chip__value {
   color: #ffffff;
 }
 
-/* Mosaico de estadistica: cifra grande con su etiqueta. */
-.stat-grid {
+/* Mosaicos: secciones planas, sin sombra. Jerarquia por cifra, no por caja. */
+.stat-grid,
+.quick-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: var(--space-2);
 }
 
 .stat-tile {
   display: grid;
-  gap: 2px;
+  /* La etiqueta arriba y la cifra pegada abajo: si una etiqueta parte en dos
+     lineas, las cifras de la fila siguen alineadas entre si. */
+  grid-template-rows: auto 1fr;
+  gap: 6px;
+  min-width: 0;
   padding: var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--r-row);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
 }
 
 .stat-tile__value {
-  font-family: var(--font-numeric);
+  order: 2;
+  align-self: end;
+  font-family: var(--font-narrow);
   font-variant-numeric: tabular-nums;
-  font-size: var(--data-base);
+  font-size: var(--fs-2xl);
   font-weight: 700;
-  line-height: 1.1;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
 }
 
 .stat-tile__label {
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  order: 1;
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  color: var(--ink-2);
 }
 
 .stat-tile--accent {
-  background: var(--golf-green-900);
-  border-color: var(--golf-green-800);
-  color: var(--text-on-green);
+  background: var(--navy-700);
+  background-image: var(--sheen);
+  border-color: var(--navy-800);
+  box-shadow: var(--rim-dark);
+}
+
+.stat-tile--accent .stat-tile__value {
+  color: #ffffff;
 }
 
 .stat-tile--accent .stat-tile__label {
-  color: rgba(238, 242, 234, 0.72);
+  color: var(--ivory-soft);
 }
 
-/* Barra de progreso. Decorativa: nunca es el unico portador del dato. */
 .progress {
+  display: block;
   height: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-sunken);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
   overflow: hidden;
 }
 
 .progress__fill {
   display: block;
   height: 100%;
-  border-radius: var(--radius-pill);
-  background: var(--golf-green-700);
+  border-radius: inherit;
+  background: var(--fairway);
 }
 
 /* ---------------------------------------------------------------------------
-   6. Formularios y control segmentado
+   6. Formularios
    ------------------------------------------------------------------------ */
-
-.field {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.field > label {
-  font-size: var(--text-sm);
-  font-weight: 650;
-  color: var(--text-primary);
-}
-
-.field input,
-.field select,
-.field textarea {
-  min-height: var(--tap-target);
-  padding: var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  /* Solido. Un input translucido sobre una foto es ilegible al sol. */
-  background: var(--surface);
-  color: var(--text-primary);
-  font-size: var(--text-base);
-  font-family: inherit;
-  width: 100%;
-}
-
-.field input:focus,
-.field select:focus,
-.field textarea:focus {
-  border-color: var(--golf-green-700);
-}
-
-.field__help {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
-/* El error va junto al campo, no en una cabecera al final del formulario. */
-.field__error {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--danger-strong);
-}
-
-.field--invalid input,
-.field--invalid select,
-.field--invalid textarea {
-  border-color: var(--danger);
-  border-width: 2px;
-}
-
-.field--numeric input {
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-lg);
-  font-weight: 650;
-}
 
 .form-section {
   display: grid;
   gap: var(--space-4);
   padding: var(--space-4);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-section);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
 }
 
 .form-section__title {
   display: grid;
-  gap: 2px;
+  gap: 4px;
 }
 
-/* Control segmentado: ida / vuelta / total. */
-.segmented {
+.field {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 2px;
-  padding: 3px;
-  border-radius: var(--radius-md);
-  background: var(--surface-subtle);
-  border: 1px solid var(--border);
+  gap: 6px;
+  min-width: 0;
 }
 
-.segmented__option {
-  min-height: var(--tap-target-min);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
+.field > label {
+  font-size: var(--fs-sm);
   font-weight: 650;
-  cursor: pointer;
+  color: var(--ink);
 }
 
-.segmented__option[aria-pressed='true'] {
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 11px 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-row);
   background: var(--surface);
-  color: var(--golf-green-800);
-  box-shadow: var(--shadow-xs);
+  color: var(--ink);
+  /* Hundido: el campo es un hueco que se rellena, no una pieza que sobresale. */
+  box-shadow: inset 0 1px 2px rgba(13, 24, 38, 0.06);
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--navy-500);
+  box-shadow: inset 0 1px 2px rgba(13, 24, 38, 0.06), 0 0 0 4px rgba(54, 79, 110, 0.16);
+}
+
+.field__help {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--birdie-deep);
+}
+
+.field--invalid input,
+.field--invalid select,
+.field--invalid textarea {
+  border-color: var(--birdie);
+  box-shadow: 0 0 0 3px rgba(200, 50, 44, 0.12);
+}
+
+.field--numeric input {
+  font-family: var(--font-narrow);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .password-row {
@@ -883,334 +883,994 @@ a {
   gap: var(--space-2);
 }
 
+/* Control segmentado: la opcion activa sube como una pieza con luz propia. */
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-row);
+  background: var(--surface-3);
+  box-shadow: inset 0 1px 2px rgba(13, 24, 38, 0.07);
+}
+
+.segmented__option {
+  min-height: 40px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
+}
+
+.segmented__option:active {
+  transform: scale(0.97);
+}
+
+.segmented__option[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--navy-800);
+  box-shadow: var(--rim), 0 1px 3px rgba(13, 24, 38, 0.14);
+}
+
 /* Selector buscable del login. */
 .player-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
-  gap: var(--space-1);
-  max-height: 38vh;
+  gap: 6px;
+  max-height: 40dvh;
+  margin: 0;
+  padding: 2px;
+  list-style: none;
   overflow-y: auto;
-  border-radius: var(--radius-md);
+  overscroll-behavior: contain;
 }
 
 .player-list__item {
   width: 100%;
-  text-align: left;
-  min-height: var(--tap-target);
+  min-height: var(--tap);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  border-radius: var(--r-row);
   background: var(--surface);
-  color: var(--text-primary);
-  font-size: var(--text-base);
-  font-family: inherit;
+  color: var(--ink);
+  font-size: var(--fs-md);
+  font-weight: 550;
+  text-align: left;
   cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-fast) ease;
+}
+
+.player-list__item:active {
+  transform: scale(0.98);
 }
 
 .player-list__item--selected {
-  background: var(--golf-green-900);
-  border-color: var(--golf-green-900);
-  color: var(--text-inverse);
-  font-weight: 650;
+  background: var(--navy-700);
+  background-image: var(--sheen);
+  border-color: var(--navy-800);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: var(--rim-dark), inset 4px 0 0 var(--tee);
 }
 
 /* ---------------------------------------------------------------------------
-   7. Tarjeta de juego: lista de hoyos y totales
+   7. Tarjeta heroe
+   El objeto memorable de la aplicacion, y el unico sitio donde se gasta la
+   audacia. Es un portatarjetas de piel marino —como el que llevan los
+   jugadores en el bolsillo— con la tarjeta de juego impresa metida dentro: el
+   campo y los puntos en la tapa, los 18 hoyos escritos en la cartulina.
+   ------------------------------------------------------------------------ */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--r-hero);
+  background: var(--navy-700);
+  background-image:
+    radial-gradient(120% 90% at 100% 0%, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, var(--navy-600) 0%, var(--navy-800) 100%);
+  color: var(--ivory);
+  box-shadow: var(--rim-dark), var(--elev-3);
+}
+
+.hero__texture {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.hero__texture path {
+  stroke: var(--ivory);
+  stroke-opacity: 0.05;
+}
+
+.hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(13, 24, 38, 0.15) 0%, rgba(13, 24, 38, 0.7) 100%);
+}
+
+.hero__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+
+/* En el login no hay puntos: el cuerpo es una sola columna. */
+.login-page .hero__body {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-5) var(--space-5);
+}
+
+/* Texto secundario sobre la tapa marino: marfil atenuado, nunca el gris de
+   tinta, que sobre marino desaparece. */
+.hero .muted {
+  color: var(--ivory-soft);
+}
+
+.hero__crest {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: 0 0 0 1px rgba(243, 235, 221, 0.28), 0 8px 20px -8px rgba(13, 24, 38, 0.7);
+}
+
+.hero__crest img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero__identity {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hero__course {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  text-wrap: balance;
+}
+
+.login-page .hero__course {
+  font-size: clamp(2rem, 9vw, 2.75rem);
+}
+
+.hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ivory-soft);
+}
+
+.hero__score {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  text-align: right;
+}
+
+.hero__score-value {
+  font-family: var(--font-narrow);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-num-hero);
+  font-weight: 700;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  text-shadow: 0 2px 12px rgba(13, 24, 38, 0.35);
+}
+
+.hero__score-unit {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ivory-soft);
+}
+
+.hero__score-note {
+  font-family: var(--font-narrow);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ivory-soft);
+}
+
+.hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 var(--space-5) var(--space-4);
+}
+
+/* La barra amarilla del chip de barras es literal: es el color de las barras
+   desde las que se juega. */
+/* Sobre el marino, las insignias de estado pasan al mismo material que el
+   resto de chips de la tapa: el punto conserva su color, la pastilla no. */
+.hero__chips .badge--green,
+.hero__chips .badge--neutral,
+.hero__chips .badge--gold,
+.hero__chips .badge--warning,
+.hero__chips .badge--danger {
+  background: rgba(243, 235, 221, 0.12);
+  border-color: rgba(243, 235, 221, 0.18);
+  color: var(--ivory);
+}
+
+.hero__chips .badge--green::before {
+  background: #5fd197;
+}
+
+.hero__chips .badge--gold::before {
+  background: var(--tee);
+}
+
+.hero__chips .badge--warning::before {
+  background: #ffb547;
+}
+
+.hero__chips .badge--danger::before {
+  background: #ff8a80;
+}
+
+.hero__tee::before {
+  background: var(--tee) !important;
+  box-shadow: 0 0 0 2px rgba(242, 194, 48, 0.25);
+}
+
+/* La cartulina: tarjeta impresa, metida en el portatarjetas. */
+.hero__card {
+  margin: 0 var(--space-2) var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  border-radius: calc(var(--r-hero) - 8px);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--rim), 0 -1px 0 rgba(13, 24, 38, 0.2), 0 6px 14px -8px rgba(13, 24, 38, 0.5);
+}
+
+.mini-nine {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr)) 46px;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+}
+
+.mini-nine:last-child {
+  border-bottom: 0;
+}
+
+.mini-hole {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 0 8px;
+  border-radius: 10px;
+}
+
+/* Hoyo actual: amarillo tee, la unica cosa amarilla de la tarjeta. */
+.mini-hole[data-current='true'] {
+  background: var(--tee-wash);
+  box-shadow: inset 0 -3px 0 var(--tee);
+}
+
+.mini-hole__number {
+  font-family: var(--font-narrow);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.mini-hole__value {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font-family: var(--font-narrow);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* Las formas de la tarjeta, marcadas como a boligrafo: circulo bajo par en
+   rojo, cuadrado sobre par en pizarra. */
+.mini-hole__value--birdie {
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--birdie);
+  color: var(--birdie);
+}
+
+.mini-hole__value--eagle,
+.mini-hole__value--albatros {
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--birdie), inset 0 0 0 3.5px var(--surface),
+    inset 0 0 0 5px var(--birdie);
+  color: var(--birdie);
+}
+
+.mini-hole__value--hole-in-one {
+  border-radius: 50%;
+  background: var(--birdie);
+  color: #ffffff;
+}
+
+.mini-hole__value--bogey {
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.5px var(--navy-300);
+}
+
+.mini-hole__value--double,
+.mini-hole__value--triple {
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.5px var(--navy-400), inset 0 0 0 3.5px var(--surface),
+    inset 0 0 0 5px var(--navy-400);
+}
+
+.mini-hole__value--pickup {
+  color: var(--birdie);
+}
+
+.mini-hole__value--empty {
+  color: var(--line-strong);
+}
+
+.mini-nine__total {
+  display: grid;
+  place-items: center;
+  margin: 4px 0;
+  border-radius: 10px;
+  background: var(--navy-50);
+  font-family: var(--font-narrow);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--navy-800);
+}
+
+@media (max-width: 370px) {
+  .hero__body {
+    padding: var(--space-4) var(--space-4) var(--space-3);
+  }
+  .hero__chips {
+    padding: 0 var(--space-4) var(--space-3);
+  }
+  .hero__course {
+    font-size: var(--fs-xl);
+  }
+  .hero__score-value {
+    font-size: 2.75rem;
+  }
+  .mini-nine {
+    grid-template-columns: repeat(9, minmax(0, 1fr)) 38px;
+  }
+  .mini-hole__value {
+    width: 23px;
+    height: 23px;
+    font-size: var(--fs-sm);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   8. Mi tarjeta: bloques de resumen
+   Planos y con filete. Ninguno compite con la tarjeta heroe.
+   ------------------------------------------------------------------------ */
+
+.primary-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+@media (min-width: 520px) {
+  .primary-actions {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+}
+
+.overview-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+@media (min-width: 560px) {
+  .overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.info-card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--r-section);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.info-card .eyebrow {
+  color: var(--ink);
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+
+.info-card .stat-tile {
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  background: var(--surface-2);
+}
+
+.info-card .stat-tile--accent {
+  background: var(--navy-700);
+  background-image: var(--sheen);
+}
+
+.info-card__note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.round-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.round-info-grid .chip {
+  display: grid;
+}
+
+.quick-stat-grid--handicap {
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+}
+
+/* ---------------------------------------------------------------------------
+   9. Lista hoyo a hoyo y totales
+   Una tabla de salidas impresa: un solo tablero con filas separadas por
+   filete, no dieciocho tarjetas sueltas con su sombra.
    ------------------------------------------------------------------------ */
 
 .scorecard {
   display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  gap: 0;
+  padding: var(--space-2);
+  border-radius: var(--r-section);
   background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-xs);
+  border: 1px solid var(--line);
 }
 
 .scorecard__heading {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: var(--space-3) 0 var(--space-1);
-  font-size: var(--text-caption);
+  margin: var(--space-3) var(--space-2) var(--space-2);
+  font-size: var(--fs-sm);
   font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--ink);
 }
 
 .scorecard__heading::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--border);
+  background: var(--line);
 }
 
 .scorecard__holes {
-  list-style: none;
+  display: grid;
+  gap: 2px;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: var(--space-1);
+  list-style: none;
 }
 
 .scorecard__read-only {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0;
+  margin: var(--space-1) var(--space-1) var(--space-2);
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-subtle);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
+  border-radius: var(--r-chip);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
-/* Una fila por hoyo. Sin scroll horizontal a 320 px: el bloque de metadatos
-   encoge y los tres indicadores mantienen su tamano tactil. */
 .hole-row {
+  position: relative;
   display: grid;
-  grid-template-columns: 2.5ch minmax(0, 1fr) auto auto auto;
+  grid-template-columns: 42px minmax(0, 1fr) 38px 38px;
   align-items: center;
-  gap: var(--space-2);
-  min-height: var(--tap-target);
-  padding: var(--space-2);
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  background: var(--surface);
+  gap: 10px;
+  min-height: 60px;
+  padding: 8px;
+  border-radius: var(--r-row);
   color: inherit;
   text-decoration: none;
+  transition: background-color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
 }
 
-.hole-row--played {
-  border-color: var(--border);
+a.hole-row:active {
+  transform: scale(0.985);
+  background: var(--surface-2);
 }
 
-.hole-row--pending {
-  background: var(--surface-subtle);
-  border-color: var(--border);
+@media (hover: hover) and (pointer: fine) {
+  a.hole-row:hover {
+    background: var(--surface-2);
+  }
 }
 
-/* El hoyo actual se marca con borde verde Y con la barra lateral, para que no
-   dependa solo del color. */
+.hole-row--pending .hole-row__number {
+  background: var(--surface-3);
+  color: var(--ink-2);
+  box-shadow: none;
+}
+
+.hole-row--pending .hole-row__number-label {
+  color: var(--ink-3);
+}
+
+/* Hoyo actual: amarillo tee en el borde y en el numero. */
 .hole-row--current {
-  border-color: var(--golf-green-700);
-  border-width: 2px;
-  background: var(--surface);
+  background: var(--tee-wash);
+  box-shadow: inset 4px 0 0 var(--tee);
+}
+
+.hole-row--current .hole-row__number {
+  background: var(--tee);
+  color: var(--navy-950);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.hole-row--current .hole-row__number-label {
+  color: rgba(13, 24, 38, 0.6);
 }
 
 .hole-row--overridden {
-  border-color: var(--warning);
+  box-shadow: inset 4px 0 0 var(--amber);
 }
 
 .hole-row__number {
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--navy-700);
+  background-image: var(--sheen);
+  box-shadow: var(--rim-dark);
+  color: #ffffff;
+  font-family: var(--font-narrow);
+  font-size: var(--fs-lg);
   font-weight: 700;
-  font-size: var(--text-base);
-  text-align: right;
-  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.hole-row__number-label {
+  font-family: var(--font-sans);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ivory-soft);
+}
+
+.hole-row__body {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.hole-row__meta,
+.hole-row__support {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  min-width: 0;
 }
 
 .hole-row__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px var(--space-2);
-  min-width: 0;
-  font-size: var(--text-label);
-  color: var(--text-secondary);
+  font-family: var(--font-narrow);
+  font-size: var(--fs-sm);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.hole-row__support {
+  min-height: 18px;
 }
 
 .hole-row__pending,
 .hole-row__overridden {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--ink-3);
 }
 
 .hole-row__overridden {
-  color: var(--warning);
+  color: var(--amber);
 }
 
-/* Resumen de nueve hoyos. */
+.hole-row__result,
+.hole-row__points {
+  display: grid;
+  place-items: center;
+}
+
+/* Resultado bruto: la FORMA informa, el color acompaña. */
+.score-number {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-family: var(--font-narrow);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.score-number--compact {
+  width: 28px;
+  height: 28px;
+  font-size: var(--fs-md);
+}
+
+.score-number--birdie,
+.score-number--eagle,
+.score-number--albatros {
+  color: var(--birdie);
+}
+
+.score-number--birdie {
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--birdie);
+}
+
+.score-number--eagle,
+.score-number--albatros {
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--birdie), inset 0 0 0 4px var(--surface),
+    inset 0 0 0 6px var(--birdie);
+}
+
+/* Hoyo en uno: circulo lleno. Es el unico resultado que merece tinta solida. */
+.score-number--hole-in-one {
+  border-radius: 50%;
+  background: var(--birdie);
+  box-shadow: 0 2px 8px rgba(200, 50, 44, 0.35);
+  color: #ffffff;
+}
+
+.score-number--bogey,
+.score-number--double,
+.score-number--triple {
+  color: var(--navy-700);
+}
+
+.score-number--bogey {
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 2px var(--navy-300);
+}
+
+.score-number--double {
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 2px var(--navy-400), inset 0 0 0 4px var(--surface),
+    inset 0 0 0 6px var(--navy-400);
+}
+
+.score-number--triple {
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 2px var(--navy-500), inset 0 0 0 4px var(--surface),
+    inset 0 0 0 6px var(--navy-500), inset 0 0 0 8px var(--surface),
+    inset 0 0 0 10px var(--navy-500);
+}
+
+.score-number--pickup {
+  color: var(--birdie);
+  font-weight: 800;
+}
+
+/* Puntos Stableford: escala de intensidad. El 5 es una medalla, no un color. */
+.points-cell {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-family: var(--font-narrow);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.points-cell--0 {
+  background: var(--surface-3);
+  color: var(--ink-3);
+}
+
+.points-cell--1 {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.points-cell--2 {
+  background: var(--navy-50);
+  color: var(--navy-700);
+  box-shadow: inset 0 0 0 1px var(--navy-100);
+}
+
+.points-cell--3 {
+  background: var(--fairway);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.points-cell--4 {
+  background: var(--fairway-deep);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.points-cell--5 {
+  background: radial-gradient(circle at 32% 28%, var(--medal-gold-hi) 0%, var(--medal-gold) 58%, #876718 100%);
+  color: var(--navy-950);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 6px rgba(135, 103, 24, 0.4);
+}
+
+/* Raya: barra roja tachando la casilla. Se distingue del 0 por forma. */
+.points-cell--pickup::after {
+  content: '';
+  position: absolute;
+  inset-inline: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--birdie);
+}
+
+.points-cell--empty {
+  background: transparent;
+  color: var(--line-strong);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 10px;
+}
+
+.strokes-received {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-narrow);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--fairway-deep);
+}
+
+.strokes-received--none {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.strokes-received--giving {
+  color: var(--birdie-deep);
+}
+
+.strokes-received__count {
+  font-size: var(--fs-xs);
+}
+
 .nine-summary {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-subtle);
-  border: 1px solid var(--border);
-  font-family: var(--font-numeric);
+  justify-content: space-between;
+  gap: 4px var(--space-3);
+  margin: var(--space-2) var(--space-1) var(--space-1);
+  padding: 10px var(--space-3);
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  font-family: var(--font-narrow);
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
 }
 
 .nine-summary__label {
+  font-family: var(--font-sans);
   font-weight: 700;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  font-size: var(--text-caption);
-  color: var(--text-secondary);
-  margin-inline-end: auto;
+  color: var(--ink);
 }
 
 .nine-summary__pickups {
-  color: var(--gross-pickup);
-  font-weight: 600;
+  color: var(--birdie-deep);
+  font-weight: 650;
 }
 
 .totals-panel {
   display: grid;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin: var(--space-2) var(--space-1) var(--space-1);
 }
 
 .totals-panel__total {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--golf-green-900);
-  color: var(--text-on-green);
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-base);
+  gap: 4px var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--r-row);
+  background: var(--navy-700);
+  background-image: var(--sheen);
+  box-shadow: var(--rim-dark);
+  color: var(--ivory);
+  font-family: var(--font-narrow);
+  font-size: var(--fs-md);
   font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .totals-panel__label {
-  font-weight: 700;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  font-size: var(--text-caption);
-  color: rgba(238, 242, 234, 0.72);
   margin-inline-end: auto;
+  font-family: var(--font-sans);
+  font-weight: 750;
+  color: #ffffff;
 }
 
 .totals-panel__to-par {
-  font-size: var(--text-lg);
+  font-size: var(--fs-lg);
   font-weight: 700;
-  color: var(--gold-light);
+  color: var(--tee);
 }
 
-/* Aviso de bruto incompleto: ocupa su propia linea, para que no se lea como si
-   fuese un total mas. */
 .totals-panel__incomplete {
   flex-basis: 100%;
   font-family: var(--font-sans);
-  font-size: var(--text-label);
-  font-weight: 600;
-  color: rgba(238, 242, 234, 0.8);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  color: var(--ivory-soft);
 }
 
 /* ---------------------------------------------------------------------------
-   8. Tarjeta de juego: rejilla completa
-
-   Rejilla CSS, no `<table>`: a 320 px una tabla de 18 columnas es ilegible, y
-   una rejilla permite fijar la columna de etiquetas y dejar que solo la zona de
-   hoyos se desplace. El marcado lleva role="table"/"row"/"cell" para que un
-   lector de pantalla siga leyendolo como la tabla que conceptualmente es.
+   10. Tarjeta completa en rejilla
+   Rejilla CSS con semantica de tabla. Cada fila es su propia rejilla, con la
+   columna de etiquetas y la de total fijas mientras se desplaza el resto.
    ------------------------------------------------------------------------ */
 
 .scorecard-grid {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  border-radius: var(--r-section);
   background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-xs);
+  border: 1px solid var(--line);
 }
 
 .scorecard-grid__scroll {
-  /* El desplazamiento horizontal se permite SOLO aqui dentro, nunca en la
-     pagina. Con nueve hoyos por vista rara vez hace falta. */
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  border-radius: var(--r-row);
+  border: 1px solid var(--line);
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
 
 .scorecard-grid__table {
-  display: grid;
-  /* Etiqueta fija + 9 hoyos + total. */
-  grid-template-columns: 62px repeat(9, minmax(30px, 1fr)) 46px;
-  min-width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  display: block;
+  width: 100%;
+  min-width: 428px;
 }
 
 .scorecard-grid__table--full {
-  grid-template-columns: 62px repeat(18, minmax(28px, 1fr)) 46px;
-  min-width: 620px;
+  min-width: 734px;
+}
+
+.scorecard-grid__row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 62px repeat(9, minmax(32px, 1fr)) 48px;
+}
+
+.scorecard-grid__table--full .scorecard-grid__row {
+  grid-template-columns: 62px repeat(18, minmax(32px, 1fr)) 48px;
 }
 
 .scorecard-grid__cell {
   display: grid;
   place-items: center;
-  min-height: 38px;
+  min-height: 40px;
   padding: 2px;
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  color: var(--text-primary);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   background: var(--surface);
+  font-family: var(--font-narrow);
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.scorecard-grid__cell:last-child {
+  border-right: 0;
 }
 
 .scorecard-grid__row:last-child .scorecard-grid__cell {
   border-bottom: 0;
 }
 
-/* Etiqueta de fila fija a la izquierda. */
 .scorecard-grid__label {
-  justify-content: flex-start;
-  padding-inline: var(--space-2);
-  background: var(--surface-subtle);
-  border-right: 1px solid var(--border);
-  font-family: var(--font-sans);
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--text-secondary);
   position: sticky;
   left: 0;
-  z-index: 1;
+  z-index: 3;
+  justify-items: start;
+  padding-inline: 10px;
+  background: var(--surface-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--ink-2);
 }
 
 .scorecard-grid__head {
-  background: var(--golf-green-900);
-  color: var(--text-on-green);
+  background: var(--navy-700);
+  color: #ffffff;
   font-weight: 700;
-  border-bottom-color: var(--golf-green-800);
+  border-color: var(--navy-800);
 }
 
 .scorecard-grid__head.scorecard-grid__label {
-  background: var(--golf-green-950);
-  color: rgba(238, 242, 234, 0.8);
-  border-right-color: var(--golf-green-800);
+  z-index: 4;
+  background: var(--navy-800);
+  color: var(--ivory-soft);
 }
 
-/* Columna de totales: siempre identificable. */
 .scorecard-grid__total {
-  background: var(--surface-sunken);
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: var(--navy-50);
+  border-left: 1px solid var(--navy-100);
   font-weight: 700;
-  border-left: 1px solid var(--border-strong);
+  color: var(--navy-800);
+  box-shadow: -6px 0 12px -6px rgba(13, 24, 38, 0.15);
 }
 
 .scorecard-grid__head.scorecard-grid__total {
-  background: var(--golf-green-950);
-  border-left-color: var(--golf-green-800);
+  z-index: 4;
+  background: var(--navy-900);
+  color: var(--tee);
 }
 
 .scorecard-grid__row--points .scorecard-grid__cell {
@@ -1218,80 +1878,153 @@ a {
 }
 
 .scorecard-grid__footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  align-items: baseline;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+  display: grid;
+  /* Tres o cuatro datos segun haya rayas: auto-fit los reparte en una fila y
+     no deja el cuarto huerfano debajo. */
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: var(--space-2);
+}
+
+.scorecard-grid__footer > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-2);
+  border-radius: var(--r-chip);
+  background: var(--surface-2);
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+.scorecard-grid__footer strong {
+  display: block;
+  font-family: var(--font-narrow);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--ink);
 }
 
 /* ---------------------------------------------------------------------------
-   9. Entrada de resultados
+   11. Entrada de resultados
    ------------------------------------------------------------------------ */
 
-/* Cabecera del hoyo: el numero manda, el resto son datos de apoyo. */
+.hole-page {
+  padding-top: var(--space-3);
+}
+
+.hole-editor {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Cabecera del hoyo: el numero manda. */
 .hole-header {
   position: relative;
-  overflow: hidden;
   display: grid;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  border-radius: var(--radius-xl);
-  background: var(--golf-green-900);
-  border: 1px solid var(--golf-green-800);
-  color: var(--text-on-green);
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--r-hero);
+  background: var(--navy-700);
+  background-image:
+    radial-gradient(110% 80% at 100% 0%, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, var(--navy-600) 0%, var(--navy-800) 100%);
+  color: var(--ivory);
+  box-shadow: var(--rim-dark), var(--elev-2);
 }
 
 .hole-header__top {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-4);
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--space-3);
 }
 
 .hole-header__number {
   display: grid;
+  place-items: center;
+  align-content: center;
   gap: 0;
-  justify-items: center;
-  min-width: 78px;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: var(--space-2);
+  border-radius: 18px;
+  background: rgba(243, 235, 221, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(243, 235, 221, 0.18), var(--rim-dark);
 }
 
 .hole-header__number-label {
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: rgba(238, 242, 234, 0.72);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ivory-soft);
 }
 
 .hole-header__number-value {
-  font-family: var(--font-display);
-  font-size: var(--text-4xl);
-  font-weight: 600;
-  line-height: 1;
+  font-family: var(--font-narrow);
+  font-size: 3.25rem;
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
   color: #ffffff;
 }
 
 .hole-header__facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-  gap: var(--space-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
-/* Fila del jugador dentro de la entrada de resultados. */
-.hole-player {
+.hole-header__facts .chip {
+  padding: 7px 10px;
+}
+
+.hole-header__facts .chip__value {
+  font-size: var(--fs-lg);
+}
+
+/* Anterior, Mi tarjeta, siguiente. */
+.hole-step-nav {
   display: grid;
-  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 6px;
+}
+
+.hole-step-nav__link,
+.hole-step-nav__placeholder {
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+.hole-step-nav__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding-inline: var(--space-2);
+  background: rgba(243, 235, 221, 0.07);
+  border: 1px solid rgba(243, 235, 221, 0.16);
+  color: #ffffff;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  text-decoration: none;
+  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-fast) ease;
+}
+
+.hole-step-nav__link:active {
+  transform: scale(0.96);
+  background: rgba(243, 235, 221, 0.14);
+}
+
+.hole-step-nav__link--card {
+  padding-inline: var(--space-3);
+  color: var(--tee);
+}
+
+/* Fila del jugador. */
+.hole-player {
   padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-section);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
 }
 
 .hole-player__top {
@@ -1303,192 +2036,362 @@ a {
 
 .hole-player__color {
   width: 4px;
-  min-height: 32px;
-  border-radius: var(--radius-pill);
+  align-self: stretch;
+  min-height: 36px;
+  border-radius: var(--r-pill);
+}
+
+.hole-player__identity {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .hole-player__name {
-  font-weight: 650;
-  min-width: 0;
-  overflow-wrap: break-word;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .hole-player__values {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
-/* Teclado: 3 x 3 para 1-9, mas una fila de acciones. Todo por encima de 56 px
-   y usable con una mano. */
+.hole-player__saved-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hole-player__saved-points {
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--fairway-wash);
+  color: var(--fairway-deep);
+  font-family: var(--font-narrow);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+/* Bloque de entrada. */
+.score-entry {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--r-section);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.score-entry__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 2px var(--space-1) 0;
+}
+
+.score-entry__header h2 {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.score-entry__hint {
+  padding-inline: var(--space-1);
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+/* ---------------------------------------------------------------------------
+   12. Teclado, hojas y confirmacion
+   ------------------------------------------------------------------------ */
+
+/* Teclas con relieve: luz arriba, sombra de contacto abajo. Al pulsar se
+   hunden. Es la respuesta tactil mas frecuente de toda la vuelta, asi que es
+   rapida (140 ms) y no anima nada mas. */
 .score-keypad {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px solid var(--border);
 }
 
 .score-keypad__key {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
   min-height: 62px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--text-primary);
-  font-family: var(--font-numeric);
-  font-size: var(--text-2xl);
-  font-weight: 650;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-key);
+  background: linear-gradient(180deg, #ffffff 0%, var(--surface-2) 100%);
+  color: var(--navy-800);
+  font-family: var(--font-narrow);
+  font-size: 1.875rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
   cursor: pointer;
+  box-shadow: var(--rim), 0 1px 0 var(--line-strong), 0 2px 4px -2px rgba(13, 24, 38, 0.18);
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-press) var(--ease-out),
+    background-color var(--dur-fast) ease,
+    color var(--dur-fast) ease;
 }
 
 .score-keypad__key:active:not(:disabled) {
-  background: var(--surface-subtle);
+  transform: translateY(1px) scale(0.97);
+  box-shadow: inset 0 2px 4px rgba(13, 24, 38, 0.12);
 }
 
-/* Seleccion inequivoca: verde relleno, no un borde fino. */
+.score-keypad__number {
+  display: block;
+}
+
+/* Seleccion inequivoca: marino lleno. */
 .score-keypad__key--selected {
-  background: var(--golf-green-900);
-  border-color: var(--golf-green-900);
-  color: var(--text-inverse);
-  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.18);
+  background: var(--navy-700);
+  background-image: var(--sheen);
+  border-color: var(--navy-800);
+  color: #ffffff;
+  box-shadow: var(--rim-dark), 0 6px 16px -8px rgba(13, 24, 38, 0.6);
+}
+
+/* Seleccion que da puntos: calle, con los puntos que producira. */
+.score-keypad__key--scoring {
+  background: var(--fairway);
+  background-image: linear-gradient(180deg, #24905b 0%, var(--fairway) 100%);
+  border-color: var(--fairway-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 6px 16px -8px rgba(20, 92, 57, 0.7);
+}
+
+.score-keypad__points-earned {
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #ffffff;
 }
 
 .score-keypad__key:disabled {
-  background: var(--surface-subtle);
-  color: var(--text-tertiary);
-  border-color: var(--border);
+  background: var(--surface-3);
+  color: var(--ink-3);
+  box-shadow: none;
   cursor: not-allowed;
 }
 
-/* Fila de acciones: separada de las cifras por una linea, para no pulsar
-   "borrar" buscando el 9. */
+/* Fila de acciones separada de las cifras: buscar el 9 con el pulgar no puede
+   acabar en "borrar". */
 .score-keypad__actions {
   grid-column: 1 / -1;
   display: grid;
-  /* Con una sola accion ocupa el ancho completo; con dos, se reparten. */
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: var(--space-2);
+  margin-top: 2px;
   padding-top: var(--space-3);
-  margin-top: var(--space-1);
-  border-top: 1px solid var(--border);
+  border-top: 1px dashed var(--line-strong);
 }
 
 .score-keypad__key--pickup {
-  color: var(--gross-pickup);
-  font-size: var(--text-xl);
-  min-height: var(--tap-target);
+  grid-auto-flow: column;
+  gap: var(--space-2);
+  min-height: 52px;
+  color: var(--birdie);
+  font-size: var(--fs-xl);
+}
+
+.score-keypad__pickup-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .score-keypad__key--pickup.score-keypad__key--selected {
-  background: var(--gross-pickup);
-  border-color: var(--danger-strong);
-  color: var(--text-inverse);
+  background: var(--birdie);
+  background-image: linear-gradient(180deg, #d4413a 0%, var(--birdie) 100%);
+  border-color: var(--birdie-deep);
+  color: #ffffff;
 }
 
-/* Borrar resultado: rojo, con icono y con texto. */
 .score-keypad__key--clear {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: var(--tap-target);
-  background: var(--danger-surface);
-  border-color: var(--danger);
-  color: var(--danger-strong);
+  min-height: 52px;
+  background: var(--birdie-wash);
+  border-color: rgba(200, 50, 44, 0.35);
+  color: var(--birdie-deep);
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 650;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  box-shadow: none;
 }
 
-/* Hoja inferior: a pantalla completa en movil, no un modal diminuto. */
+/* Hoja inferior.
+   Velo marino para enfocar, y la hoja sube desde su propia altura con la
+   curva de cajon de iOS. Entra y sale por el mismo camino. */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: var(--space-4) var(--space-2) max(var(--space-2), var(--safe-bottom));
+  background: rgba(13, 24, 38, 0.55);
+  overscroll-behavior: contain;
+  transition: opacity 200ms ease;
+}
+
+@starting-style {
+  .sheet-overlay {
+    opacity: 0;
+  }
+}
+
 .sheet {
   display: grid;
   gap: var(--space-4);
   padding: var(--space-4);
-  border-radius: var(--radius-xl);
+  border-radius: var(--r-section);
   background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--line);
+}
+
+.sheet-overlay > .sheet,
+.sheet-overlay > .confirmation {
+  width: min(100%, 620px);
+  max-height: calc(100dvh - var(--safe-top) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 26px 26px 20px 20px;
+  border: 0;
+  box-shadow: var(--rim), var(--elev-3);
+  transition: transform var(--dur-sheet) var(--ease-drawer), opacity 200ms ease;
+}
+
+@starting-style {
+  .sheet-overlay > .sheet,
+  .sheet-overlay > .confirmation {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
 }
 
 .sheet__handle {
   justify-self: center;
   width: 40px;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--border-strong);
+  height: 5px;
+  margin-top: -6px;
+  border-radius: var(--r-pill);
+  background: var(--line-strong);
 }
 
 .sheet__title {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 600;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
-.sheet--danger {
-  border-color: var(--danger);
-  border-width: 2px;
+.sheet--danger .sheet__eyebrow {
+  color: var(--birdie-deep);
 }
 
-/* Resumen previo a confirmar. Superficie solida y datos en rejilla. */
+/* Resumen previo a confirmar: los datos en una cuadricula impresa. */
 .confirmation {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
   padding: var(--space-4);
-  border-radius: var(--radius-xl);
+  border-radius: var(--r-section);
   background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
 }
 
 .confirmation__title {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 600;
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
 .confirmation__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
   margin: 0;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-subtle);
-  border: 1px solid var(--border);
+  overflow: hidden;
+  border-radius: var(--r-row);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.confirmation__grid > div {
+  display: grid;
+  gap: 2px;
+  padding: 10px var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.confirmation__grid > div:nth-child(odd) {
+  border-right: 1px solid var(--line);
+}
+
+/* Solo la ultima celda va sin filete inferior: es la de puntos, a todo el
+   ancho. Con siete celdas, quitarselo a las dos ultimas dejaba "Golpes" con
+   linea y "Neto" sin ella. */
+.confirmation__grid > div:last-child {
+  border-bottom: 0;
 }
 
 .confirmation__grid dt {
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  color: var(--ink-2);
 }
 
 .confirmation__grid dd {
   margin: 0;
-  font-family: var(--font-numeric);
-  font-size: var(--text-lg);
+  font-family: var(--font-narrow);
+  font-size: var(--fs-xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }
 
 .confirmation__points {
   grid-column: 1 / -1;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border);
+  display: flex !important;
+  align-items: baseline;
+  justify-content: space-between;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  background: var(--surface);
 }
 
 .confirmation__points dd {
-  font-size: var(--text-2xl);
-  color: var(--golf-green-800);
+  font-size: var(--fs-3xl);
+  letter-spacing: -0.03em;
+  color: var(--navy-800);
 }
 
-.confirmation__extra {
+.confirmation__points--positive {
+  background: var(--fairway-wash);
+}
+
+.confirmation__points--positive dt,
+.confirmation__points--positive dd {
+  color: var(--fairway-deep);
+}
+
+.confirmation__extra.alert {
   display: grid;
   gap: var(--space-2);
 }
@@ -1497,1739 +2400,158 @@ a {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-weight: 600;
-  min-height: var(--tap-target-min);
+  min-height: 44px;
+  font-weight: 650;
+}
+
+.confirmation__extra input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--navy-700);
 }
 
 .confirmation__actions {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-2);
-}
-
-/* ---------------------------------------------------------------------------
-   10. Clasificacion
-   ------------------------------------------------------------------------ */
-
-.leaderboard {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.leaderboard__rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-
-.leaderboard__provisional {
-  margin: 0;
-}
-
-.leaderboard--hidden {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-6) var(--space-4);
-  border-radius: var(--radius-xl);
-  background: var(--golf-green-900);
-  border: 1px solid var(--golf-green-800);
-  color: var(--text-on-green);
-  text-align: center;
-}
-
-/* Fila de clasificacion: posicion muy visible, puntos con la jerarquia mas
-   alta, y la barra de progreso al pie. */
-.leaderboard-card {
-  display: grid;
-  grid-template-columns: 3.2ch 4px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-xs);
-}
-
-.leaderboard-card__position {
-  font-family: var(--font-display);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: var(--text-xl);
-  text-align: right;
-  color: var(--text-primary);
-}
-
-.leaderboard-card__color {
-  width: 4px;
-  height: 100%;
-  min-height: 34px;
-  border-radius: var(--radius-pill);
-}
-
-.leaderboard-card__name {
-  font-weight: 650;
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-
-.leaderboard-card__handicaps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  font-size: var(--text-label);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.leaderboard-card__points {
-  grid-row: span 2;
-  font-family: var(--font-display);
-  font-size: var(--data-large);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  text-align: right;
-  color: var(--golf-green-900);
-}
-
-.leaderboard-card__strokes {
-  font-size: var(--text-label);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.leaderboard-card__bar {
-  grid-column: 1 / -1;
-  height: 5px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-sunken);
-  overflow: hidden;
-}
-
-.leaderboard-card__bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: var(--radius-pill);
-}
-
-.leaderboard-card__note {
-  grid-column: 1 / -1;
-  font-size: var(--text-label);
-}
-
-.leaderboard-card--latest {
-  border-color: var(--golf-green-700);
-  border-width: 2px;
-}
-
-/* Podio: oro, plata y bronce, y separado del resto. */
-.podium--1 {
-  border: 2px solid var(--podium-gold);
-  background: linear-gradient(180deg, #fbf7ee 0%, var(--surface) 55%);
-  box-shadow: var(--shadow-md);
-}
-
-.podium--1 .leaderboard-card__position,
-.podium--1 .leaderboard-card__points {
-  color: var(--gold-dark);
-}
-
-.podium--1 .leaderboard-card__points {
-  font-size: var(--data-hero);
-}
-
-.podium--2 {
-  border: 2px solid var(--podium-silver);
-}
-
-.podium--3 {
-  border: 2px solid var(--podium-bronze);
-  /* Separacion clara entre el podio y el resto de la tabla. */
-  margin-bottom: var(--space-4);
-}
-
-/* ---------------------------------------------------------------------------
-   11. Jugadores y partidos
-   ------------------------------------------------------------------------ */
-
-.player-card {
-  display: grid;
-  grid-template-columns: 4px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-/* La tarjeta propia se identifica con borde verde y una insignia, no solo con
-   el color. */
-.player-card--own {
-  border-color: var(--golf-green-700);
-  border-width: 2px;
-}
-
-.player-card__color {
-  width: 4px;
-  height: 100%;
-  min-height: 38px;
-  border-radius: var(--radius-pill);
-}
-
-.player-card__body {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.player-card__name {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-weight: 650;
-  flex-wrap: wrap;
-}
-
-.player-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  font-size: var(--text-label);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.player-card__score {
-  text-align: right;
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-}
-
-.player-card__points {
-  font-size: var(--data-base);
-  font-weight: 700;
-  line-height: 1;
-}
-
-.player-card__holes {
-  font-size: var(--text-caption);
-  color: var(--text-secondary);
-}
-
-.flight-card {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-xs);
-}
-
-.flight-card__header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-3);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border);
-}
-
-.flight-card__tee-time {
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-xl);
-  font-weight: 700;
-}
-
-.flight-card__members {
-  display: grid;
-  gap: var(--space-2);
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-/* ---------------------------------------------------------------------------
-   12. Administracion
-   ------------------------------------------------------------------------ */
-
-.admin-nav {
-  display: flex;
-  gap: var(--space-2);
-  list-style: none;
-  margin: 0;
-  padding: 0 0 var(--space-1);
-  /* Se desplaza la propia barra, no la pagina. */
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.admin-nav::-webkit-scrollbar {
-  display: none;
-}
-
-.admin-nav a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap-target-min);
-  padding-inline: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: var(--text-sm);
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.admin-nav a[aria-current='page'] {
-  background: var(--golf-green-900);
-  border-color: var(--golf-green-900);
-  color: var(--text-inverse);
-}
-
-.admin-section {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-xs);
-}
-
-.admin-section__header {
-  display: grid;
-  gap: 2px;
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border);
-}
-
-/* Zona de acciones criticas: separada visualmente del flujo normal, con banda
-   roja y su propio bloque. No comparte superficie con nada mas. */
-.critical-zone {
-  display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-6);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--danger-surface);
-  border: 1px solid var(--danger);
-  border-left-width: 5px;
-}
-
-.critical-zone__title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
-  color: var(--danger-strong);
-}
-
-.critical-zone__body {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  border: 1px solid #e7b4ae;
-}
-
-.critical-zone__facts {
-  display: grid;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-.critical-zone__facts strong {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Panel de resumen del administrador. */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--space-2);
-}
-
-table.data {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-table.data th,
-table.data td {
-  text-align: left;
-  padding: var(--space-2);
-  border-bottom: 1px solid var(--border);
-}
-
-table.data thead th {
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-strong);
-}
-
-table.data tbody th {
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.table-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ---------------------------------------------------------------------------
-   13. Estados
-   ------------------------------------------------------------------------ */
-
-/* Aviso en linea. Nunca depende solo del color: lleva icono y texto. */
-.alert {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--warning-surface);
-  border: 1px solid #e4c894;
-  border-left-width: 4px;
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-}
-
-.alert--danger {
-  background: var(--danger-surface);
-  border-color: #e7b4ae;
-  color: var(--danger-strong);
-  font-weight: 600;
-}
-
-.alert--success {
-  background: var(--success-surface);
-  border-color: #bcd6c2;
-  color: var(--state-synced-fg);
-}
-
-.alert--info {
-  background: var(--info-surface);
-  border-color: #bfd2e0;
-  color: var(--state-saving-fg);
-}
-
-.alert__icon {
-  flex: none;
-  margin-top: 1px;
-}
-
-/* La casilla del resultado poco habitual usa la superficie de aviso pero lleva
-   dos bloques apilados, no un icono y una linea. `.alert` va despues en el
-   archivo y ganaria, asi que la excepcion se declara aqui. */
-.confirmation__extra.alert {
-  display: grid;
-  gap: var(--space-2);
-}
-
-/* Estado vacio y estado de error comparten forma: titulo, explicacion y una
-   sola accion cuando existe. Nunca se inventa una accion que no exista. */
-.state-block {
-  display: grid;
-  gap: var(--space-3);
-  justify-items: center;
-  text-align: center;
-  padding: var(--space-6) var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px dashed var(--border-strong);
-}
-
-.state-block__icon {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-subtle);
-  color: var(--golf-green-700);
-}
-
-.state-block__title {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-
-.state-block__body {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  max-width: 36ch;
-}
-
-.state-block--error {
-  border-style: solid;
-  border-color: #e7b4ae;
-  background: var(--surface);
-}
-
-.state-block--error .state-block__icon {
-  background: var(--danger-surface);
-  color: var(--danger);
-}
-
-/* Banda de sin conexion: visible pero no invasiva durante el juego. */
-.offline-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--warning-surface);
-  border: 1px solid #e4c894;
-  color: var(--state-offline-fg);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-/* Estado de guardado: icono, texto y color. Nunca solo color. */
-.save-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: 30px;
-  padding-inline: var(--space-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  font-size: var(--text-caption);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.save-status--synced {
-  background: var(--state-synced-bg);
-  border-color: #bcd6c2;
-  color: var(--state-synced-fg);
-}
-.save-status--saving {
-  background: var(--state-saving-bg);
-  border-color: #bfd2e0;
-  color: var(--state-saving-fg);
-}
-.save-status--offline {
-  background: var(--state-offline-bg);
-  border-color: #e4c894;
-  color: var(--state-offline-fg);
-}
-.save-status--pending {
-  background: var(--state-pending-bg);
-  border-color: #e0d3ac;
-  color: var(--state-pending-fg);
-}
-.save-status--error {
-  background: var(--state-error-bg);
-  border-color: #e7b4ae;
-  color: var(--state-error-fg);
-}
-.save-status--saved {
-  background: var(--state-synced-bg);
-  border-color: #bcd6c2;
-  color: var(--state-synced-fg);
-}
-
-/* En la cabecera verde el estado se invierte para mantener contraste. */
-.app-header .save-status {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.24);
-  color: var(--text-on-green);
-}
-
-/* Enlaces con aspecto de boton, para los `<a>` de exportacion. */
-a.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-}
-
-/* =============================================================================
-   14. Refinamiento UX/UI mobile-first v1.3.0
-
-   Esta capa sustituye visualmente a la 1.2.0 sin alterar reglas deportivas. El
-   objetivo es reducir ruido, corregir la tarjeta completa, dar continuidad al
-   flujo hoyo a hoyo y acercar la app a una aplicacion oficial de campeonato.
-   ========================================================================== */
-
-html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 78px;
-}
-
-body {
-  background-color: var(--background);
-  background-image: none;
-}
-
-.app-shell {
-  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 32px);
-}
-
-.container {
-  max-width: var(--content-max);
-  padding-inline: 12px;
-}
-
-.container--admin {
-  max-width: 1040px;
-}
-
-.page-content,
-.hole-page {
-  padding-top: 12px;
-}
-
-.hole-page {
-  padding-bottom: 20px;
-}
-
-.stack {
-  gap: 14px;
-}
-
-.stack--tight {
-  gap: 10px;
-}
-
-/* Cabecera compacta y fija: mantiene el contexto al recorrer formularios o una
-   tarjeta larga, sin robar altura util en el movil. */
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 70;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 28px rgba(3, 37, 26, 0.12);
-}
-
-.app-header__inner {
-  max-width: 1040px;
-  min-height: 58px;
-  padding: 9px 14px;
-  gap: 10px;
-}
-
-.app-header__mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  font-size: 0.78rem;
-}
-
-.app-header__competition {
-  font-size: 0.625rem;
-  letter-spacing: 0.14em;
-}
-
-.app-header__screen {
-  font-size: clamp(1.12rem, 4vw, 1.35rem);
-  line-height: 1.08;
-}
-
-.app-header__action .icon-button,
-.app-header__inner > .icon-button {
-  width: 42px;
-  height: 42px;
-  min-height: 42px;
-  border-radius: 13px;
-}
-
-/* Dock inferior solido y flotante. Sigue siendo completamente opaco: el
-   contenido nunca se mezcla con la navegacion. */
-.bottom-nav {
-  inset-inline: 10px;
-  bottom: max(10px, var(--safe-bottom));
-  width: min(calc(100% - 20px), 620px);
-  margin-inline: auto;
-  padding-bottom: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 19px;
-  background: var(--golf-green-950);
-  box-shadow: 0 14px 36px rgba(3, 37, 26, 0.26);
-  overflow: hidden;
-}
-
-.bottom-nav__list {
-  max-width: none;
-  height: var(--bottom-nav-height);
-  padding: 4px;
-  gap: 3px;
-}
-
-.bottom-nav__link {
-  border-radius: 15px;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 0.68rem;
-  transition: background-color var(--transition-base), color var(--transition-base);
-}
-
-.bottom-nav__link[aria-current='page'] {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.bottom-nav__link[aria-current='page']::before {
-  top: auto;
-  bottom: 4px;
-  inset-inline: 30%;
-  height: 3px;
-  background: var(--gold-light);
-}
-
-.bottom-nav__icon {
-  width: 21px;
-  height: 21px;
-}
-
-/* Superficies: menos volumen, mas precision. */
-.surface,
-.scorecard,
-.scorecard-grid,
-.flight-card,
-.admin-section,
-.player-card,
-.hole-player,
-.form-section {
-  border-color: var(--border);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85), var(--shadow-xs);
-}
-
-.section-header {
-  align-items: center;
-  padding-top: 8px;
-}
-
-.section-header h2 {
-  font-family: var(--font-display);
-  font-size: clamp(1.35rem, 5vw, 1.65rem);
-  letter-spacing: -0.015em;
-}
-
-/* Heroe mas compacto y equilibrado: los puntos se identifican como puntos y el
-   progreso de hoyos deja de competir con la cifra principal. */
-.hero {
-  border-radius: 20px;
-  box-shadow: 0 14px 38px rgba(3, 37, 26, 0.16);
-}
-
-.hero__body {
-  padding: 18px 16px 14px;
-  gap: 12px;
-}
-
-.hero__meta {
-  gap: 4px 12px;
-  font-size: 0.64rem;
-}
-
-.hero__headline {
-  align-items: center;
-}
-
-.hero__course {
-  max-width: 14ch;
-  font-size: clamp(1.7rem, 7.4vw, 2.35rem);
-  line-height: 0.98;
-}
-
-.hero__score {
-  display: grid;
-  justify-items: end;
-  line-height: 1;
-}
-
-.hero__score-value {
-  font-size: clamp(3rem, 13vw, 4.15rem);
-  line-height: 0.82;
-}
-
-.hero__score-unit {
-  margin-top: 4px;
-  font-size: 0.62rem;
-  color: var(--gold-light);
-}
-
-.hero__score-note {
-  margin-top: 2px;
-  font-size: 0.66rem;
-  font-weight: 700;
-  color: rgba(238, 242, 234, 0.72);
-  font-variant-numeric: tabular-nums;
-}
-
-.hero__chips {
-  gap: 6px;
-}
-
-.hero__chips .badge {
-  padding: 3px 7px;
-  font-size: 0.61rem;
-}
-
-.hero__nines {
-  background: rgba(3, 37, 26, 0.72);
-}
-
-.mini-nine {
-  grid-template-columns: repeat(9, minmax(0, 1fr)) 42px;
-}
-
-.mini-hole {
-  padding: 7px 0;
-}
-
-.mini-hole__number {
-  font-size: 0.61rem;
-}
-
-.mini-hole__value {
-  min-width: 22px;
-  min-height: 22px;
-  font-size: 0.78rem;
-}
-
-.mini-nine__total {
-  font-size: 1.06rem;
-}
-
-/* Acciones principales de Mi tarjeta. */
-.primary-actions {
-  display: grid;
-  gap: 9px;
-}
-
-.button {
-  border-radius: 14px;
-}
-
-.button--primary {
-  background: var(--golf-green-950);
-  border-color: var(--golf-green-950);
-  box-shadow: 0 5px 14px rgba(3, 37, 26, 0.14);
-}
-
-.button--lg {
-  min-height: 56px;
-  font-size: 1.02rem;
-}
-
-.info-card {
-  padding: 14px;
-  border-radius: 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.overview-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.round-info-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.round-info-grid .chip {
-  width: 100%;
-  padding: 10px;
-  background: var(--surface-subtle);
-}
-
-.quick-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.quick-stat-grid .stat-tile {
-  min-width: 0;
-  padding: 12px 10px;
-  text-align: left;
-}
-
-.quick-stat-grid .stat-tile__value {
-  font-size: clamp(1.35rem, 7vw, 1.8rem);
-}
-
-/* Lista hoyo a hoyo: cuatro columnas estables y sin elementos implicitos que
-   salten a una segunda fila. */
-.scorecard {
-  gap: 7px;
-  padding: 10px;
-  border-radius: 18px;
-}
-
-.hole-row {
-  position: relative;
-  grid-template-columns: 42px minmax(0, 1fr) 38px 38px;
-  gap: 9px;
-  min-height: 60px;
-  padding: 8px;
-  border-radius: 13px;
-  background: #ffffff;
-}
-
-.hole-row--pending {
-  background: #f7f6f1;
-}
-
-.hole-row--current {
-  border-width: 1px;
-  box-shadow: inset 4px 0 0 var(--golf-green-700);
-}
-
-.hole-row__number {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 0;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: var(--golf-green-950);
-  color: #ffffff;
-  text-align: center;
-  font-size: 1.1rem;
-}
-
-.hole-row__number-label {
-  font-family: var(--font-sans);
-  font-size: 0.5rem;
-  line-height: 1;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.62);
-}
-
-.hole-row__body {
-  display: grid;
-  align-content: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.hole-row__meta,
-.hole-row__support {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 3px 8px;
-}
-
-.hole-row__meta {
-  font-size: 0.72rem;
-  color: var(--text-secondary);
-}
-
-.hole-row__support {
-  min-height: 18px;
-}
-
-.hole-row__pending,
-.hole-row__overridden {
-  font-size: 0.64rem;
-  font-weight: 700;
-}
-
-.hole-row__result,
-.hole-row__points {
-  display: grid;
-  place-items: center;
-}
-
-.nine-summary {
-  justify-content: space-between;
-  gap: 8px;
-  padding: 9px 11px;
-  font-size: 0.78rem;
-}
-
-.totals-panel__total {
-  gap: 8px 12px;
-  padding: 12px;
-  border-radius: 14px;
-}
-
-/* Tarjeta completa: se corrige la maquetacion de filas. Cada fila es su propia
-   rejilla; antes el contenedor trataba cada fila como una sola celda y dejaba un
-   gran bloque blanco a la derecha. */
-.scorecard-grid {
-  gap: 11px;
-  padding: 10px;
-  border-radius: 18px;
-}
-
-.scorecard-grid__scroll {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  overscroll-behavior-inline: contain;
-}
-
-.scorecard-grid__table {
-  display: block;
-  width: 100%;
-  min-width: 428px;
-  border: 0;
-  border-radius: 0;
-  overflow: visible;
-}
-
-.scorecard-grid__table--full {
-  min-width: 734px;
-}
-
-.scorecard-grid__row {
-  display: grid;
-  width: 100%;
-  grid-template-columns: 58px repeat(9, minmax(32px, 1fr)) 46px;
-}
-
-.scorecard-grid__table--full .scorecard-grid__row {
-  grid-template-columns: 58px repeat(18, minmax(32px, 1fr)) 46px;
-}
-
-.scorecard-grid__cell {
-  min-height: 38px;
-  padding: 2px;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.scorecard-grid__cell:last-child {
-  border-right: 0;
-}
-
-.scorecard-grid__label {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  padding-inline: 8px;
-}
-
-.scorecard-grid__total {
-  position: sticky;
-  right: 0;
-  z-index: 2;
-  border-left: 1px solid var(--border-strong);
-  box-shadow: -5px 0 10px rgba(3, 37, 26, 0.04);
-}
-
-.scorecard-grid__head.scorecard-grid__label,
-.scorecard-grid__head.scorecard-grid__total {
-  z-index: 4;
-}
-
-.scorecard-grid__footer {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.scorecard-grid__footer > span {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-  padding: 8px;
-  border-radius: 10px;
-  background: var(--surface-subtle);
-  text-align: center;
-  font-size: 0.68rem;
-}
-
-.scorecard-grid__footer strong {
-  display: block;
-  color: var(--text-primary);
-  font-size: 1rem;
-}
-
-/* Entrada de resultado: contexto compacto, controles previsibles y hoja de
-   confirmacion realmente adaptada al movil. */
-.hole-editor {
-  display: grid;
-  gap: 12px;
-}
-
-.hole-header {
-  gap: 13px;
-  padding: 14px;
-  border-radius: 20px;
-  box-shadow: 0 12px 30px rgba(3, 37, 26, 0.15);
-}
-
-.hole-header__top {
-  grid-template-columns: 68px minmax(0, 1fr);
-  gap: 12px;
-}
-
-.hole-header__number {
-  min-width: 68px;
-  min-height: 76px;
-  padding: 7px;
-  border-radius: 16px;
-}
-
-.hole-header__number-value {
-  font-size: 3.25rem;
-}
-
-.hole-header__facts {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.hole-header__facts .chip {
-  padding: 8px 9px;
-  border-radius: 11px;
-}
-
-.hole-header__facts .chip__label {
-  font-size: 0.57rem;
-}
-
-.hole-header__facts .chip__value {
-  font-size: 1rem;
-}
-
-.hole-step-nav {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 7px;
-}
-
-.hole-step-nav__link,
-.hole-step-nav__placeholder {
-  min-height: 42px;
-  border-radius: 12px;
-}
-
-.hole-step-nav__link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding-inline: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  color: #ffffff;
-  text-decoration: none;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.hole-step-nav__link--card {
-  padding-inline: 12px;
-  color: var(--gold-light);
-}
-
-.hole-player {
-  padding: 12px;
-  border-radius: 16px;
-}
-
-.hole-player__top {
-  grid-template-columns: 4px minmax(0, 1fr) auto;
-  gap: 10px;
-}
-
-.hole-player__identity {
-  min-width: 0;
-}
-
-.hole-player__values {
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-
-.score-entry {
-  display: grid;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-xs);
-}
-
-.score-entry__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.score-entry__header h2 {
-  margin-top: 2px;
-  font-family: var(--font-display);
-  font-size: 1.45rem;
-}
-
-.score-entry__hint {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-}
-
-.score-keypad {
-  gap: 7px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.score-keypad__key {
-  min-height: 58px;
-  border-color: var(--border);
-  border-radius: 13px;
-  background: #faf9f5;
-  font-size: 1.7rem;
-  transition: transform var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
-}
-
-.score-keypad__key:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-.score-keypad__key--selected {
-  background: var(--golf-green-950);
-  border-color: var(--golf-green-950);
-  color: #ffffff;
-  box-shadow: inset 0 0 0 2px var(--gold-light);
-}
-
-.score-keypad__actions {
-  gap: 7px;
-  padding-top: 10px;
-  margin-top: 2px;
-}
-
-.score-keypad__key--pickup,
-.score-keypad__key--clear {
-  min-height: 50px;
-}
-
-/* Capa de modal/hoja inferior. Solo afecta a hojas que se montan dentro de
-   `.sheet-overlay`; las hojas administrativas inline conservan su maquetacion. */
-.sheet-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 18px 12px max(12px, var(--safe-bottom));
-  background: rgba(3, 24, 17, 0.58);
-  animation: overlay-in 160ms ease-out both;
-}
-
-.sheet-overlay > .sheet,
-.sheet-overlay > .confirmation {
-  width: min(100%, 620px);
-  max-height: calc(100dvh - var(--safe-top) - 30px);
-  overflow-y: auto;
-  border-radius: 22px 22px 16px 16px;
-  box-shadow: 0 24px 64px rgba(3, 24, 17, 0.34);
-  animation: sheet-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.sheet__eyebrow {
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-
-.confirmation {
-  gap: 12px;
-  padding: 16px;
-}
-
-.confirmation__title {
-  font-size: 1.65rem;
-}
-
-.confirmation__grid {
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
-  background: var(--surface-subtle);
-}
-
-.confirmation__grid > div {
-  padding: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.confirmation__grid > div:nth-child(odd) {
-  border-right: 1px solid var(--border);
-}
-
-.confirmation__grid > div:nth-last-child(-n + 2) {
-  border-bottom: 0;
-}
-
-.confirmation__points {
-  border-right: 0 !important;
-}
-
-.confirmation__actions {
-  grid-template-columns: minmax(100px, 0.45fr) minmax(0, 1fr);
   position: sticky;
   bottom: 0;
-  padding-top: 4px;
+  display: grid;
+  grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-top: var(--space-1);
   background: var(--surface);
 }
 
-@keyframes overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes sheet-in {
-  from { transform: translateY(24px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-/* Leaderboard y panel administrativo: mas compactos, con jerarquia de datos y
-   sin grandes bloques vacios. */
-.leaderboard-card {
-  border-radius: 15px;
-  padding: 12px;
-}
-
-.admin-nav {
-  position: sticky;
-  top: 67px;
-  z-index: 30;
-  margin-inline: -12px;
-  padding: 9px 12px;
-  background: var(--background);
-  border-bottom: 1px solid var(--border);
-}
-
-.admin-nav a {
-  border-radius: 12px;
-  box-shadow: none;
-}
-
-.admin-section {
-  padding: 14px;
-  border-radius: 18px;
-}
-
-.dashboard-grid {
-  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
-  gap: 8px;
-}
-
-.table-scroll {
-  border: 1px solid var(--border);
-  border-radius: 13px;
-}
-
-table.data th,
-table.data td {
-  padding: 10px;
-}
-
-/* Breakpoints pequenos: preservar el espacio util y evitar que etiquetas largas
-   expulsen los datos fuera de pantalla. */
-@media (max-width: 370px) {
-  .container {
-    padding-inline: 9px;
-  }
-
-  .hero__body {
-    padding-inline: 13px;
-  }
-
-  .hero__course {
-    font-size: 1.55rem;
-  }
-
-  .hero__score-value {
-    font-size: 2.75rem;
-  }
-
-  .mini-nine {
-    grid-template-columns: repeat(9, minmax(0, 1fr)) 36px;
-  }
-
-  .mini-hole__value {
-    min-width: 20px;
-    min-height: 20px;
-    font-size: 0.72rem;
-  }
-
-  .round-info-grid,
-  .quick-stat-grid {
-    gap: 6px;
-  }
-
-  .round-info-grid .chip,
-  .quick-stat-grid .stat-tile {
-    padding: 8px 6px;
-  }
-
-  .hole-header {
-    padding: 11px;
-  }
-
-  .hole-header__top {
-    grid-template-columns: 60px minmax(0, 1fr);
-    gap: 9px;
-  }
-
-  .hole-header__number {
-    min-width: 60px;
-    min-height: 70px;
-  }
-
-  .hole-header__number-value {
-    font-size: 2.8rem;
-  }
-
-  .hole-step-nav__link {
-    font-size: 0.68rem;
-    padding-inline: 5px;
-  }
-
-  .hole-player__values .badge {
-    display: none;
-  }
-
-  .score-keypad__key {
-    min-height: 54px;
-  }
-
-  .score-entry__header .badge {
-    max-width: 120px;
-    white-space: normal;
-    text-align: right;
-  }
-}
-
-@media (min-width: 560px) {
-  .primary-actions {
-    grid-template-columns: minmax(0, 1.65fr) minmax(180px, 1fr);
-  }
-
-  .overview-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .hole-header__facts {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .hole-header__top {
-    grid-template-columns: 76px minmax(0, 1fr);
-  }
-
-  .score-keypad__key {
-    min-height: 64px;
-  }
-}
-
-@media (min-width: 760px) {
-  .container {
-    padding-inline: 18px;
-  }
-
-  .page-content,
-  .hole-page {
-    padding-top: 18px;
-  }
-
-  .sheet-overlay {
-    align-items: center;
-  }
-
-  .sheet-overlay > .sheet,
-  .sheet-overlay > .confirmation {
-    border-radius: 22px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
-  .sheet-overlay,
-  .sheet-overlay > .sheet,
-  .sheet-overlay > .confirmation {
-    animation: none;
-  }
-
-  .score-keypad__key,
-  .button,
-  .bottom-nav__link {
-    transition: none;
-  }
-}
-
-/* Ajustes finales de composicion v1.3.0. */
-.login-page {
-  max-width: 560px;
-  padding-top: clamp(18px, 5vw, 40px);
-}
-
-.info-card__note {
-  margin-top: 10px;
-  line-height: 1.45;
-}
-
-.quick-stat-grid--handicap {
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-  margin-top: 10px;
-}
-
-.hole-page {
-  max-width: 640px;
-}
-
-.scorecard-grid__scroll {
-  scrollbar-color: var(--border-strong) transparent;
-  scrollbar-gutter: stable;
-}
-
-.scorecard-grid__scroll::-webkit-scrollbar {
-  height: 7px;
-}
-
-.scorecard-grid__scroll::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: var(--border-strong);
-}
-
-.scorecard-grid__scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-@media (max-width: 420px) {
-  .confirmation__grid > div {
-    padding: 10px;
-  }
-
-  .confirmation__actions {
-    grid-template-columns: minmax(92px, 0.42fr) minmax(0, 1fr);
-  }
-
-  .scorecard-grid__footer {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* Partido y clasificacion: densidad de live scoring sin sacrificar lectura. */
-.flight-card {
-  gap: 12px;
-  padding: 14px;
-  border-radius: 18px;
-}
-
-.flight-card__header {
-  grid-template-columns: 1fr;
-  gap: 10px;
-  padding-bottom: 12px;
-}
-
-.flight-card__header .button-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.flight-card__header .chip {
-  width: 100%;
-}
-
-.player-card {
-  gap: 10px;
-  padding: 11px;
-  border-radius: 14px;
-}
-
-.player-card__points {
-  font-size: 1.4rem;
-}
-
-.leaderboard-card {
-  grid-template-columns: 2.8ch 4px minmax(0, 1fr) auto;
-  gap: 7px 10px;
-}
-
-@media (min-width: 560px) {
-  .flight-card__header {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-}
-
-/* =============================================================================
-   15. Rediseño UX/UI v1.4.0
-
-   Clasificacion compacta, administracion realmente mobile-first, logotipo real
-   en cabecera y enfasis inmediato de los resultados que generan puntos.
-   ========================================================================== */
-
-/* Logotipo real de la aplicacion en lugar del monograma PGC. */
-.app-header__logo {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  overflow: hidden;
-  flex: none;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.26);
-  background: #243d5a;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
-}
-
-.app-header__logo img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 /* ---------------------------------------------------------------------------
-   Clasificacion: una fila deportiva compacta en lugar de una tarjeta alta con
-   los puntos descolgados en una segunda linea.
+   13. Clasificacion
+   Un solo tablero con filas separadas por filete, como un leaderboard de
+   campo: no trece tarjetas flotando cada una con su sombra.
    ------------------------------------------------------------------------ */
 
 .classification-page {
   max-width: 760px;
-  padding-bottom: 24px;
 }
 
 .classification-overview {
   display: grid;
-  gap: 12px;
-  padding: 15px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--r-section);
   background: var(--surface);
-  box-shadow: var(--shadow-xs);
+  border: 1px solid var(--line);
 }
 
 .classification-overview__copy {
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
 .classification-overview__copy h2 {
-  font-family: var(--font-display);
-  font-size: clamp(1.25rem, 5vw, 1.65rem);
+  font-size: clamp(1.25rem, 5vw, 1.6rem);
+  font-weight: 800;
   line-height: 1.08;
+  letter-spacing: -0.025em;
 }
 
 .classification-overview__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 6px;
 }
 
 .classification-overview__meta span {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: var(--surface-subtle);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+@media (min-width: 700px) {
+  .classification-overview {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .classification-overview__meta {
+    justify-content: flex-end;
+  }
 }
 
 .leaderboard {
-  gap: 10px;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.leaderboard__provisional {
+  margin: 0;
 }
 
 .leaderboard__rows {
-  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border-radius: var(--r-section);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--elev-1);
 }
 
 .leaderboard-card {
   display: grid;
   grid-template-columns: 46px 4px minmax(0, 1fr);
   align-items: stretch;
-  gap: 0 10px;
+  gap: 0 12px;
   min-width: 0;
-  padding: 11px 12px;
-  border-radius: 16px;
+  padding: 12px 14px 12px 10px;
+  border-bottom: 1px solid var(--line);
   background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 14px rgba(3, 37, 26, 0.06);
+}
+
+.leaderboard-card:last-child {
+  border-bottom: 0;
 }
 
 .leaderboard-card__rank {
   display: grid;
   align-content: center;
   justify-items: center;
+  gap: 3px;
   min-width: 0;
-  padding-right: 1px;
 }
 
 .leaderboard-card__position {
-  font-family: var(--font-display);
-  font-size: 1.75rem;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-narrow);
+  font-size: var(--fs-2xl);
   font-weight: 700;
-  line-height: 0.95;
-  text-align: center;
-  color: var(--golf-green-900);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--navy-700);
 }
 
+/* La etiqueta bajo la posicion ("puesto", "Oro"...) repite lo que ya dicen
+   la cifra y la medalla. Es `aria-hidden` en el marcado, asi que ocultarla no
+   quita nada a un lector de pantalla; la posicion compartida la sigue marcando
+   el "=" y su etiqueta accesible. */
 .leaderboard-card__rank-label {
-  margin-top: 4px;
-  color: var(--text-secondary);
-  font-size: 0.63rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-transform: uppercase;
+  display: none;
 }
 
 .leaderboard-card__color {
   width: 4px;
-  height: 100%;
-  min-height: 58px;
-  border-radius: 999px;
+  min-height: 52px;
+  border-radius: var(--r-pill);
 }
 
 .leaderboard-card__content {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -3237,172 +2559,343 @@ table.data td {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   min-width: 0;
 }
 
 .leaderboard-card__name {
   min-width: 0;
   overflow: hidden;
-  color: var(--text-primary);
-  font-size: 1rem;
-  font-weight: 750;
+  font-size: var(--fs-md);
+  font-weight: 700;
   line-height: 1.15;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Placa de puntos: la cifra con mas jerarquia de la fila. */
 .leaderboard-card__score {
   display: inline-grid;
   grid-template-columns: auto auto;
   align-items: baseline;
   gap: 3px;
-  min-width: 58px;
-  padding: 4px 8px;
-  border-radius: 11px;
-  background: var(--golf-green-950);
+  min-width: 62px;
+  padding: 5px 10px 5px 9px;
+  border-radius: 12px;
+  background: var(--navy-700);
+  background-image: var(--sheen);
+  box-shadow: var(--rim-dark), 0 2px 6px -2px rgba(13, 24, 38, 0.4);
   color: #ffffff;
   text-align: right;
 }
 
 .leaderboard-card__score > span {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.63rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ivory-soft);
 }
 
-.leaderboard-card__points,
-.podium--1 .leaderboard-card__points {
-  grid-row: auto;
-  font-family: var(--font-numeric);
-  font-size: 1.55rem;
-  font-weight: 800;
+.leaderboard-card__points {
+  font-family: var(--font-narrow);
+  font-size: 1.625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
   line-height: 1;
   color: #ffffff;
-  text-align: right;
 }
 
 .leaderboard-card__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 11px;
-  color: var(--text-secondary);
-  font-size: 0.75rem;
+  gap: 2px 12px;
+  color: var(--ink-2);
+  font-family: var(--font-narrow);
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
 }
 
 .leaderboard-card__meta strong {
-  color: var(--text-primary);
-  font-weight: 750;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .leaderboard-card__strokes {
-  color: var(--text-secondary);
-  font-size: inherit;
+  color: var(--ink-2);
 }
 
 .leaderboard-card__bar {
-  grid-column: auto;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--surface-sunken);
+  display: block;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
   overflow: hidden;
 }
 
 .leaderboard-card__bar-fill {
   display: block;
   height: 100%;
-  border-radius: 999px;
+  border-radius: inherit;
 }
 
 .leaderboard-card__note {
-  grid-column: auto;
-  margin-top: 1px;
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
 }
 
-.leaderboard-card--latest {
-  border-width: 2px;
-  border-color: var(--golf-green-700);
-  box-shadow: 0 8px 22px rgba(3, 37, 26, 0.12);
-}
-
-.podium--1,
-.podium--2,
-.podium--3 {
-  position: relative;
-  overflow: hidden;
-}
-
-.podium--1 {
-  border: 2px solid var(--podium-gold);
-  background: linear-gradient(100deg, #fffaf0 0%, var(--surface) 48%);
-  box-shadow: 0 10px 26px rgba(120, 89, 20, 0.13);
+/* Podio: la posicion va en una medalla con brillo de metal, y una banda
+   separa los tres primeros del resto. */
+.podium--1 .leaderboard-card__position,
+.podium--2 .leaderboard-card__position,
+.podium--3 .leaderboard-card__position {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: var(--fs-xl);
+  color: var(--navy-950);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -2px 0 rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(13, 24, 38, 0.25);
 }
 
 .podium--1 .leaderboard-card__position {
-  color: var(--gold-dark);
+  background: radial-gradient(circle at 32% 28%, var(--medal-gold-hi) 0%, var(--medal-gold) 60%, #876718 100%);
 }
 
-.podium--1 .leaderboard-card__score {
-  background: var(--gold-dark);
+.podium--2 .leaderboard-card__position {
+  background: radial-gradient(circle at 32% 28%, var(--medal-silver-hi) 0%, var(--medal-silver) 62%, #66717d 100%);
 }
 
-.podium--2 {
-  border: 2px solid var(--podium-silver);
-  background: linear-gradient(100deg, #f5f7f7 0%, var(--surface) 48%);
+.podium--3 .leaderboard-card__position {
+  background: radial-gradient(circle at 32% 28%, var(--medal-bronze-hi) 0%, var(--medal-bronze) 60%, #78431f 100%);
+  color: #ffffff;
 }
 
-.podium--2 .leaderboard-card__score {
-  background: #586568;
+.podium--1 {
+  background: linear-gradient(90deg, rgba(242, 220, 148, 0.18) 0%, rgba(255, 255, 255, 0) 60%), var(--surface);
 }
 
 .podium--3 {
-  margin-bottom: 8px;
-  border: 2px solid var(--podium-bronze);
-  background: linear-gradient(100deg, #fbf4ed 0%, var(--surface) 48%);
+  border-bottom: 8px solid var(--surface-2);
 }
 
-.podium--3 .leaderboard-card__score {
-  background: #744218;
+.podium--3:last-child {
+  border-bottom: 0;
+}
+
+/* Posicion recien revelada: amarillo tee, "aqui estamos". */
+.leaderboard-card--latest {
+  background: var(--tee-wash);
+  box-shadow: inset 4px 0 0 var(--tee);
+}
+
+.leaderboard--hidden {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-7) var(--space-5);
+  border-radius: var(--r-hero);
+  background: var(--navy-700);
+  background-image:
+    radial-gradient(90% 70% at 50% 0%, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, var(--navy-600) 0%, var(--navy-800) 100%);
+  color: var(--ivory);
+  text-align: center;
+  box-shadow: var(--rim-dark), var(--elev-2);
+}
+
+.leaderboard--hidden p:first-child {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.leaderboard--hidden .muted {
+  color: var(--ivory-soft);
+  max-width: 36ch;
+}
+
+/* Revelacion: es el unico momento de la aplicacion que ocurre una vez por
+   torneo, asi que es el unico que se permite algo de ceremonia. La fila llega
+   desenfocada y se asienta: el ojo lo lee como algo que "aparece", no como dos
+   estados superpuestos. */
+.reveal-card {
+  opacity: 0;
+  transform: translateY(10px);
+  filter: blur(4px);
+  transition:
+    opacity 420ms var(--ease-out),
+    transform 420ms var(--ease-out),
+    filter 420ms var(--ease-out);
+}
+
+.reveal-card[data-revealed='true'] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+@media (max-width: 400px) {
+  .leaderboard-card {
+    grid-template-columns: 40px 4px minmax(0, 1fr);
+    gap: 0 9px;
+    padding: 11px 11px 11px 8px;
+  }
+  .leaderboard-card__name {
+    font-size: var(--fs-sm);
+  }
+  .leaderboard-card__score {
+    min-width: 54px;
+    padding: 4px 8px;
+  }
+  .leaderboard-card__points {
+    font-size: var(--fs-xl);
+  }
 }
 
 /* ---------------------------------------------------------------------------
-   Administracion: selector de seccion compacto en movil y barra lateral en
-   escritorio. Se elimina la hilera horizontal de nueve pestanas.
+   14. Partido y jugadores
    ------------------------------------------------------------------------ */
 
-.container--admin {
-  max-width: 1180px;
+.flight-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--r-section);
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
+
+.flight-card__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.flight-card__tee-time {
+  font-family: var(--font-narrow);
+  font-size: var(--fs-3xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--navy-800);
+}
+
+.flight-card__members {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flight-card__members > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.player-card {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--r-row);
+}
+
+/* La tarjeta propia: amarillo tee, porque es "donde estas" dentro del
+   partido. Lleva ademas la insignia de texto, asi que no depende del color. */
+.player-card--own {
+  background: var(--tee-wash);
+  box-shadow: inset 4px 0 0 var(--tee);
+}
+
+.player-card__color {
+  width: 4px;
+  align-self: stretch;
+  min-height: 40px;
+  border-radius: var(--r-pill);
+}
+
+.player-card__body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.player-card__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.player-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-family: var(--font-narrow);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.player-card__score {
+  display: grid;
+  justify-items: end;
+  font-family: var(--font-narrow);
+  font-variant-numeric: tabular-nums;
+}
+
+.player-card__points {
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--navy-800);
+}
+
+.player-card__holes {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+/* ---------------------------------------------------------------------------
+   15. Administracion
+   Selector desplegable en movil, barra lateral en escritorio. La seccion
+   activa es marino; su icono, amarillo tee.
+   ------------------------------------------------------------------------ */
 
 .admin-shell {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: start;
-  padding-bottom: 26px;
 }
 
 .admin-shell__content {
+  display: grid;
+  gap: var(--space-4);
   min-width: 0;
 }
 
 .admin-navigation {
   position: sticky;
-  top: 66px;
+  top: calc(var(--header-h) + var(--safe-top) + var(--space-2));
   z-index: 38;
   min-width: 0;
 }
 
 .admin-navigation__mobile {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: 0 8px 22px rgba(3, 37, 26, 0.11);
   overflow: hidden;
+  border-radius: var(--r-section);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--rim), var(--elev-2);
 }
 
 .admin-navigation__mobile > summary {
@@ -3417,14 +2910,13 @@ table.data td {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  min-height: 56px;
-  padding: 9px 11px;
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: 10px 12px;
   cursor: pointer;
 }
 
 .admin-navigation__summary:focus-visible {
-  outline: var(--focus-ring);
   outline-offset: -3px;
 }
 
@@ -3432,11 +2924,13 @@ table.data td {
 .admin-navigation__icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   flex: none;
-  border-radius: 11px;
-  background: var(--golf-green-900);
+  border-radius: 12px;
+  background: var(--navy-700);
+  background-image: var(--sheen);
+  box-shadow: var(--rim-dark);
   color: #ffffff;
 }
 
@@ -3447,47 +2941,45 @@ table.data td {
 }
 
 .admin-navigation__current-copy small {
-  color: var(--text-secondary);
-  font-size: 0.59rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  font-weight: 550;
 }
 
 .admin-navigation__current-copy strong {
   overflow: hidden;
-  color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
+  font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .admin-navigation__change {
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: var(--surface-subtle);
-  color: var(--golf-green-800);
-  font-size: 0.65rem;
-  font-weight: 800;
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--navy-700);
+  font-size: var(--fs-xs);
+  font-weight: 700;
 }
 
 .admin-navigation__mobile[open] .admin-navigation__summary {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
 }
 
 .admin-navigation__mobile-menu,
 .admin-navigation__desktop-menu {
-  list-style: none;
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
 .admin-navigation__mobile-menu {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-  max-height: min(58dvh, 470px);
-  padding: 9px;
+  gap: 6px;
+  max-height: min(58dvh, 480px);
+  padding: var(--space-2);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -3496,399 +2988,551 @@ table.data td {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
   min-height: 54px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 13px;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-row);
   background: var(--surface);
-  color: var(--text-primary);
+  color: var(--ink);
   text-decoration: none;
+  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-fast) ease;
+}
+
+.admin-navigation__link:active {
+  transform: scale(0.98);
+}
+
+.admin-navigation__link .admin-navigation__icon {
+  width: 34px;
+  height: 34px;
+  background: var(--surface-3);
+  background-image: none;
+  box-shadow: none;
+  color: var(--navy-700);
 }
 
 .admin-navigation__link[aria-current='page'] {
-  border-color: var(--golf-green-700);
-  background: var(--golf-green-950);
+  border-color: var(--navy-800);
+  background: var(--navy-700);
+  background-image: var(--sheen);
   color: #ffffff;
+  box-shadow: var(--rim-dark);
 }
 
 .admin-navigation__link[aria-current='page'] .admin-navigation__icon {
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--gold-light);
+  background: var(--tee);
+  color: var(--navy-950);
 }
 
 .admin-navigation__copy strong {
   overflow: hidden;
-  font-size: 0.76rem;
-  line-height: 1.1;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .admin-navigation__copy small {
   display: none;
-  color: var(--text-secondary);
-  font-size: 0.63rem;
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
   line-height: 1.25;
 }
 
 .admin-navigation__link[aria-current='page'] .admin-navigation__copy small {
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--ivory-soft);
 }
 
 .admin-navigation__arrow {
   display: none;
-  color: var(--text-tertiary);
+  color: var(--ink-3);
 }
 
 .admin-navigation__desktop {
   display: none;
 }
 
-.admin-section {
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
-  border-radius: 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 16px rgba(3, 37, 26, 0.055);
-}
-
-.admin-section__header {
-  padding: 13px 14px;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfaf6 100%);
-}
-
-.admin-section__heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 10px;
-}
-
-.admin-section__title-group {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.admin-section__title-group h2 {
-  font-family: var(--font-display);
-  font-size: 1.18rem;
-  line-height: 1.1;
-}
-
-.admin-section__title-group .muted {
-  line-height: 1.4;
-}
-
-.admin-section__action {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  min-width: 0;
-}
-
-.admin-section__action .button-row {
-  justify-content: flex-end;
-}
-
-.admin-section__content {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
-  padding: 14px;
-}
-
-.admin-shell .section-header {
-  align-items: center;
-  padding-top: 2px;
-}
-
-.admin-shell .dashboard-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.admin-shell .stat-tile {
-  min-width: 0;
-  padding: 11px 9px;
-}
-
-.admin-shell .stat-tile__value {
-  font-size: clamp(1.35rem, 6vw, 1.8rem);
-}
-
-.admin-shell .table-scroll {
-  width: 100%;
-  max-width: 100%;
-  border-radius: 13px;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-}
-
-.admin-shell table.data {
-  min-width: 100%;
-}
-
-.admin-shell .button-row {
-  align-items: center;
-}
-
-/* ---------------------------------------------------------------------------
-   Entrada de resultados: el numero seleccionado comunica inmediatamente los
-   puntos que producira, sin alterar el calculo deportivo.
-   ------------------------------------------------------------------------ */
-
-.score-keypad__key {
-  position: relative;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 1px;
-  overflow: hidden;
-}
-
-.score-keypad__number {
-  display: block;
-  line-height: 1;
-  transition: transform var(--transition-fast);
-}
-
-.score-keypad__points-earned {
-  display: block;
-  color: var(--gold-light);
-  font-family: var(--font-sans);
-  font-size: 0.58rem;
-  font-weight: 850;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.score-keypad__key--scoring {
-  border-color: var(--gold);
-  background: var(--golf-green-950);
-  color: #ffffff;
-  box-shadow: inset 0 0 0 2px var(--gold-light), 0 7px 18px rgba(3, 37, 26, 0.2);
-}
-
-.score-keypad__key--scoring .score-keypad__number {
-  transform: translateY(-1px) scale(1.08);
-}
-
-.hole-player__saved-result {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 3px 7px;
-  border-radius: 11px;
-}
-
-.hole-player__saved-result--scoring {
-  border: 1px solid var(--gold);
-  background: #fff9e9;
-  box-shadow: 0 4px 12px rgba(120, 89, 20, 0.09);
-}
-
-.hole-player__saved-points {
-  color: var(--gold-dark);
-  font-size: 0.65rem;
-  font-weight: 850;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-
-.confirmation__points--positive {
-  background: #fff9e9;
-  box-shadow: inset 4px 0 0 var(--gold);
-}
-
-.confirmation__points--positive dd {
-  color: var(--gold-dark);
-}
-
 @media (max-width: 430px) {
-  .app-header__logo {
-    width: 36px;
-    height: 36px;
-    border-radius: 11px;
-  }
-
-  .classification-overview {
-    padding: 13px;
-  }
-
-  .leaderboard-card {
-    grid-template-columns: 40px 4px minmax(0, 1fr);
-    gap: 0 8px;
-    padding: 10px;
-  }
-
-  .leaderboard-card__position {
-    font-size: 1.55rem;
-  }
-
-  .leaderboard-card__name {
-    font-size: 0.91rem;
-  }
-
-  .leaderboard-card__score {
-    min-width: 52px;
-    padding: 4px 7px;
-  }
-
-  .leaderboard-card__points,
-  .podium--1 .leaderboard-card__points {
-    font-size: 1.35rem;
-  }
-
-  .leaderboard-card__meta {
-    gap: 3px 8px;
-    font-size: 0.72rem;
-  }
-
   .admin-navigation__mobile-menu {
     grid-template-columns: 1fr;
   }
-
-  .admin-navigation__copy strong {
-    font-size: 0.8rem;
-  }
-
-  .admin-navigation__copy small {
-    display: block;
-  }
-
+  .admin-navigation__copy small,
   .admin-navigation__arrow {
     display: block;
-  }
-
-  .admin-section__heading {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-section__action,
-  .admin-section__action .button-row {
-    justify-content: flex-start;
-  }
-
-  .admin-section__action .button-row {
-    width: 100%;
-  }
-
-  .admin-shell .section-header {
-    align-items: flex-start;
-  }
-
-  .admin-shell .section-header > :last-child:not(:first-child) {
-    margin-left: 0;
-  }
-}
-
-@media (min-width: 700px) {
-  .classification-overview {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-  }
-
-  .classification-overview__meta {
-    justify-content: flex-end;
-  }
-
-  .leaderboard-card {
-    grid-template-columns: 52px 4px minmax(0, 1fr);
-    padding: 13px 15px;
-  }
-
-  .leaderboard-card__name {
-    font-size: 1.05rem;
   }
 }
 
 @media (min-width: 900px) {
   .admin-shell {
-    grid-template-columns: 238px minmax(0, 1fr);
-    gap: 20px;
+    grid-template-columns: 248px minmax(0, 1fr);
+    gap: var(--space-5);
   }
-
-  .admin-navigation {
-    top: 82px;
-  }
-
   .admin-navigation__mobile {
     display: none;
   }
-
   .admin-navigation__desktop {
     display: grid;
-    gap: 10px;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 18px;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--r-section);
     background: var(--surface);
-    box-shadow: 0 7px 22px rgba(3, 37, 26, 0.075);
+    border: 1px solid var(--line);
+    box-shadow: var(--elev-1);
   }
-
   .admin-navigation__desktop-heading {
     display: grid;
     gap: 2px;
-    padding: 3px 5px 10px;
-    border-bottom: 1px solid var(--border);
+    padding: 4px 6px var(--space-3);
+    border-bottom: 1px solid var(--line);
   }
-
   .admin-navigation__desktop-heading strong {
-    font-family: var(--font-display);
-    font-size: 1.2rem;
+    font-size: var(--fs-lg);
+    font-weight: 800;
+    letter-spacing: -0.02em;
   }
-
   .admin-navigation__desktop-menu {
     display: grid;
-    gap: 4px;
+    gap: 2px;
   }
-
   .admin-navigation__link {
     grid-template-columns: auto minmax(0, 1fr);
     min-height: 50px;
     border-color: transparent;
     background: transparent;
   }
-
-  .admin-navigation__link:hover {
-    background: var(--surface-subtle);
-  }
-
-  .admin-navigation__link[aria-current='page'] {
-    background: var(--golf-green-950);
-  }
-
-  .admin-navigation__copy strong {
-    font-size: 0.8rem;
-  }
-
   .admin-navigation__copy small {
     display: block;
   }
-
   .admin-navigation__arrow {
     display: none;
   }
+}
 
-  .admin-shell__content {
-    padding-top: 2px;
-  }
-
-  .admin-shell .dashboard-grid {
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+@media (hover: hover) and (pointer: fine) {
+  .admin-navigation__link:not([aria-current='page']):hover {
+    background: var(--surface-2);
   }
 }
 
+.admin-section {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--r-section);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.admin-section__header {
+  display: grid;
+  gap: 4px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-section__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.admin-section__title-group {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.admin-section__title-group h2 {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.admin-section__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-section__content {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.admin-section__header .button-row {
+  justify-content: space-between;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+@media (min-width: 640px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  }
+}
+
+/* Zona de acciones criticas: banda roja y superficie propia. No comparte
+   altura ni caja con nada mas. */
+.critical-zone {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border-radius: var(--r-section);
+  background: var(--birdie-wash);
+  border: 1px solid rgba(200, 50, 44, 0.3);
+  box-shadow: inset 5px 0 0 var(--birdie);
+}
+
+.critical-zone__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 750;
+  color: var(--birdie-deep);
+}
+
+.critical-zone__body {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--r-row);
+  background: var(--surface);
+  border: 1px solid rgba(200, 50, 44, 0.2);
+}
+
+.critical-zone__facts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  border-radius: var(--r-row);
+  border: 1px solid var(--line);
+}
+
+table.data {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+table.data th,
+table.data td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+table.data tr:last-child th,
+table.data tr:last-child td {
+  border-bottom: 0;
+}
+
+table.data thead th {
+  background: var(--surface-2);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+table.data tbody th {
+  width: 42%;
+  font-weight: 550;
+  color: var(--ink-2);
+}
+
+table.data td {
+  font-weight: 550;
+}
+
+/* ---------------------------------------------------------------------------
+   16. Estados y avisos
+   Siempre icono mas texto. El color nunca va solo.
+   ------------------------------------------------------------------------ */
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: var(--space-3);
+  border-radius: var(--r-row);
+  background: var(--amber-wash);
+  border: 1px solid rgba(168, 95, 0, 0.22);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.alert__icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--amber);
+}
+
+.alert--danger {
+  background: var(--birdie-wash);
+  border-color: rgba(200, 50, 44, 0.25);
+  color: var(--birdie-deep);
+  font-weight: 600;
+}
+
+.alert--danger .alert__icon {
+  color: var(--birdie);
+}
+
+.alert--success {
+  background: var(--fairway-wash);
+  border-color: rgba(31, 122, 77, 0.22);
+  color: var(--fairway-deep);
+}
+
+.alert--success .alert__icon {
+  color: var(--fairway);
+}
+
+.alert--info {
+  background: var(--navy-50);
+  border-color: var(--navy-100);
+  color: var(--navy-800);
+}
+
+.alert--info .alert__icon {
+  color: var(--navy-500);
+}
+
+.state-block {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--r-section);
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  text-align: center;
+}
+
+.state-block__icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--navy-700);
+  background-image: var(--sheen);
+  box-shadow: var(--rim-dark), var(--elev-2);
+  color: var(--ivory);
+}
+
+.state-block__title {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.state-block__body {
+  max-width: 38ch;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.state-block--error {
+  border-style: solid;
+  border-color: rgba(200, 50, 44, 0.3);
+}
+
+.state-block--error .state-block__icon {
+  background: var(--birdie);
+  background-image: linear-gradient(180deg, #d4413a 0%, var(--birdie) 100%);
+  color: #ffffff;
+}
+
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px var(--space-3);
+  border-radius: var(--r-row);
+  background: var(--amber-wash);
+  border: 1px solid rgba(168, 95, 0, 0.22);
+  color: var(--amber);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+}
+
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.save-status--synced,
+.save-status--saved {
+  background: var(--fairway-wash);
+  color: var(--fairway-deep);
+}
+
+.save-status--saving {
+  background: var(--navy-50);
+  color: var(--navy-700);
+}
+
+.save-status--offline {
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+
+.save-status--pending {
+  background: var(--tee-wash);
+  color: #6f5100;
+}
+
+.save-status--error {
+  background: var(--birdie-wash);
+  color: var(--birdie-deep);
+}
+
+.app-header .save-status {
+  background: rgba(243, 235, 221, 0.12);
+  color: var(--ivory);
+}
+
+/* ---------------------------------------------------------------------------
+   17. Movimiento y accesibilidad
+   ------------------------------------------------------------------------ */
+
+/* Entrada de la tarjeta heroe: breve, porque Mi tarjeta se visita muchas
+   veces por vuelta. Lo que se ve a menudo no se anima mucho. */
+@keyframes pgc-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-content > .hero:first-child {
+  animation: pgc-arrive 260ms var(--ease-out) both;
+}
+
+/* Movimiento reducido: menos y mas suave, no cero. Se conservan las
+   transiciones de opacidad y color, que ayudan a entender; se quita todo
+   desplazamiento. */
 @media (prefers-reduced-motion: reduce) {
-  .score-keypad__number {
-    transition: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  .button,
+  .icon-button,
+  .score-keypad__key,
+  .segmented__option,
+  .bottom-nav__link,
+  .hole-row,
+  .admin-navigation__link,
+  .player-list__item,
+  .hole-step-nav__link {
+    transition-property: background-color, color, border-color, box-shadow, opacity;
+  }
+
+  .button:active:not(:disabled),
+  .icon-button:active,
+  .score-keypad__key:active:not(:disabled),
+  .segmented__option:active,
+  .bottom-nav__link:active,
+  a.hole-row:active,
+  .admin-navigation__link:active,
+  .player-list__item:active,
+  .hole-step-nav__link:active {
+    transform: none;
+  }
+
+  .reveal-card {
+    transform: none;
+    filter: none;
+    transition: opacity 200ms ease;
+  }
+
+  .sheet-overlay > .sheet,
+  .sheet-overlay > .confirmation {
+    transition: opacity 200ms ease;
+  }
+
+  @starting-style {
+    .sheet-overlay > .sheet,
+    .sheet-overlay > .confirmation {
+      transform: none;
+      opacity: 0;
+    }
+  }
+}
+
+/* Transparencia reducida: el dock pasa a solido. */
+@media (prefers-reduced-transparency: reduce) {
+  .bottom-nav {
+    background: var(--navy-900);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Mas contraste: filetes mas fuertes y dock solido. */
+@media (prefers-contrast: more) {
+  :root {
+    --line: #9aa6b4;
+    --line-strong: #5f6d7d;
+    --ink-2: #2e3a48;
+    --ink-3: #4c5b6c;
+  }
+  .bottom-nav {
+    background: var(--navy-950);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Navegador sin backdrop-filter: dock solido, nunca un velo sin desenfoque
+   que deje el texto flotando sobre el contenido. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bottom-nav {
+    background: var(--navy-900);
   }
 }
