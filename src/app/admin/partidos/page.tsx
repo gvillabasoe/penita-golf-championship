@@ -1,6 +1,6 @@
-import { getCompetition, getFlights } from '@/lib/data/queries';
 import Link from 'next/link';
 
+import { getCompetition, getFlights } from '@/lib/data/queries';
 import { DrawPanel } from '@/components/client/draw-panel';
 import { TeeTimeForm } from '@/components/client/tee-time-form';
 import { AdminSection, Alert, StateBlock, StatusBadge } from '@/components/ui';
@@ -27,29 +27,52 @@ export default async function AdminFlightsPage() {
   }
 
   const flights = await getFlights(context);
+  const confirmed = context.flightsConfirmedAt !== null;
 
   return (
     <div className="stack">
       <div className="section-header">
         <h1>Partidos</h1>
-        <StatusBadge tone="neutral">{flights.length} partidos</StatusBadge>
+        <div className="button-row">
+          <StatusBadge tone={confirmed ? 'green' : 'warning'}>
+            {confirmed ? 'Confirmados' : 'Pendientes de confirmación'}
+          </StatusBadge>
+          <StatusBadge tone="neutral">{flights.length} partidos guardados</StatusBadge>
+        </div>
       </div>
+
+      <p className="muted">
+        El sorteo combina aleatoriedad y equilibrio: reparte niveles de HCP, separa los cuatro HCP más altos siempre que sea posible y distribuye a quienes conocen el campo para acompañar a jugadores que no lo conocen.
+      </p>
 
       {context.date === null ? (
         <Alert tone="warning" role="status">
           Para fijar las horas de salida, fija antes la fecha del campeonato en{' '}
-          <Link href="/admin">Resumen</Link>. Puedes sortear igualmente: los partidos se guardan sin
-          hora.
+          <Link href="/admin">Resumen</Link>. Puedes sortear igualmente y guardar los partidos sin hora.
         </Alert>
       ) : null}
 
-      <DrawPanel />
+      <DrawPanel isConfirmed={confirmed} />
+
+      {confirmed ? (
+        <Alert tone="success" role="status">
+          Los partidos están confirmados. Ya puedes ir a <Link href="/admin/parejas">Parejas</Link> y realizar la segunda fase.
+        </Alert>
+      ) : null}
 
       {flights.length === 0 ? (
-        <StateBlock title="Todavia no hay partidos" icon={<IconUsers />}>
-          Usa el sorteo para repartir a los jugadores. La semilla queda guardada, asi que el
-          mismo sorteo se puede reproducir despues.
+        <StateBlock title="Todavía no hay partidos" icon={<IconUsers />}>
+          Usa el sorteo para repartir a los participantes. Las parejas permanecerán bloqueadas hasta confirmar la propuesta.
         </StateBlock>
+      ) : null}
+
+      {flights.length > 0 ? (
+        <div className="section-header">
+          <h2>Composición guardada</h2>
+          <StatusBadge tone={confirmed ? 'green' : 'warning'}>
+            {confirmed ? 'Vigente' : 'No confirmada'}
+          </StatusBadge>
+        </div>
       ) : null}
 
       {flights.map((flight) => (
@@ -57,9 +80,14 @@ export default async function AdminFlightsPage() {
           key={flight.id}
           title={flight.name}
           action={
-            <StatusBadge tone={flight.teeTime ? 'green' : 'warning'}>
-              {flight.teeTime ? timeFormat.format(flight.teeTime) : 'Sin hora'}
-            </StatusBadge>
+            <div className="button-row">
+              <StatusBadge tone={flight.status === 'CONFIRMED' ? 'green' : 'warning'}>
+                {flight.status === 'CONFIRMED' ? 'Confirmado' : 'Borrador'}
+              </StatusBadge>
+              <StatusBadge tone={flight.teeTime ? 'green' : 'warning'}>
+                {flight.teeTime ? timeFormat.format(flight.teeTime) : 'Sin hora'}
+              </StatusBadge>
+            </div>
           }
         >
           <ul className="flight-card__members">
@@ -72,7 +100,10 @@ export default async function AdminFlightsPage() {
                     aria-hidden="true"
                   />
                   <div className="player-card__body">
-                    <p className="player-card__name">{member.displayName}</p>
+                    <p className="player-card__name">
+                      {member.displayName}
+                      {member.knowsCourse ? <StatusBadge tone="green">Conoce el campo</StatusBadge> : null}
+                    </p>
                     <p className="player-card__meta">
                       <span>
                         HCP{' '}

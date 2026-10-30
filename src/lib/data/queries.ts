@@ -54,6 +54,7 @@ export interface CompetitionContext {
   classificationStatus: 'HIDDEN' | 'REVEALING' | 'PUBLISHED';
   pairModeEnabled: boolean;
   pairScoringMode: PairScoringMode;
+  flightsConfirmedAt: Date | null;
   snapshot: CourseSnapshot & { snapshotId: string };
   distances: Map<number, number>;
 }
@@ -100,6 +101,7 @@ export async function getCompetition(): Promise<CompetitionContext | null> {
     pairScoringMode: isPairScoringMode(competition.pairScoringMode)
       ? competition.pairScoringMode
       : 'BEST_BALL',
+    flightsConfirmedAt: competition.flightsConfirmedAt,
     snapshot: {
       snapshotId: snapshot.id,
       teeName: snapshot.teeName,
@@ -123,6 +125,8 @@ export interface PlayerScorecard {
   isActive: boolean;
   color: string;
   pairNumber: number | null;
+  pairSoloMultiplier: boolean;
+  knowsCourse: boolean;
   handicapIndexTenths: number | null;
   /** Hándicap exacto que se ha usado para calcular, en decimas. */
   appliedHandicapIndexTenths: number | null;
@@ -212,6 +216,8 @@ export async function getAllScorecards(
       isActive: player.isActive,
       color: player.color,
       pairNumber: player.pairNumber,
+      pairSoloMultiplier: player.pairSoloMultiplier,
+      knowsCourse: player.knowsCourse,
       handicapIndexTenths: player.handicapIndexTenths,
       appliedHandicapIndexTenths: player.appliedHandicapIndexTenths,
       handicapCap: describeHandicapCap(
@@ -272,6 +278,7 @@ export async function getPairCompetition(
           handicapIndexTenths: member.handicapIndexTenths,
           playingHandicap: member.playingHandicap,
           status: member.status,
+          pairSoloMultiplier: member.pairSoloMultiplier,
           results: member.results,
           totals: member.totals,
         })),
@@ -361,6 +368,7 @@ export interface FlightView {
     status: ScorecardStatus;
     holesCompleted: number;
     points: number;
+    knowsCourse: boolean;
   }>;
 }
 
@@ -396,6 +404,7 @@ export async function getFlights(context: CompetitionContext): Promise<FlightVie
         status: card?.status ?? 'NOT_STARTED',
         holesCompleted: card?.totals.total.holesPlayed ?? 0,
         points: card?.totals.total.points ?? 0,
+        knowsCourse: card?.knowsCourse ?? false,
       };
     }),
   }));

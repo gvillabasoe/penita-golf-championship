@@ -3,24 +3,31 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { resetPlayerPassword, setPlayerActive } from '@/lib/actions/admin';
-import { Alert, FormField } from '@/components/ui';
+import {
+  resetPlayerPassword,
+  setPlayerActive,
+  setPlayerKnowsCourse,
+} from '@/lib/actions/admin';
+import { Alert, FormField, StatusBadge } from '@/components/ui';
 
 interface PlayerAccessPanelProps {
   competitionPlayerId: string;
   displayName: string;
   isActive: boolean;
   userRole: 'PLAYER' | 'ADMIN';
+  knowsCourse: boolean;
 }
 
-/** Gestion de acceso y participacion dentro de la ficha del jugador. */
+/** Gestion de configuracion, acceso y participacion dentro de la ficha. */
 export function PlayerAccessPanel({
   competitionPlayerId,
   displayName,
   isActive,
   userRole,
+  knowsCourse,
 }: PlayerAccessPanelProps) {
   const router = useRouter();
+  const [courseKnowledge, setCourseKnowledge] = useState(knowsCourse);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [confirmingStatus, setConfirmingStatus] = useState(false);
   const [password, setPassword] = useState('');
@@ -55,6 +62,24 @@ export function PlayerAccessPanel({
     router.refresh();
   }
 
+  async function changeCourseKnowledge(next: boolean) {
+    const previous = courseKnowledge;
+    setCourseKnowledge(next);
+    setBusy(true);
+    setFeedback(null);
+    const result = await setPlayerKnowsCourse(competitionPlayerId, next);
+    setBusy(false);
+
+    if (!result.ok) {
+      setCourseKnowledge(previous);
+      setFeedback({ ok: false, text: result.error });
+      return;
+    }
+
+    setFeedback({ ok: true, text: result.message ?? 'Conocimiento del campo actualizado.' });
+    router.refresh();
+  }
+
   async function changeStatus() {
     setBusy(true);
     setFeedback(null);
@@ -73,6 +98,25 @@ export function PlayerAccessPanel({
 
   return (
     <div className="player-access stack">
+      <label className="course-knowledge-toggle" htmlFor={`knows-course-${competitionPlayerId}`}>
+        <span className="course-knowledge-toggle__copy">
+          <strong>Conoce el campo</strong>
+          <small>Se utiliza para distribuir guías entre los partidos.</small>
+        </span>
+        <span className="course-knowledge-toggle__control">
+          <StatusBadge tone={courseKnowledge ? 'green' : 'neutral'}>
+            {courseKnowledge ? 'Sí' : 'No'}
+          </StatusBadge>
+          <input
+            id={`knows-course-${competitionPlayerId}`}
+            type="checkbox"
+            checked={courseKnowledge}
+            disabled={busy}
+            onChange={(event) => void changeCourseKnowledge(event.target.checked)}
+          />
+        </span>
+      </label>
+
       <div className="button-row">
         <button
           type="button"
@@ -197,9 +241,9 @@ export function PlayerAccessPanel({
           <p className="muted">
             {isActive
               ? userRole === 'ADMIN'
-                ? 'Dejará de competir y saldrá de su partido y pareja, pero conservará el acceso administrativo. Sus tarjetas no se borran.'
-                : 'Dejará de aparecer en el acceso, su partido, su pareja y las clasificaciones. Sus tarjetas no se borran.'
-              : 'Volverá a aparecer entre los participantes. Tendrás que asignarle de nuevo partido y pareja.'}
+                ? 'Dejará de competir, pero conservará el acceso administrativo. Sus tarjetas no se borran. Los partidos y parejas deberán volver a sortearse.'
+                : 'Dejará de aparecer en el acceso y en las clasificaciones. Sus tarjetas no se borran. Los partidos y parejas deberán volver a sortearse.'
+              : 'Volverá a aparecer entre los participantes. Después tendrás que volver a sortear y confirmar los partidos.'}
           </p>
           <div className="button-row--split">
             <button

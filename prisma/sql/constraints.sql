@@ -81,6 +81,17 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$ BEGIN
+  ALTER TABLE "CompetitionPlayer"
+    ADD CONSTRAINT "pair_solo_requires_pair_number"
+      CHECK ("pairSoloMultiplier" = false OR "pairNumber" IS NOT NULL);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "one_solo_pair_player_per_competition"
+  ON "CompetitionPlayer" ("competitionId")
+  WHERE "pairSoloMultiplier" = true;
+
 -- --- Resultados -------------------------------------------------------------
 
 DO $$ BEGIN

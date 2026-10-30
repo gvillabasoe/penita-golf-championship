@@ -34,6 +34,7 @@ function member(id: string, name: string, points: number[], gross: number[]): Pa
     handicapIndexTenths: id === 'a' ? 100 : 200,
     playingHandicap: id === 'a' ? 9 : 18,
     status: 'IN_PLAY',
+    pairSoloMultiplier: false,
     results,
     totals: computeTotals(results),
   };
@@ -73,6 +74,26 @@ describe('parejas por suma', () => {
     assert.equal(pair.holesAvailable, 36);
     assert.equal(pair.results, null);
     assert.equal(pair.totals, null);
+  });
+});
+
+describe('participante individual por numero impar', () => {
+  test('duplica los puntos y genera una unica tarjeta derivada en cualquier modalidad', () => {
+    const solo = member('a', 'Ana Uno', Array(18).fill(2), Array(18).fill(4));
+    solo.pairSoloMultiplier = true;
+
+    for (const mode of ['BEST_BALL', 'COMBINED_POINTS'] as const) {
+      const team = buildPairScore(4, [solo], mode);
+      assert.equal(team.isSolo, true);
+      assert.equal(team.points, 72);
+      assert.equal(team.results?.[0].stablefordPoints, 4);
+      assert.equal(team.totals?.total.points, 72);
+      assert.equal(team.holesCompleted, 18);
+      assert.equal(team.holesAvailable, 18);
+      assert.equal(team.handicapIndexTenths, 200);
+      assert.equal(team.playingHandicap, 18);
+      assert.equal(team.isEligible, true);
+    }
   });
 });
 

@@ -27,10 +27,12 @@ import {
 } from '../../reveal/controller';
 import { resolveRoster } from '../../seed/roster';
 
-const players: DrawPlayer[] = resolveRoster().map((r) => ({
+const players: DrawPlayer[] = resolveRoster().map((r, index) => ({
   competitionPlayerId: r.slug,
   displayName: r.displayName,
   isActive: true,
+  handicapIndexTenths: 40 + index * 24,
+  knowsCourse: [0, 3, 6, 9].includes(index),
 }));
 
 describe('distribuciones de partidos', () => {
@@ -113,6 +115,75 @@ describe('sorteo', () => {
     assert.equal(proposal.playerCount, 12);
   });
 
+  test('separa a los cuatro HCP mas altos entre los cuatro partidos', () => {
+    const proposal = drawFlights({ players, seed: 'equilibrio-hcp' });
+    const worst = new Set(
+      [...players]
+        .sort((left, right) =>
+          (right.handicapIndexTenths ?? 0) - (left.handicapIndexTenths ?? 0),
+        )
+        .slice(0, 4)
+        .map((player) => player.competitionPlayerId),
+    );
+    for (const flight of proposal.flights) {
+      assert.ok(
+        flight.memberIds.filter((id) => worst.has(id)).length <= 1,
+        `coinciden varios HCP altos en ${flight.name}`,
+      );
+    }
+    assert.equal(proposal.metrics.worstHandicapCollisions, 0);
+  });
+
+  test('reparte a quienes conocen el campo y mantiene cercanas las medias de HCP', () => {
+    const proposal = drawFlights({ players, seed: 'guias-y-hcp' });
+    const byId = new Map(players.map((player) => [player.competitionPlayerId, player]));
+    for (const flight of proposal.flights) {
+      assert.ok(
+        flight.memberIds.some((id) => byId.get(id)?.knowsCourse),
+        `${flight.name} no tiene ningun jugador que conozca el campo`,
+      );
+    }
+    assert.equal(proposal.metrics.flightsWithoutCourseGuide, 0);
+    assert.ok(
+      proposal.metrics.handicapAverageRangeTenths <= 35,
+      `rango de medias demasiado alto: ${proposal.metrics.handicapAverageRangeTenths}`,
+    );
+  });
+
+  test('prioriza un conocedor de HCP bajo junto a jugadores que no conocen el campo y tienen peor HCP', () => {
+    const guidedPlayers: DrawPlayer[] = Array.from({ length: 12 }, (_, index) => ({
+      competitionPlayerId: `guia-${index + 1}`,
+      displayName: `Jugador ${index + 1}`,
+      isActive: true,
+      handicapIndexTenths: 40 + index * 20,
+      knowsCourse: index < 3,
+    }));
+    const proposal = drawFlights({
+      players: guidedPlayers,
+      seed: 'mentores-del-campo',
+      distribution: [4, 4, 4],
+    });
+    const byId = new Map(
+      guidedPlayers.map((player) => [player.competitionPlayerId, player] as const),
+    );
+
+    for (const flight of proposal.flights) {
+      const members = flight.memberIds.map((id) => byId.get(id)!);
+      const guides = members.filter((member) => member.knowsCourse);
+      assert.equal(guides.length, 1, `${flight.name} no tiene exactamente una guia`);
+      assert.ok(
+        members.some(
+          (member) =>
+            !member.knowsCourse &&
+            (member.handicapIndexTenths ?? 0) > (guides[0].handicapIndexTenths ?? 0),
+        ),
+        `${flight.name} no combina la guia con un jugador de peor HCP`,
+      );
+    }
+    assert.equal(proposal.metrics.flightsWithoutCourseGuide, 0);
+    assert.equal(proposal.metrics.mentorshipPenalty, 0);
+  });
+
   test('guarda la semilla para poder reproducir el sorteo', () => {
     const proposal = drawFlights({ players, seed: 'ulzama-2026' });
     assert.equal(proposal.seed, 'ulzama-2026');
@@ -140,7 +211,7 @@ describe('sorteo', () => {
     for (let i = 0; i < 40; i += 1) {
       primeros.add(drawFlights({ players, seed: `semilla-${i}` }).flights[0].memberIds[0]);
     }
-    assert.ok(primeros.size > 5, `solo ${primeros.size} jugadores distintos abrieron el sorteo`);
+    assert.ok(primeros.size >= 4, `solo ${primeros.size} jugadores distintos abrieron el sorteo`);
   });
 });
 

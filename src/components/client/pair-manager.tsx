@@ -10,6 +10,8 @@ interface AvailablePlayer {
   competitionPlayerId: string;
   displayName: string;
   color: string;
+  flightId: string | null;
+  flightName: string | null;
 }
 
 interface ExistingPair {
@@ -17,14 +19,17 @@ interface ExistingPair {
   displayName: string;
   members: Array<{ competitionPlayerId: string; displayName: string; color: string }>;
   isEligible: boolean;
+  isSolo: boolean;
 }
 
 export function PairManager({
   availablePlayers,
   pairs,
+  enabled,
 }: {
   availablePlayers: AvailablePlayer[];
   pairs: ExistingPair[];
+  enabled: boolean;
 }) {
   const router = useRouter();
   const [first, setFirst] = useState('');
@@ -32,9 +37,15 @@ export function PairManager({
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const firstPlayer = availablePlayers.find((player) => player.competitionPlayerId === first);
   const secondOptions = useMemo(
-    () => availablePlayers.filter((player) => player.competitionPlayerId !== first),
-    [availablePlayers, first],
+    () =>
+      availablePlayers.filter(
+        (player) =>
+          player.competitionPlayerId !== first &&
+          (!firstPlayer?.flightId || player.flightId !== firstPlayer.flightId),
+      ),
+    [availablePlayers, first, firstPlayer?.flightId],
   );
 
   async function add() {
@@ -62,7 +73,7 @@ export function PairManager({
 
     setFeedback({
       ok: result.ok,
-      text: result.ok ? result.message ?? 'Pareja disuelta.' : result.error,
+      text: result.ok ? result.message ?? 'Equipo disuelto.' : result.error,
     });
     if (result.ok) router.refresh();
   }
@@ -74,31 +85,33 @@ export function PairManager({
           <select
             id="pair-first-player"
             value={first}
+            disabled={!enabled || busy}
             onChange={(event) => {
               const nextFirst = event.target.value;
               setFirst(nextFirst);
-              if (second === nextFirst) setSecond('');
+              setSecond('');
             }}
           >
             <option value="">Selecciona un jugador</option>
             {availablePlayers.map((player) => (
               <option key={player.competitionPlayerId} value={player.competitionPlayerId}>
-                {player.displayName}
+                {player.displayName}{player.flightName ? ` · ${player.flightName}` : ''}
               </option>
             ))}
           </select>
         </FormField>
 
-        <FormField id="pair-second-player" label="Jugador 2">
+        <FormField id="pair-second-player" label="Jugador 2 · otro partido">
           <select
             id="pair-second-player"
             value={second}
+            disabled={!enabled || busy || first === ''}
             onChange={(event) => setSecond(event.target.value)}
           >
             <option value="">Selecciona un jugador</option>
             {secondOptions.map((player) => (
               <option key={player.competitionPlayerId} value={player.competitionPlayerId}>
-                {player.displayName}
+                {player.displayName}{player.flightName ? ` · ${player.flightName}` : ''}
               </option>
             ))}
           </select>
@@ -107,12 +120,20 @@ export function PairManager({
         <button
           type="button"
           className="button button--primary"
-          disabled={busy || first === '' || second === ''}
+          disabled={!enabled || busy || first === '' || second === ''}
           onClick={add}
         >
           {busy ? 'Guardando...' : 'Crear pareja'}
         </button>
       </div>
+
+      {!enabled ? (
+        <p className="muted">Los ajustes manuales se habilitan después de confirmar los partidos y activar el modo parejas.</p>
+      ) : (
+        <p className="muted">
+          Solo se muestran como segundo integrante jugadores de otro partido. El servidor también impide emparejar entre sí a los cuatro HCP más altos.
+        </p>
+      )}
 
       {feedback ? (
         <Alert tone={feedback.ok ? 'success' : 'danger'} role={feedback.ok ? 'status' : 'alert'}>
@@ -121,7 +142,7 @@ export function PairManager({
       ) : null}
 
       {pairs.length === 0 ? (
-        <p className="muted">Todavia no hay parejas creadas.</p>
+        <p className="muted">Todavía no hay parejas sorteadas.</p>
       ) : (
         <ol className="pair-admin-list">
           {pairs.map((pair) => (
@@ -133,12 +154,14 @@ export function PairManager({
                   ))}
                 </span>
                 <span>
-                  <strong>Pareja {pair.pairNumber}</strong>
+                  <strong>{pair.isSolo ? `Equipo ${pair.pairNumber} · individual x2` : `Pareja ${pair.pairNumber}`}</strong>
                   <small>{pair.displayName}</small>
                 </span>
               </div>
               <div className="button-row">
-                {pair.members.length !== 2 ? (
+                {pair.isSolo ? (
+                  <StatusBadge tone="gold">Puntos x2</StatusBadge>
+                ) : pair.members.length !== 2 ? (
                   <StatusBadge tone="danger">Incompleta</StatusBadge>
                 ) : !pair.isEligible ? (
                   <StatusBadge tone="warning">Falta HCP</StatusBadge>

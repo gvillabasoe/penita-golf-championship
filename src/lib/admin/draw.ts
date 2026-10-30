@@ -1,14 +1,10 @@
 /**
  * Sorteo y gestion de partidos (secciones 58, 59, 60 y 61).
  *
- * El sorteo se hace en servidor y con una semilla que se guarda. Eso permite
- * reproducirlo exactamente, lo cual en un torneo entre trece amigos no es un
- * detalle tecnico: es la diferencia entre "salio asi" y "aqui esta la semilla,
- * ejecutalo tu mismo y te sale lo mismo".
- *
- * Nada se guarda hasta que el administrador confirma. El sorteo genera una
- * propuesta; el panel la muestra; se puede repetir, mover jugadores a mano y
- * solo entonces confirmar.
+ * El sorteo es aleatorio pero no ciego. Genera miles de distribuciones
+ * reproducibles a partir de una semilla, puntua su equilibrio y escoge al azar
+ * entre las mejores. Asi mantiene variedad sin renunciar a repartir HCP,
+ * jugadores que conocen el campo y los cuatro HCP mas altos.
  */
 
 export type Role = 'PLAYER' | 'ADMIN';
@@ -17,6 +13,9 @@ export interface DrawPlayer {
   competitionPlayerId: string;
   displayName: string;
   isActive: boolean;
+  handicapIndexTenths: number | null;
+  knowsCourse: boolean;
+  color?: string;
 }
 
 export interface ProposedFlight {
@@ -26,11 +25,23 @@ export interface ProposedFlight {
   teeTime: string | null;
 }
 
+export interface DrawBalanceMetrics {
+  worstHandicapCollisions: number;
+  handicapAverageRangeTenths: number;
+  handicapVariance: number;
+  flightsWithoutCourseGuide: number;
+  courseGuideDeviation: number;
+  mentorshipPenalty: number;
+  missingHandicapCount: number;
+  score: number;
+}
+
 export interface DrawProposal {
   flights: ProposedFlight[];
   seed: string;
   distribution: number[];
   playerCount: number;
+  metrics: DrawBalanceMetrics;
 }
 
 /**
@@ -51,14 +62,7 @@ export const PROPOSED_DISTRIBUTIONS: Record<number, number[]> = {
 export const MIN_FLIGHT_SIZE = 2;
 export const MAX_FLIGHT_SIZE = 4;
 
-/**
- * Distribucion para un numero de jugadores cualquiera.
- *
- * Para los tamanos de la seccion 59 devuelve exactamente lo que dice el pliego.
- * Fuera de ese rango calcula partidos de 4 y reparte el resto hacia arriba
- * evitando dejar un partido de 1, que arruinaria la revision cruzada de tarjetas:
- * un jugador solo en su partido no tendria a nadie que le validase la tarjeta.
- */
+/** Distribucion para un numero de jugadores cualquiera. */
 export function distributionFor(playerCount: number): number[] {
   if (!Number.isInteger(playerCount) || playerCount < 0) {
     throw new Error(`Numero de jugadores no valido: ${playerCount}`);
@@ -79,11 +83,7 @@ export function distributionFor(playerCount: number): number[] {
   return distribution.sort((a, b) => b - a);
 }
 
-/**
- * Generador deterministico a partir de una semilla de texto (mulberry32 sobre
- * un hash FNV-1a). No es criptografico y no necesita serlo: solo tiene que ser
- * reproducible y repartir bien.
- */
+/** Generador deterministico a partir de una semilla de texto. */
 function createRandom(seed: string): () => number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < seed.length; i += 1) {
@@ -114,18 +114,246 @@ export function seededShuffle<T>(items: T[], seed: string): T[] {
   return result;
 }
 
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[middle]
+    : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+}
+
+function effectiveHandicaps(players: DrawPlayer[]): Map<string, number> {
+  const fallback = median(
+    players
+      .map((player) => player.handicapIndexTenths)
+      .filter((value): value is number => value !== null),
+  );
+  return new Map(
+    players.map((player) => [
+      player.competitionPlayerId,
+      player.handicapIndexTenths ?? fallback,
+    ]),
+  );
+}
+
+/** Los cuatro HCP mas altos entre los jugadores activos. */
+export function worstHandicapPlayerIds(players: DrawPlayer[]): Set<string> {
+  const effective = effectiveHandicaps(players);
+  return new Set(
+    [...players]
+      .sort((left, right) => {
+        const byHandicap =
+          (effective.get(right.competitionPlayerId) ?? 0) -
+          (effective.get(left.competitionPlayerId) ?? 0);
+        return byHandicap || left.displayName.localeCompare(right.displayName, 'es');
+      })
+      .slice(0, Math.min(4, players.length))
+      .map((player) => player.competitionPlayerId),
+  );
+}
+
+function partition(
+  players: DrawPlayer[],
+  distribution: number[],
+  seed: string,
+): DrawPlayer[][] {
+  const shuffled = seededShuffle(players, seed);
+  const result: DrawPlayer[][] = [];
+  let cursor = 0;
+  for (const size of distribution) {
+    result.push(shuffled.slice(cursor, cursor + size));
+    cursor += size;
+  }
+  return result;
+}
+
 /**
- * Genera una propuesta de sorteo. No escribe nada: es una propuesta.
+ * Repara una particion puramente aleatoria para separar los cuatro peores HCP
+ * siempre que haya suficientes partidos. El intercambio conserva los tamanos.
+ */
+function separateWorstPlayers(
+  rawFlights: DrawPlayer[][],
+  worstIds: Set<string>,
+  seed: string,
+): DrawPlayer[][] {
+  const flights = rawFlights.map((members) => [...members]);
+  if (flights.length < worstIds.size) return flights;
+
+  for (let guard = 0; guard < worstIds.size * 2; guard += 1) {
+    const sourceIndex = flights.findIndex(
+      (members) => members.filter((member) => worstIds.has(member.competitionPlayerId)).length > 1,
+    );
+    const targetIndex = flights.findIndex(
+      (members) => members.every((member) => !worstIds.has(member.competitionPlayerId)),
+    );
+    if (sourceIndex < 0 || targetIndex < 0) break;
+
+    const sourceWorst = seededShuffle(
+      flights[sourceIndex].filter((member) => worstIds.has(member.competitionPlayerId)),
+      `${seed}:worst:${guard}`,
+    )[0];
+    const targetRegular = seededShuffle(
+      flights[targetIndex].filter((member) => !worstIds.has(member.competitionPlayerId)),
+      `${seed}:regular:${guard}`,
+    )[0];
+    if (!sourceWorst || !targetRegular) break;
+
+    flights[sourceIndex] = flights[sourceIndex].map((member) =>
+      member.competitionPlayerId === sourceWorst.competitionPlayerId ? targetRegular : member,
+    );
+    flights[targetIndex] = flights[targetIndex].map((member) =>
+      member.competitionPlayerId === targetRegular.competitionPlayerId ? sourceWorst : member,
+    );
+  }
+
+  return flights;
+}
+
+/**
+ * Reparte por bandas de HCP: cada bloque consecutivo aporta, como maximo, un
+ * jugador a cada partido. La posicion concreta dentro de la banda es aleatoria.
+ */
+function stratifiedPartition(
+  players: DrawPlayer[],
+  distribution: number[],
+  seed: string,
+): DrawPlayer[][] {
+  const effective = effectiveHandicaps(players);
+  const ordered = [...players].sort((left, right) => {
+    const byHandicap =
+      (effective.get(right.competitionPlayerId) ?? 0) -
+      (effective.get(left.competitionPlayerId) ?? 0);
+    return byHandicap || left.displayName.localeCompare(right.displayName, 'es');
+  });
+  const flights = distribution.map(() => [] as DrawPlayer[]);
+  const flightCount = distribution.length;
+
+  for (let cursor = 0, band = 0; cursor < ordered.length; cursor += flightCount, band += 1) {
+    const tier = seededShuffle(
+      ordered.slice(cursor, cursor + flightCount),
+      `${seed}:tier:${band}`,
+    );
+    const available = seededShuffle(
+      flights
+        .map((members, index) => ({ index, remaining: distribution[index] - members.length }))
+        .filter((entry) => entry.remaining > 0)
+        .map((entry) => entry.index),
+      `${seed}:flights:${band}`,
+    );
+
+    tier.forEach((player, index) => {
+      const flightIndex = available[index];
+      if (flightIndex === undefined) {
+        throw new Error('No se ha podido completar la distribucion de partidos.');
+      }
+      flights[flightIndex].push(player);
+    });
+  }
+
+  return flights.map((members, index) => seededShuffle(members, `${seed}:inside:${index}`));
+}
+
+function scoreFlights(
+  flights: DrawPlayer[][],
+  allPlayers: DrawPlayer[],
+  worstIds: Set<string>,
+): DrawBalanceMetrics {
+  const effective = effectiveHandicaps(allPlayers);
+  const overallAverage =
+    allPlayers.reduce(
+      (sum, player) => sum + (effective.get(player.competitionPlayerId) ?? 0),
+      0,
+    ) / Math.max(1, allPlayers.length);
+  const totalGuides = allPlayers.filter((player) => player.knowsCourse).length;
+  const needGuideInEveryFlight = totalGuides >= flights.length;
+
+  let worstHandicapCollisions = 0;
+  let flightsWithoutCourseGuide = 0;
+  let courseGuideDeviation = 0;
+  let mentorshipPenalty = 0;
+  const averages: number[] = [];
+
+  for (const members of flights) {
+    const average =
+      members.reduce(
+        (sum, player) => sum + (effective.get(player.competitionPlayerId) ?? overallAverage),
+        0,
+      ) / Math.max(1, members.length);
+    averages.push(average);
+
+    const worstCount = members.filter((member) => worstIds.has(member.competitionPlayerId)).length;
+    worstHandicapCollisions += Math.max(0, worstCount - 1);
+
+    const guides = members.filter((member) => member.knowsCourse);
+    if (needGuideInEveryFlight && guides.length === 0) flightsWithoutCourseGuide += 1;
+    const idealGuides = totalGuides * (members.length / Math.max(1, allPlayers.length));
+    courseGuideDeviation += Math.abs(guides.length - idealGuides);
+
+    const bestGuideHandicap =
+      guides.length === 0
+        ? null
+        : Math.min(
+            ...guides.map((guide) => effective.get(guide.competitionPlayerId) ?? overallAverage),
+          );
+
+    for (const member of members) {
+      if (member.knowsCourse) continue;
+      const handicap = effective.get(member.competitionPlayerId) ?? overallAverage;
+      const priority = 1 + Math.max(0, handicap - overallAverage) / 10;
+      if (bestGuideHandicap === null) {
+        mentorshipPenalty += priority * 2;
+      } else if (bestGuideHandicap >= handicap) {
+        mentorshipPenalty += priority + (bestGuideHandicap - handicap) / 10;
+      }
+    }
+  }
+
+  const handicapAverageRangeTenths =
+    averages.length === 0 ? 0 : Math.max(...averages) - Math.min(...averages);
+  const handicapVariance =
+    averages.reduce((sum, value) => sum + ((value - overallAverage) / 10) ** 2, 0) /
+    Math.max(1, averages.length);
+
+  const score =
+    worstHandicapCollisions * 1_000_000_000 +
+    handicapVariance * 100_000 +
+    (handicapAverageRangeTenths / 10) * 20_000 +
+    flightsWithoutCourseGuide * 300_000 +
+    courseGuideDeviation * 30_000 +
+    mentorshipPenalty * 5_000;
+
+  return {
+    worstHandicapCollisions,
+    handicapAverageRangeTenths,
+    handicapVariance,
+    flightsWithoutCourseGuide,
+    courseGuideDeviation,
+    mentorshipPenalty,
+    missingHandicapCount: allPlayers.filter((player) => player.handicapIndexTenths === null).length,
+    score,
+  };
+}
+
+function candidateKey(flights: DrawPlayer[][]): string {
+  return flights
+    .map((members) => members.map((member) => member.competitionPlayerId).sort().join(','))
+    .join('|');
+}
+
+/**
+ * Genera una propuesta equilibrada sin escribir nada en base de datos.
  *
- * Solo entran los jugadores activos. Un jugador desactivado no aparece en
- * ningun partido, y eso se refleja en el recuento devuelto.
+ * La misma semilla reproduce exactamente la misma propuesta. Una semilla nueva
+ * explora miles de candidatos distintos y escoge aleatoriamente entre los que
+ * quedan dentro de un 5 % del mejor resultado encontrado.
  */
 export function drawFlights(params: {
   players: DrawPlayer[];
   seed: string;
   distribution?: number[];
 }): DrawProposal {
-  const active = params.players.filter((p) => p.isActive);
+  const active = params.players.filter((player) => player.isActive);
   const distribution = params.distribution ?? distributionFor(active.length);
 
   const total = distribution.reduce((sum, size) => sum + size, 0);
@@ -134,26 +362,65 @@ export function drawFlights(params: {
       `La distribucion suma ${total} plazas y hay ${active.length} jugadores activos.`,
     );
   }
+  if (active.length === 0) {
+    return {
+      flights: [],
+      seed: params.seed,
+      distribution: [],
+      playerCount: 0,
+      metrics: scoreFlights([], [], new Set()),
+    };
+  }
 
-  const shuffled = seededShuffle(active, params.seed);
-  const flights: ProposedFlight[] = [];
-  let cursor = 0;
+  const worstIds = worstHandicapPlayerIds(active);
+  const iterations = Math.max(2_000, Math.min(8_000, active.length * 400));
+  const candidates = new Map<
+    string,
+    { flights: DrawPlayer[][]; metrics: DrawBalanceMetrics }
+  >();
 
-  distribution.forEach((size, index) => {
-    flights.push({
-      order: index + 1,
-      name: `Partido ${index + 1}`,
-      memberIds: shuffled.slice(cursor, cursor + size).map((p) => p.competitionPlayerId),
-      teeTime: null,
-    });
-    cursor += size;
-  });
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    const candidateSeed = `${params.seed}:candidate:${iteration}`;
+    const raw =
+      iteration % 5 === 0
+        ? separateWorstPlayers(
+            partition(active, distribution, `${candidateSeed}:random`),
+            worstIds,
+            candidateSeed,
+          )
+        : stratifiedPartition(active, distribution, candidateSeed);
+    const key = candidateKey(raw);
+    if (candidates.has(key)) continue;
+    candidates.set(key, { flights: raw, metrics: scoreFlights(raw, active, worstIds) });
+  }
+
+  const ranked = [...candidates.values()].sort((left, right) => left.metrics.score - right.metrics.score);
+  const best = ranked[0];
+  if (!best) throw new Error('No se ha podido generar ningun sorteo valido.');
+
+  const tolerance = Math.max(5_000, Math.abs(best.metrics.score) * 0.05);
+  const similar = ranked
+    .filter(
+      (candidate) =>
+        candidate.metrics.worstHandicapCollisions === best.metrics.worstHandicapCollisions &&
+        candidate.metrics.score <= best.metrics.score + tolerance,
+    )
+    .slice(0, 80);
+  const selected = seededShuffle(similar, `${params.seed}:final-choice`)[0] ?? best;
+
+  const flights: ProposedFlight[] = selected.flights.map((members, index) => ({
+    order: index + 1,
+    name: `Partido ${index + 1}`,
+    memberIds: members.map((player) => player.competitionPlayerId),
+    teeTime: null,
+  }));
 
   return {
     flights,
     seed: params.seed,
     distribution: [...distribution],
     playerCount: active.length,
+    metrics: selected.metrics,
   };
 }
 

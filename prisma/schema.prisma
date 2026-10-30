@@ -198,6 +198,9 @@ model Competition {
   // Se guarda como String para poder ampliar modalidades sin migrar un enum de
   // PostgreSQL; las acciones de administracion validan los valores admitidos.
   pairScoringMode          String                 @default("BEST_BALL")
+  // Solo se habilita el sorteo de parejas despues de confirmar los partidos.
+  // Un nuevo sorteo de partidos vuelve este campo a null e invalida las parejas.
+  flightsConfirmedAt       DateTime?
   // Generacion de resultados. La incrementa el vaciado de tarjetas, y sirve
   // para que una operacion offline creada ANTES del vaciado no pueda resucitar
   // un resultado borrado al recuperar cobertura (ver lib/sync/generation.ts).
@@ -318,6 +321,11 @@ model CompetitionPlayer {
   // Identificador de pareja dentro de la competicion. Dos jugadores activos
   // con el mismo numero forman una pareja; null significa que no esta asignado.
   pairNumber    Int?
+  // Marca al participante individual elegido cuando el numero de jugadores es impar.
+  // Sus puntos cuentan por dos en la clasificacion de parejas.
+  pairSoloMultiplier Boolean @default(false)
+  // Dato de configuracion usado para repartir guias del campo entre los partidos.
+  knowsCourse   Boolean @default(false)
   color         String
   isActive      Boolean @default(true)
   createdAt     DateTime @default(now())

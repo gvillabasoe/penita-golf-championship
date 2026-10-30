@@ -34,6 +34,7 @@ export interface PairMemberScore {
   handicapIndexTenths: number | null;
   playingHandicap: number | null;
   status: ScorecardStatus;
+  pairSoloMultiplier: boolean;
   results: HoleResult[];
   totals: ScorecardTotals;
 }
@@ -52,6 +53,8 @@ export interface PairScore {
   members: PairMemberScore[];
   colors: string[];
   scoringMode: PairScoringMode;
+  /** Participante individual elegido en un sorteo con numero impar. */
+  isSolo: boolean;
   /** Suma de los hándicaps exactos. null si falta el de algun integrante. */
   handicapIndexTenths: number | null;
   /** Suma de los hándicaps de juego. null si falta el de algun integrante. */
@@ -186,48 +189,74 @@ export function buildPairScore(
   scoringMode: PairScoringMode,
 ): PairScore {
   const members = [...rawMembers].sort((a, b) => collator.compare(a.displayName, b.displayName));
-  const complete = members.length === 2;
-  const handicapIndexTenths = sumNullable(members.map((member) => member.handicapIndexTenths));
-  const playingHandicap = sumNullable(members.map((member) => member.playingHandicap));
+  const isSolo = members.length === 1 && members[0].pairSoloMultiplier;
+  const complete = members.length === 2 || isSolo;
+
+  const handicapIndexTenths = isSolo
+    ? members[0].handicapIndexTenths === null
+      ? null
+      : members[0].handicapIndexTenths * 2
+    : sumNullable(members.map((member) => member.handicapIndexTenths));
+  const playingHandicap = isSolo
+    ? members[0].playingHandicap === null
+      ? null
+      : members[0].playingHandicap * 2
+    : sumNullable(members.map((member) => member.playingHandicap));
 
   let results: HoleResult[] | null = null;
   let totals: ScorecardTotals | null = null;
   let sources: BestBallSource[] = [];
 
-  if (complete && scoringMode === 'BEST_BALL') {
+  if (isSolo) {
+    // El jugador disputa una unica tarjeta. Solo se duplican los puntos: golpes,
+    // netos y categorias siguen siendo los que realmente ha jugado.
+    results = members[0].results.map((result) => ({
+      ...result,
+      stablefordPoints: result.stablefordPoints * 2,
+    }));
+    totals = computeTotals(results);
+  } else if (complete && scoringMode === 'BEST_BALL') {
     const bestBall = buildBestBall(members as [PairMemberScore, PairMemberScore]);
     results = bestBall.results;
     totals = bestBall.totals;
     sources = bestBall.sources;
   }
 
-  const points =
-    scoringMode === 'BEST_BALL'
+  const points = isSolo
+    ? members[0].totals.total.points * 2
+    : scoringMode === 'BEST_BALL'
       ? totals?.total.points ?? 0
       : members.reduce((sum, member) => sum + member.totals.total.points, 0);
-  const numericStrokes =
-    scoringMode === 'BEST_BALL'
+  const numericStrokes = isSolo
+    ? members[0].totals.total.numericStrokes * 2
+    : scoringMode === 'BEST_BALL'
       ? totals?.total.numericStrokes ?? 0
       : members.reduce((sum, member) => sum + member.totals.total.numericStrokes, 0);
-  const adjustedStrokes =
-    scoringMode === 'BEST_BALL'
+  const adjustedStrokes = isSolo
+    ? members[0].totals.total.adjustedStrokes * 2
+    : scoringMode === 'BEST_BALL'
       ? totals?.total.adjustedStrokes ?? 0
       : members.reduce((sum, member) => sum + member.totals.total.adjustedStrokes, 0);
-  const pickups =
-    scoringMode === 'BEST_BALL'
+  const pickups = isSolo
+    ? members[0].totals.total.pickups * 2
+    : scoringMode === 'BEST_BALL'
       ? totals?.total.pickups ?? 0
       : members.reduce((sum, member) => sum + member.totals.total.pickups, 0);
-  const holesCompleted =
-    scoringMode === 'BEST_BALL'
+  const holesCompleted = isSolo
+    ? members[0].totals.total.holesPlayed
+    : scoringMode === 'BEST_BALL'
       ? totals?.total.holesPlayed ?? 0
       : members.reduce((sum, member) => sum + member.totals.total.holesPlayed, 0);
 
   return {
     pairNumber,
-    displayName: members.map((member) => member.displayName).join(' / ') || `Pareja ${pairNumber}`,
+    displayName: isSolo
+      ? `${members[0].displayName} · individual x2`
+      : members.map((member) => member.displayName).join(' / ') || `Pareja ${pairNumber}`,
     members,
     colors: members.map((member) => member.color),
     scoringMode,
+    isSolo,
     handicapIndexTenths,
     playingHandicap,
     points,
@@ -235,7 +264,7 @@ export function buildPairScore(
     adjustedStrokes,
     pickups,
     holesCompleted,
-    holesAvailable: scoringMode === 'BEST_BALL' ? 18 : members.length * 18,
+    holesAvailable: isSolo ? 18 : scoringMode === 'BEST_BALL' ? 18 : members.length * 18,
     results,
     totals,
     sources,

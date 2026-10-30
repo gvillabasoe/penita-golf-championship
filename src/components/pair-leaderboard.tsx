@@ -81,11 +81,11 @@ export function PairLeaderboard({
                 </div>
 
                 <div className="leaderboard-card__meta">
-                  <span aria-label={`Suma de hándicap exacto ${hcpLabel}`}>
-                    HCP total <strong>{hcpLabel}</strong>
+                  <span aria-label={`${row.isSolo ? 'Hándicap equivalente' : 'Suma de hándicap exacto'} ${hcpLabel}`}>
+                    {row.isSolo ? 'HCP equivalente' : 'HCP total'} <strong>{hcpLabel}</strong>
                   </span>
-                  <span aria-label={`Suma de hándicap de juego ${row.playingHandicap}`}>
-                    HJ total <strong>{row.playingHandicap}</strong>
+                  <span aria-label={`${row.isSolo ? 'Hándicap de juego equivalente' : 'Suma de hándicap de juego'} ${row.playingHandicap}`}>
+                    {row.isSolo ? 'HJ equivalente' : 'HJ total'} <strong>{row.playingHandicap}</strong>
                   </span>
                   <span>
                     <strong>{row.holesCompleted}</strong>/{row.holesAvailable} resultados

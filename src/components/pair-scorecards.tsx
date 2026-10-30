@@ -57,11 +57,22 @@ export function PairScorecards({
             </div>
           </header>
 
-          {pair.scoringMode === 'BEST_BALL' && pair.results && pair.totals ? (
+          {pair.isSolo && pair.results && pair.totals ? (
             <>
               <p className="muted">
-                En cada hoyo se muestra el resultado que aporta mas puntos Stableford. La fila
-                Jugador identifica de quien sale el resultado elegido.
+                Participante individual elegido por el sorteo impar. En esta tarjeta los puntos Stableford de cada hoyo y el total cuentan por dos; los golpes jugados no se duplican visualmente.
+              </p>
+              <ScorecardGrid
+                results={pair.results}
+                holes={holes}
+                totals={pair.totals}
+                playerName={`${pair.members[0].displayName} · puntos x2`}
+              />
+            </>
+          ) : pair.scoringMode === 'BEST_BALL' && pair.results && pair.totals ? (
+            <>
+              <p className="muted">
+                En cada hoyo se muestra el resultado que aporta más puntos Stableford. La fila Jugador identifica de quién sale el resultado elegido.
               </p>
               <ScorecardGrid
                 results={pair.results}
@@ -74,7 +85,7 @@ export function PairScorecards({
           ) : (
             <div className="pair-member-scorecards stack">
               <p className="muted">
-                La puntuacion de la pareja es la suma de estas dos tarjetas individuales.
+                La puntuación de la pareja es la suma de estas dos tarjetas individuales.
               </p>
               {pair.members.map((member) => (
                 <section key={member.competitionPlayerId} className="pair-member-scorecard stack">

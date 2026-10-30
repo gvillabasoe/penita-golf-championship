@@ -71,6 +71,7 @@ const REQUIRED: Record<string, Record<string, string>> = {
     // Configuracion de la clasificacion paralela por parejas.
     pairModeEnabled: 'Boolean',
     pairScoringMode: 'String',
+    flightsConfirmedAt: 'DateTime?',
     scoreResetVersion: 'Int',
     status: 'CompetitionStatus',
     classificationStatus: 'ClassificationStatus',
@@ -89,6 +90,8 @@ const REQUIRED: Record<string, Record<string, string>> = {
     playingHandicapRawHundredths: 'Int?',
     calculationVersion: 'String?',
     pairNumber: 'Int?',
+    pairSoloMultiplier: 'Boolean',
+    knowsCourse: 'Boolean',
     color: 'String',
     isActive: 'Boolean',
   },

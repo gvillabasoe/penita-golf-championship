@@ -107,6 +107,10 @@ export default async function AdminPlayersPage() {
                   <td>{card.playingHandicap ?? '\u2014'}</td>
                 </tr>
                 <tr>
+                  <th>Conoce el campo</th>
+                  <td>{card.knowsCourse ? 'Sí' : 'No'}</td>
+                </tr>
+                <tr>
                   <th>Color</th>
                   <td>
                     <span
@@ -138,6 +142,7 @@ export default async function AdminPlayersPage() {
             displayName={card.displayName}
             isActive={card.isActive}
             userRole={card.userRole}
+            knowsCourse={card.knowsCourse}
           />
         </AdminSection>
       ))}

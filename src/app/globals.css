@@ -3732,3 +3732,190 @@ table.data td {
     min-height: 48px;
   }
 }
+
+/* Sorteos consecutivos: revision de partidos y configuracion de participantes. */
+.draw-workflow {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: draw-step;
+}
+
+.draw-workflow li {
+  display: grid;
+  align-content: center;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  counter-increment: draw-step;
+}
+
+.draw-workflow li::before {
+  content: counter(draw-step);
+  margin-bottom: 3px;
+  font-family: var(--font-narrow);
+  font-size: var(--fs-lg);
+  color: var(--ink);
+}
+
+.draw-workflow li[data-active='true'] {
+  border-color: var(--line-strong);
+  background: var(--tee-wash);
+  color: var(--ink);
+}
+
+.draw-workflow li[data-done='true']::after {
+  content: 'Hecho';
+  margin-top: 3px;
+  color: var(--fairway);
+  font-size: var(--fs-xs);
+}
+
+.draw-preview {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.draw-preview__grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.draw-preview__flight {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-row);
+  background: var(--surface);
+}
+
+.draw-preview__flight-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.draw-preview__flight-header h4 {
+  margin: 0;
+}
+
+.draw-preview__members {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.draw-preview__members li {
+  display: grid;
+  grid-template-columns: 4px minmax(120px, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.draw-preview__members li + li {
+  border-top: 1px solid var(--line);
+}
+
+.draw-preview__member-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draw-preview__member-meta {
+  color: var(--ink-2);
+  font-family: var(--font-narrow);
+  font-variant-numeric: tabular-nums;
+}
+
+.course-knowledge-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.course-knowledge-toggle__copy {
+  display: grid;
+  gap: 3px;
+}
+
+.course-knowledge-toggle__copy small {
+  color: var(--ink-2);
+}
+
+.course-knowledge-toggle__control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.course-knowledge-toggle input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--navy-800);
+}
+
+.pair-draw-panel > .button {
+  justify-self: start;
+}
+
+@media (min-width: 800px) {
+  .draw-preview__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 699px) {
+  .draw-workflow {
+    grid-template-columns: 1fr;
+  }
+
+  .draw-workflow li {
+    min-height: 0;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .draw-workflow li::before,
+  .draw-workflow li::after {
+    margin: 0;
+  }
+
+  .draw-preview__members li {
+    grid-template-columns: 4px minmax(0, 1fr) auto;
+  }
+
+  .draw-preview__member-meta {
+    grid-column: 2;
+  }
+
+  .draw-preview__members .status-badge {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+}
