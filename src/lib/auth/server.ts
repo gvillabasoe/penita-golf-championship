@@ -43,6 +43,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       user: {
         include: {
           competitionPlayers: {
+            where: { isActive: true },
             include: { flightMember: { select: { flightId: true } } },
             take: 1,
             orderBy: { createdAt: 'desc' },

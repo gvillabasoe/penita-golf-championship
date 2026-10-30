@@ -1,6 +1,7 @@
 import { getAllScorecards, getCompetition } from '@/lib/data/queries';
 import { HandicapForm } from '@/components/client/handicap-form';
 import { CreatePlayerForm } from '@/components/client/create-player-form';
+import { PlayerAccessPanel } from '@/components/client/player-access-panel';
 import { AdminSection, StateBlock, StatusBadge } from '@/components/ui';
 import { IconUsers } from '@/components/ui/icons';
 import { formatTenths } from '@/lib/golf/decimal';
@@ -26,14 +27,20 @@ export default async function AdminPlayersPage() {
     );
   }
 
-  const cards = await getAllScorecards(context);
-  const capped = cards.filter((card) => card.handicapCap.isCapped);
+  const cards = await getAllScorecards(context, { includeInactive: true });
+  const activeCards = cards.filter((card) => card.isActive);
+  const capped = activeCards.filter((card) => card.handicapCap.isCapped);
 
   return (
     <div className="stack">
       <div className="section-header">
         <h1>Jugadores</h1>
-        <StatusBadge tone="neutral">{cards.length} inscritos</StatusBadge>
+        <div className="button-row">
+          <StatusBadge tone="neutral">{activeCards.length} activos</StatusBadge>
+          {cards.length !== activeCards.length ? (
+            <StatusBadge tone="danger">{cards.length - activeCards.length} de baja</StatusBadge>
+          ) : null}
+        </div>
       </div>
 
       <p className="muted">
@@ -70,11 +77,15 @@ export default async function AdminPlayersPage() {
               {card.handicapCap.badge ? (
                 <StatusBadge tone="gold">{card.handicapCap.badge}</StatusBadge>
               ) : null}
-              {card.flightName ? (
+              {!card.isActive ? <StatusBadge tone="danger">De baja</StatusBadge> : null}
+              {card.pairNumber !== null ? (
+                <StatusBadge tone="green">Pareja {card.pairNumber}</StatusBadge>
+              ) : null}
+              {card.isActive && card.flightName ? (
                 <StatusBadge tone="neutral">{card.flightName}</StatusBadge>
-              ) : (
+              ) : card.isActive ? (
                 <StatusBadge tone="warning">Sin partido</StatusBadge>
-              )}
+              ) : null}
             </div>
           }
         >
@@ -120,6 +131,13 @@ export default async function AdminPlayersPage() {
           <HandicapForm
             competitionPlayerId={card.competitionPlayerId}
             current={card.handicapCap.exactLabel ?? ''}
+          />
+
+          <PlayerAccessPanel
+            competitionPlayerId={card.competitionPlayerId}
+            displayName={card.displayName}
+            isActive={card.isActive}
+            userRole={card.userRole}
           />
         </AdminSection>
       ))}

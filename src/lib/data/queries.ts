@@ -13,6 +13,14 @@ import {
 } from '../golf/stableford';
 import { allocateStrokes } from '../golf/strokes';
 import { buildRanking, revealOrder } from '../golf/ranking';
+import {
+  buildPairRanking,
+  buildPairScore,
+  isPairScoringMode,
+  type PairRankingRow,
+  type PairScore,
+  type PairScoringMode,
+} from '../golf/pairs';
 import { describeHandicapCap, type HandicapCapView } from '../golf/handicap-cap';
 import type {
   CourseSnapshot,
@@ -44,6 +52,8 @@ export interface CompetitionContext {
   scoreGeneration: number;
   status: 'DRAFT' | 'CONFIGURED' | 'IN_PLAY' | 'CLOSED';
   classificationStatus: 'HIDDEN' | 'REVEALING' | 'PUBLISHED';
+  pairModeEnabled: boolean;
+  pairScoringMode: PairScoringMode;
   snapshot: CourseSnapshot & { snapshotId: string };
   distances: Map<number, number>;
 }
@@ -86,6 +96,10 @@ export async function getCompetition(): Promise<CompetitionContext | null> {
     scoreGeneration: competition.scoreResetVersion,
     status: competition.status,
     classificationStatus: competition.classificationStatus,
+    pairModeEnabled: competition.pairModeEnabled,
+    pairScoringMode: isPairScoringMode(competition.pairScoringMode)
+      ? competition.pairScoringMode
+      : 'BEST_BALL',
     snapshot: {
       snapshotId: snapshot.id,
       teeName: snapshot.teeName,
@@ -104,7 +118,11 @@ export interface PlayerScorecard {
   competitionPlayerId: string;
   userId: string;
   displayName: string;
+  userRole: 'PLAYER' | 'ADMIN';
+  userIsActive: boolean;
+  isActive: boolean;
   color: string;
+  pairNumber: number | null;
   handicapIndexTenths: number | null;
   /** Hándicap exacto que se ha usado para calcular, en decimas. */
   appliedHandicapIndexTenths: number | null;
@@ -154,7 +172,7 @@ function buildResults(
 }
 
 const PLAYER_INCLUDE = {
-  user: { select: { id: true, displayName: true } },
+  user: { select: { id: true, displayName: true, role: true, isActive: true } },
   flightMember: { include: { flight: { select: { id: true, name: true, teeTime: true } } } },
   scorecard: { include: { holes: { orderBy: { holeNumber: 'asc' as const } } } },
 } as const;
@@ -162,10 +180,15 @@ const PLAYER_INCLUDE = {
 /** Todas las tarjetas de la competicion, resueltas. */
 export async function getAllScorecards(
   context: CompetitionContext,
+  options: { includeInactive?: boolean } = {},
 ): Promise<PlayerScorecard[]> {
   const players = await prisma.competitionPlayer.findMany({
-    where: { competitionId: context.competitionId, isActive: true },
+    where: {
+      competitionId: context.competitionId,
+      ...(options.includeInactive ? {} : { isActive: true }),
+    },
     include: PLAYER_INCLUDE,
+    orderBy: [{ isActive: 'desc' }, { createdAt: 'asc' }],
   });
 
   return players.map((player) => {
@@ -184,7 +207,11 @@ export async function getAllScorecards(
       competitionPlayerId: player.id,
       userId: player.userId,
       displayName: player.user.displayName,
+      userRole: player.user.role,
+      userIsActive: player.user.isActive,
+      isActive: player.isActive,
       color: player.color,
+      pairNumber: player.pairNumber,
       handicapIndexTenths: player.handicapIndexTenths,
       appliedHandicapIndexTenths: player.appliedHandicapIndexTenths,
       handicapCap: describeHandicapCap(
@@ -205,6 +232,58 @@ export async function getAllScorecards(
       overriddenHoles: holeScores.filter((h) => h.isOverridden).map((h) => h.holeNumber),
     };
   });
+}
+
+export interface PairCompetitionView {
+  pairs: PairScore[];
+  ranking: PairRankingRow[];
+  unpaired: PlayerScorecard[];
+}
+
+/**
+ * Parejas y resultados derivados de las tarjetas individuales.
+ *
+ * Los grupos incompletos se devuelven para que el administrador pueda ver y
+ * corregir una asignacion rota, pero `buildPairRanking` solo admite parejas de
+ * dos jugadores con sus dos hándicaps configurados.
+ */
+export async function getPairCompetition(
+  context: CompetitionContext,
+): Promise<PairCompetitionView> {
+  const cards = await getAllScorecards(context);
+  const grouped = new Map<number, PlayerScorecard[]>();
+
+  for (const card of cards) {
+    if (card.pairNumber === null) continue;
+    const members = grouped.get(card.pairNumber) ?? [];
+    members.push(card);
+    grouped.set(card.pairNumber, members);
+  }
+
+  const pairs = [...grouped.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([pairNumber, members]) =>
+      buildPairScore(
+        pairNumber,
+        members.map((member) => ({
+          competitionPlayerId: member.competitionPlayerId,
+          displayName: member.displayName,
+          color: member.color,
+          handicapIndexTenths: member.handicapIndexTenths,
+          playingHandicap: member.playingHandicap,
+          status: member.status,
+          results: member.results,
+          totals: member.totals,
+        })),
+        context.pairScoringMode,
+      ),
+    );
+
+  return {
+    pairs,
+    ranking: buildPairRanking(pairs),
+    unpaired: cards.filter((card) => card.pairNumber === null),
+  };
 }
 
 /** Tarjeta de un jugador concreto. */

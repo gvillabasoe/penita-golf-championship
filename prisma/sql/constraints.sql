@@ -67,6 +67,20 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$ BEGIN
+  ALTER TABLE "Competition"
+    ADD CONSTRAINT "pair_scoring_mode_known"
+      CHECK ("pairScoringMode" IN ('BEST_BALL', 'COMBINED_POINTS'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "CompetitionPlayer"
+    ADD CONSTRAINT "pair_number_positive"
+      CHECK ("pairNumber" IS NULL OR "pairNumber" >= 1);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- --- Resultados -------------------------------------------------------------
 
 DO $$ BEGIN

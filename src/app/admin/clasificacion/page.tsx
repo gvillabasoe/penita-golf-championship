@@ -1,5 +1,6 @@
-import { getCompetition, getRanking } from '@/lib/data/queries';
+import { getCompetition, getPairCompetition, getRanking } from '@/lib/data/queries';
 import { Leaderboard } from '@/components/leaderboard';
+import { PairLeaderboard } from '@/components/pair-leaderboard';
 import { StateBlock, StatusBadge } from '@/components/ui';
 import { IconTrophy } from '@/components/ui/icons';
 
@@ -15,7 +16,10 @@ export default async function AdminRankingPage() {
     );
   }
 
-  const { rows, order, state } = await getRanking(context);
+  const [{ rows, order, state }, pairCompetition] = await Promise.all([
+    getRanking(context),
+    context.pairModeEnabled ? getPairCompetition(context) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="stack">
@@ -31,6 +35,24 @@ export default async function AdminRankingPage() {
       </p>
 
       <Leaderboard rows={rows} revealOrder={order} state={state} role="ADMIN" />
+
+      {pairCompetition ? (
+        <>
+          <div className="section-header">
+            <h2>Clasificacion provisional de parejas</h2>
+            <StatusBadge tone="green">{pairCompetition.pairs.length} parejas</StatusBadge>
+          </div>
+          <p className="muted">
+            Criterios: mas puntos, menor suma de hándicap exacto y menor suma de golpes ajustados.
+          </p>
+          <PairLeaderboard
+            rows={pairCompetition.ranking}
+            visible
+            role="ADMIN"
+            showCardLinks={false}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

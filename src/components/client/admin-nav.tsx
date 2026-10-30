@@ -28,7 +28,7 @@ interface AdminSectionLink {
 /**
  * Navegacion interna del panel.
  *
- * En movil no se obliga a recorrer nueve pestanas horizontales. Se muestra un
+ * En movil no se obliga a recorrer diez pestanas horizontales. Se muestra un
  * selector compacto con la seccion actual y, al abrirlo, una rejilla tactil de
  * accesos. A partir de escritorio se convierte en una barra lateral estable.
  * Ambas variantes usan las mismas rutas y no alteran los permisos del servidor.
@@ -61,6 +61,13 @@ const SECTIONS: readonly AdminSectionLink[] = [
     shortLabel: 'Partidos',
     description: 'Grupos y horas de salida',
     icon: IconFlag,
+  },
+  {
+    href: '/admin/parejas',
+    label: 'Parejas',
+    shortLabel: 'Parejas',
+    description: 'Modalidad y composicion',
+    icon: IconUsers,
   },
   {
     href: '/admin/tarjetas',

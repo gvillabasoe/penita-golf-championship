@@ -68,6 +68,9 @@ const REQUIRED: Record<string, Record<string, string>> = {
     handicapRuleVersion: 'String',
     // Limite de hándicap y generacion de resultados (v1.2.0).
     maxHandicapIndexTenths: 'Int?',
+    // Configuracion de la clasificacion paralela por parejas.
+    pairModeEnabled: 'Boolean',
+    pairScoringMode: 'String',
     scoreResetVersion: 'Int',
     status: 'CompetitionStatus',
     classificationStatus: 'ClassificationStatus',
@@ -85,6 +88,7 @@ const REQUIRED: Record<string, Record<string, string>> = {
     courseHandicapRawHundredths: 'Int?',
     playingHandicapRawHundredths: 'Int?',
     calculationVersion: 'String?',
+    pairNumber: 'Int?',
     color: 'String',
     isActive: 'Boolean',
   },

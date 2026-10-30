@@ -3536,3 +3536,199 @@ table.data td {
     background: var(--navy-900);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Modo Parejas
+   Reutiliza las mismas superficies, tipografia y jerarquia del leaderboard y
+   de las tarjetas existentes. Solo se anaden las piezas que no existian: doble
+   acento de color, selector de vista y composicion administrativa.
+   ------------------------------------------------------------------------ */
+
+.segmented__option:is(a) {
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.segmented__option[aria-current='page'] {
+  background: var(--surface);
+  color: var(--navy-800);
+  box-shadow: var(--rim), 0 1px 3px rgba(13, 24, 38, 0.14);
+}
+
+.classification-switch {
+  position: sticky;
+  top: calc(var(--header-h) + var(--safe-top) + var(--space-2));
+  z-index: 12;
+  box-shadow: var(--elev-1);
+}
+
+.pair-swatches {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  width: 32px;
+  height: 14px;
+  flex: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+}
+
+.pair-swatches > span {
+  flex: 1 1 50%;
+}
+
+.pair-swatches--vertical {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  width: 4px;
+  height: auto;
+  min-height: 52px;
+  border: 0;
+  border-radius: var(--r-pill);
+}
+
+.pair-progress {
+  background: var(--navy-700);
+}
+
+.pair-card-link {
+  color: var(--navy-700);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 750;
+  text-underline-offset: 3px;
+}
+
+.pair-scorecards {
+  padding-top: var(--space-2);
+}
+
+.pair-scorecard-card {
+  scroll-margin-top: calc(var(--header-h) + var(--safe-top) + 86px);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-section);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+}
+
+.pair-scorecard-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.pair-scorecard-card__header h3 {
+  margin-top: 2px;
+  font-size: var(--fs-xl);
+  line-height: 1.15;
+}
+
+.pair-member-scorecard {
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+}
+
+.pair-member-scorecard h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pair-member-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.scorecard-grid__source {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 2px 4px;
+  border: 2px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-narrow);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.player-access {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.pair-builder {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pair-admin-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-row);
+  list-style: none;
+}
+
+.pair-admin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface);
+}
+
+.pair-admin-row + .pair-admin-row {
+  border-top: 1px solid var(--line);
+}
+
+.pair-admin-row__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.pair-admin-row__identity > span:last-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pair-admin-row__identity small {
+  overflow: hidden;
+  color: var(--ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 700px) {
+  .pair-builder {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .pair-builder > .button {
+    min-height: 48px;
+  }
+}

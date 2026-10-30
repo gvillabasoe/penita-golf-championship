@@ -144,6 +144,8 @@ CREATE TABLE IF NOT EXISTS "Competition" (
     "handicapRoundingPolicy" "HandicapRoundingPolicy" NOT NULL DEFAULT 'ROUND_TWICE'::"HandicapRoundingPolicy",
     "handicapRuleVersion" TEXT NOT NULL,
     "maxHandicapIndexTenths" INTEGER,
+    "pairModeEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "pairScoringMode" TEXT NOT NULL DEFAULT 'BEST_BALL',
     "scoreResetVersion" INTEGER NOT NULL DEFAULT 0,
     "status" "CompetitionStatus" NOT NULL DEFAULT 'DRAFT'::"CompetitionStatus",
     "classificationStatus" "ClassificationStatus" NOT NULL DEFAULT 'HIDDEN'::"ClassificationStatus",
@@ -221,6 +223,7 @@ CREATE TABLE IF NOT EXISTS "CompetitionPlayer" (
     "playingHandicap" INTEGER,
     "isPlayingHandicapOverridden" BOOLEAN NOT NULL DEFAULT false,
     "calculationVersion" TEXT,
+    "pairNumber" INTEGER,
     "color" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -402,6 +405,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "CourseHoleSnapshot_snapshotId_holeNumber_key"
 CREATE UNIQUE INDEX IF NOT EXISTS "CourseHoleSnapshot_snapshotId_strokeIndex_key" ON "CourseHoleSnapshot"("snapshotId", "strokeIndex");
 CREATE UNIQUE INDEX IF NOT EXISTS "CompetitionPlayer_competitionId_userId_key" ON "CompetitionPlayer"("competitionId", "userId");
 CREATE INDEX IF NOT EXISTS "CompetitionPlayer_competitionId_isActive_idx" ON "CompetitionPlayer"("competitionId", "isActive");
+CREATE INDEX IF NOT EXISTS "CompetitionPlayer_competitionId_pairNumber_idx" ON "CompetitionPlayer"("competitionId", "pairNumber");
 CREATE UNIQUE INDEX IF NOT EXISTS "Flight_competitionId_order_key" ON "Flight"("competitionId", "order");
 CREATE UNIQUE INDEX IF NOT EXISTS "FlightMember_competitionPlayerId_key" ON "FlightMember"("competitionPlayerId");
 CREATE UNIQUE INDEX IF NOT EXISTS "FlightMember_flightId_position_key" ON "FlightMember"("flightId", "position");

@@ -1,11 +1,16 @@
+import Link from 'next/link';
+
 import { requireSession } from '@/lib/auth/server';
-import { getCompetition, getRanking } from '@/lib/data/queries';
+import { getCompetition, getPairCompetition, getRanking } from '@/lib/data/queries';
 import { Leaderboard } from '@/components/leaderboard';
+import { PairLeaderboard } from '@/components/pair-leaderboard';
+import { PairScorecards } from '@/components/pair-scorecards';
 import { BottomNav } from '@/components/client/bottom-nav';
 import { AutoRefresh } from '@/components/client/auto-refresh';
 import { AppHeader } from '@/components/ui/app-header';
 import { StateBlock, StatusBadge } from '@/components/ui';
 import { IconTrophy } from '@/components/ui/icons';
+import { PAIR_SCORING_LABELS } from '@/lib/golf/pairs';
 
 export const metadata = { title: 'Clasificacion · Peñita Golf' };
 
@@ -15,16 +20,12 @@ const REVEAL_LABEL: Record<string, { label: string; tone: 'neutral' | 'gold' | '
   PUBLISHED: { label: 'Publicada', tone: 'green' },
 };
 
-/**
- * Clasificacion.
- *
- * El leaderboard oficial del campeonato. La visibilidad NO se decide aqui: la
- * decide `visibleGroupCount` dentro de `Leaderboard`, que es la misma funcion
- * que gobierna la maquina de estados de la revelacion. Si esta pantalla
- * decidiese por su cuenta cuantas posiciones pintar, podria filtrar al ganador
- * antes de tiempo, que es el unico error irreparable de toda la aplicacion.
- */
-export default async function LeaderboardPage() {
+/** Clasificacion individual y, cuando esta activado, vista paralela por parejas. */
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ vista?: string }>;
+}) {
   const user = await requireSession('/clasificacion');
   const context = await getCompetition();
 
@@ -43,7 +44,12 @@ export default async function LeaderboardPage() {
     );
   }
 
-  const { rows, order, state } = await getRanking(context);
+  const params = await searchParams;
+  const pairView = context.pairModeEnabled && params.vista === 'parejas';
+  const [{ rows, order, state }, pairCompetition] = await Promise.all([
+    getRanking(context),
+    pairView ? getPairCompetition(context) : Promise.resolve(null),
+  ]);
   const status = REVEAL_LABEL[state.status] ?? REVEAL_LABEL.HIDDEN;
 
   return (
@@ -54,33 +60,83 @@ export default async function LeaderboardPage() {
       />
 
       <main className="container stack page-content classification-page">
+        {context.pairModeEnabled ? (
+          <nav className="segmented classification-switch" aria-label="Tipo de clasificacion">
+            <Link
+              className="segmented__option"
+              href="/clasificacion"
+              aria-current={!pairView ? 'page' : undefined}
+            >
+              Individual
+            </Link>
+            <Link
+              className="segmented__option"
+              href="/clasificacion?vista=parejas"
+              aria-current={pairView ? 'page' : undefined}
+            >
+              Parejas
+            </Link>
+          </nav>
+        ) : null}
+
         <section className="classification-overview" aria-label="Resumen de la clasificacion">
           <div className="classification-overview__copy">
-            <p className="eyebrow">Clasificacion del campeonato</p>
+            <p className="eyebrow">
+              {pairView ? 'Clasificacion de parejas' : 'Clasificacion del campeonato'}
+            </p>
             <h2>{context.edition}</h2>
           </div>
           <div className="classification-overview__meta" aria-label="Datos de la competicion">
-            <span>Individual Stableford</span>
-            <span>{rows.length} jugadores</span>
+            <span>
+              {pairView
+                ? PAIR_SCORING_LABELS[context.pairScoringMode]
+                : 'Individual Stableford'}
+            </span>
+            <span>
+              {pairView ? `${pairCompetition?.pairs.length ?? 0} parejas` : `${rows.length} jugadores`}
+            </span>
           </div>
         </section>
 
-        {/*
-          Durante la revelacion todos los dispositivos tienen que ir a la vez, y
-          sin WebSockets: se refresca cada pocos segundos. Fuera de la
-          revelacion no hace falta y no se refresca.
-        */}
         {state.status === 'REVEALING' ? <AutoRefresh intervalMs={4000} /> : null}
 
-        <Leaderboard rows={rows} revealOrder={order} state={state} role={user.role} />
+        {pairView && pairCompetition ? (
+          <>
+            <PairLeaderboard
+              rows={pairCompetition.ranking}
+              visible={user.role === 'ADMIN' || state.status === 'PUBLISHED'}
+              role={user.role}
+            />
 
-        {state.status === 'PUBLISHED' ? (
-          <p className="muted">
-            Criterios de desempate, en orden: mas puntos, menor hándicap exacto y menor suma de
-            golpes ajustada. Las rayas se cuentan como doble bogey neto, para que levantar la
-            bola no de ventaja.
-          </p>
-        ) : null}
+            <PairScorecards
+              pairs={pairCompetition.pairs}
+              holes={context.snapshot.holes}
+              currentCompetitionPlayerId={user.competitionPlayerId}
+              role={user.role}
+              classificationPublished={state.status === 'PUBLISHED'}
+            />
+
+            {state.status === 'PUBLISHED' || user.role === 'ADMIN' ? (
+              <p className="muted">
+                Desempates de parejas: mas puntos, menor suma de hándicap exacto y menor suma de
+                golpes ajustados. En mejor bola, cada hoyo usa los puntos Stableford del mejor
+                resultado; en suma, se agregan las dos tarjetas completas.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <Leaderboard rows={rows} revealOrder={order} state={state} role={user.role} />
+
+            {state.status === 'PUBLISHED' ? (
+              <p className="muted">
+                Criterios de desempate, en orden: mas puntos, menor hándicap exacto y menor suma de
+                golpes ajustada. Las rayas se cuentan como doble bogey neto, para que levantar la
+                bola no de ventaja.
+              </p>
+            ) : null}
+          </>
+        )}
       </main>
 
       <BottomNav role={user.role} />

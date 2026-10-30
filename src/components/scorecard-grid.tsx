@@ -60,6 +60,16 @@ export interface ScorecardGridProps {
   playerName?: string;
   /** Vista inicial. */
   initialView?: View;
+  /**
+   * En una tarjeta de mejor bola identifica de que jugador sale el resultado
+   * elegido en cada hoyo. Ausente en todas las tarjetas individuales.
+   */
+  sources?: Array<{
+    holeNumber: number;
+    shortLabel: string;
+    displayName: string;
+    color: string;
+  }>;
 }
 
 export function ScorecardGrid({
@@ -68,6 +78,7 @@ export function ScorecardGrid({
   totals,
   playerName,
   initialView = 'OUT',
+  sources = [],
 }: ScorecardGridProps) {
   const [view, setView] = useState<View>(initialView);
 
@@ -75,6 +86,10 @@ export function ScorecardGrid({
   const distances = useMemo(
     () => new Map(courseHoles.map((hole) => [hole.holeNumber, hole.distance])),
     [courseHoles],
+  );
+  const sourceByHole = useMemo(
+    () => new Map(sources.map((source) => [source.holeNumber, source])),
+    [sources],
   );
   const current = VIEWS.find((candidate) => candidate.id === view) ?? VIEWS[0];
 
@@ -204,6 +219,30 @@ export function ScorecardGrid({
               ),
             strokesTotal,
           )}
+
+          {sources.length > 0
+            ? row(
+                'jugador',
+                'Jugador',
+                'Jugador cuyo resultado cuenta en mejor bola',
+                (result) => {
+                  const source = sourceByHole.get(result.holeNumber);
+                  return source ? (
+                    <span
+                      className="scorecard-grid__source"
+                      style={{ borderColor: source.color }}
+                      title={source.displayName}
+                      aria-label={source.displayName}
+                    >
+                      {source.shortLabel}
+                    </span>
+                  ) : (
+                    <span aria-hidden="true">{`\u00b7`}</span>
+                  );
+                },
+                '',
+              )
+            : null}
 
           {row(
             'bruto',

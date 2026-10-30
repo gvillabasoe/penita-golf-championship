@@ -190,6 +190,14 @@ model Competition {
   // hándicap, y la regla de este esquema es que nada que decida una
   // clasificacion pasa por coma flotante.
   maxHandicapIndexTenths   Int?
+  // Clasificacion adicional por parejas. La modalidad individual sigue siendo
+  // la oficial y no se altera: esta configuracion activa una vista paralela.
+  pairModeEnabled          Boolean                @default(false)
+  // BEST_BALL: en cada hoyo cuenta el mejor resultado Stableford de los dos.
+  // COMBINED_POINTS: se suman los puntos de las dos tarjetas individuales.
+  // Se guarda como String para poder ampliar modalidades sin migrar un enum de
+  // PostgreSQL; las acciones de administracion validan los valores admitidos.
+  pairScoringMode          String                 @default("BEST_BALL")
   // Generacion de resultados. La incrementa el vaciado de tarjetas, y sirve
   // para que una operacion offline creada ANTES del vaciado no pueda resucitar
   // un resultado borrado al recuperar cobertura (ver lib/sync/generation.ts).
@@ -307,6 +315,9 @@ model CompetitionPlayer {
   // Marca un hándicap de juego fijado a mano por el administrador.
   isPlayingHandicapOverridden  Boolean @default(false)
   calculationVersion           String?
+  // Identificador de pareja dentro de la competicion. Dos jugadores activos
+  // con el mismo numero forman una pareja; null significa que no esta asignado.
+  pairNumber    Int?
   color         String
   isActive      Boolean @default(true)
   createdAt     DateTime @default(now())
@@ -321,6 +332,7 @@ model CompetitionPlayer {
 
   @@unique([competitionId, userId])
   @@index([competitionId, isActive])
+  @@index([competitionId, pairNumber])
 }
 
 model Flight {

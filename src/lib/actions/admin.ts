@@ -31,7 +31,13 @@ import {
   type ResetScopeCard,
 } from '../admin/reset';
 import { assignTeeTimes, confirmDraw, drawFlights, validateFlights } from '../admin/draw';
-import { pickPlayerColor, validateNewPlayer, type NewPlayerField } from '../admin/players';
+import {
+  MAX_PASSWORD_LENGTH,
+  MIN_NEW_PLAYER_PASSWORD_LENGTH,
+  pickPlayerColor,
+  validateNewPlayer,
+  type NewPlayerField,
+} from '../admin/players';
 import {
   competitionDateFromInput,
   dateInputInMadrid,
@@ -41,6 +47,7 @@ import {
   ScheduleInputError,
 } from '../admin/schedule';
 import { hashPassword } from '../auth/password';
+import { isPairScoringMode, type PairScoringMode } from '../golf/pairs';
 import { applyRevealAction, type RevealAction } from '../reveal/controller';
 import { rankingFingerprint } from '../golf/ranking';
 import { randomBytes } from 'node:crypto';
@@ -147,6 +154,7 @@ export async function setHandicap(
   });
 
   revalidatePath('/admin/jugadores');
+  revalidatePath('/admin/parejas');
   revalidatePath('/admin/partidos');
   revalidatePath('/clasificacion');
   revalidatePath('/partido');
@@ -260,6 +268,12 @@ export async function updateRules(
   });
 
   revalidatePath('/admin');
+  revalidatePath('/admin/jugadores');
+  revalidatePath('/admin/parejas');
+  revalidatePath('/admin/clasificacion');
+  revalidatePath('/clasificacion');
+  revalidatePath('/tarjeta');
+  revalidatePath('/partido');
   return { ok: true, message: `${result.impact.length} jugador(es) cambian de hándicap de juego.` };
 }
 
@@ -681,6 +695,7 @@ export async function setHandicapCap(rawCap: string): Promise<AdminResult> {
   revalidatePath('/admin');
   revalidatePath('/admin/campo');
   revalidatePath('/admin/jugadores');
+  revalidatePath('/admin/parejas');
   revalidatePath('/admin/partidos');
   revalidatePath('/clasificacion');
   revalidatePath('/partido');
@@ -752,6 +767,7 @@ export async function removeHandicapCap(): Promise<AdminResult> {
   revalidatePath('/admin');
   revalidatePath('/admin/campo');
   revalidatePath('/admin/jugadores');
+  revalidatePath('/admin/parejas');
   revalidatePath('/admin/partidos');
   revalidatePath('/clasificacion');
   revalidatePath('/partido');
@@ -882,6 +898,7 @@ export async function createPlayer(input: {
 
   revalidatePath('/admin');
   revalidatePath('/admin/jugadores');
+  revalidatePath('/admin/parejas');
   revalidatePath('/admin/partidos');
   revalidatePath('/admin/tarjetas');
   revalidatePath('/clasificacion');
@@ -897,6 +914,361 @@ export async function createPlayer(input: {
     color,
     message: `${validation.displayName} inscrito. ${handicapText} Todavia no esta en ningun partido: vuelve a sortear en Partidos para incluirle.`,
   };
+}
+
+// ===========================================================================
+// Acceso, baja y reactivacion de jugadores
+// ===========================================================================
+
+export type PasswordResetResult =
+  | { ok: true; message: string }
+  | { ok: false; error: string; fieldErrors?: { password?: string; confirmation?: string } };
+
+/**
+ * Sustituye la contrasena de un participante e invalida todas sus sesiones.
+ *
+ * Ni la contrasena ni su hash entran en la auditoria. `sessionEpoch` hace que
+ * incluso una cookie que no se haya podido revocar deje de ser valida.
+ */
+export async function resetPlayerPassword(input: {
+  competitionPlayerId: string;
+  password: string;
+  confirmation: string;
+}): Promise<PasswordResetResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+
+  const password = typeof input.password === 'string' ? input.password : '';
+  const confirmation = typeof input.confirmation === 'string' ? input.confirmation : '';
+  const fieldErrors: { password?: string; confirmation?: string } = {};
+
+  if (password.trim() === '') {
+    fieldErrors.password = 'Escribe la nueva contraseña.';
+  } else if (password.length < MIN_NEW_PLAYER_PASSWORD_LENGTH) {
+    fieldErrors.password = `La contraseña debe tener al menos ${MIN_NEW_PLAYER_PASSWORD_LENGTH} caracteres.`;
+  } else if (password.length > MAX_PASSWORD_LENGTH) {
+    fieldErrors.password = 'La contraseña es demasiado larga.';
+  }
+  if (confirmation !== password) {
+    fieldErrors.confirmation = 'Las contraseñas no coinciden.';
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    return { ok: false, error: 'Revisa los campos marcados.', fieldErrors };
+  }
+
+  const player = await prisma.competitionPlayer.findFirst({
+    where: { id: input.competitionPlayerId, competitionId: context.competitionId },
+    include: { user: { select: { id: true, displayName: true } } },
+  });
+  if (!player) return { ok: false, error: 'Jugador no encontrado.' };
+
+  const passwordHash = await hashPassword(password);
+  const revokedAt = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: player.user.id },
+      data: { passwordHash, sessionEpoch: { increment: 1 } },
+    });
+    await tx.session.updateMany({
+      where: { userId: player.user.id, revokedAt: null },
+      data: { revokedAt },
+    });
+    await tx.auditLog.create({
+      data: {
+        competitionId: context.competitionId,
+        actorId: admin.userId,
+        action: 'PLAYER_PASSWORD_RESET',
+        entityType: 'User',
+        entityId: player.user.id,
+        // Deliberadamente sin contrasena ni hash.
+        afterData: toJson({ displayName: player.user.displayName, sessionsRevoked: true }),
+      },
+    });
+  });
+
+  revalidatePath('/admin/jugadores');
+  revalidatePath('/login');
+  return { ok: true, message: `Contraseña de ${player.user.displayName} actualizada.` };
+}
+
+/** Baja o reactiva la inscripcion sin borrar tarjetas ni auditoria. */
+export async function setPlayerActive(
+  competitionPlayerId: string,
+  active: boolean,
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+
+  const player = await prisma.competitionPlayer.findFirst({
+    where: { id: competitionPlayerId, competitionId: context.competitionId },
+    include: {
+      user: { select: { id: true, displayName: true, role: true, isActive: true } },
+      flightMember: { select: { flightId: true } },
+    },
+  });
+  if (!player) return { ok: false, error: 'Jugador no encontrado.' };
+  if (player.isActive === active) {
+    return {
+      ok: true,
+      message: active ? 'El jugador ya estaba activo.' : 'El jugador ya estaba dado de baja.',
+    };
+  }
+
+  const revokedAt = new Date();
+  await prisma.$transaction(async (tx) => {
+    if (!active) {
+      // Si se rompe una pareja, sus dos integrantes quedan sin asignar. Dejar
+      // al companero solo produciria una pareja fantasma en administracion.
+      if (player.pairNumber !== null) {
+        await tx.competitionPlayer.updateMany({
+          where: {
+            competitionId: context.competitionId,
+            pairNumber: player.pairNumber,
+          },
+          data: { pairNumber: null },
+        });
+      }
+
+      await tx.flightMember.deleteMany({ where: { competitionPlayerId } });
+      await tx.competitionPlayer.update({
+        where: { id: competitionPlayerId },
+        data: { isActive: false, pairNumber: null },
+      });
+
+      // Un administrador puede seguir organizando aunque deje de jugar. Para
+      // un jugador normal, la baja tambien cierra el acceso a la aplicacion.
+      if (player.user.role === 'PLAYER') {
+        await tx.user.update({
+          where: { id: player.user.id },
+          data: { isActive: false, sessionEpoch: { increment: 1 } },
+        });
+        await tx.session.updateMany({
+          where: { userId: player.user.id, revokedAt: null },
+          data: { revokedAt },
+        });
+      }
+    } else {
+      await tx.competitionPlayer.update({
+        where: { id: competitionPlayerId },
+        data: { isActive: true },
+      });
+      if (player.user.role === 'PLAYER') {
+        await tx.user.update({
+          where: { id: player.user.id },
+          data: { isActive: true },
+        });
+      }
+    }
+
+    await tx.auditLog.create({
+      data: {
+        competitionId: context.competitionId,
+        actorId: admin.userId,
+        action: active ? 'PLAYER_REACTIVATED' : 'PLAYER_DEACTIVATED',
+        entityType: 'CompetitionPlayer',
+        entityId: competitionPlayerId,
+        beforeData: toJson({
+          isActive: player.isActive,
+          userIsActive: player.user.isActive,
+          flightId: player.flightMember?.flightId ?? null,
+          pairNumber: player.pairNumber,
+        }),
+        afterData: toJson({
+          isActive: active,
+          userIsActive: player.user.role === 'ADMIN' ? player.user.isActive : active,
+          flightId: null,
+          pairNumber: null,
+        }),
+      },
+    });
+  });
+
+  for (const path of [
+    '/admin',
+    '/admin/jugadores',
+    '/admin/parejas',
+    '/admin/partidos',
+    '/admin/tarjetas',
+    '/admin/clasificacion',
+    '/clasificacion',
+    '/partido',
+    '/tarjeta',
+    '/login',
+  ]) {
+    revalidatePath(path);
+  }
+
+  return {
+    ok: true,
+    message: active
+      ? `${player.user.displayName} reactivado. Debes volver a asignarle partido y pareja.`
+      : `${player.user.displayName} dado de baja. Sus resultados se conservan en el historial.`,
+  };
+}
+
+// ===========================================================================
+// Configuracion y composicion de parejas
+// ===========================================================================
+
+export async function updatePairSettings(input: {
+  enabled: boolean;
+  scoringMode: string;
+}): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+  if (!isPairScoringMode(input.scoringMode)) {
+    return { ok: false, error: 'Modalidad de parejas no valida.' };
+  }
+
+  const scoringMode: PairScoringMode = input.scoringMode;
+  await prisma.$transaction(async (tx) => {
+    await tx.competition.update({
+      where: { id: context.competitionId },
+      data: { pairModeEnabled: Boolean(input.enabled), pairScoringMode: scoringMode },
+    });
+    await tx.auditLog.create({
+      data: {
+        competitionId: context.competitionId,
+        actorId: admin.userId,
+        action: 'PAIR_SETTINGS_UPDATED',
+        entityType: 'Competition',
+        entityId: context.competitionId,
+        beforeData: toJson({
+          pairModeEnabled: context.pairModeEnabled,
+          pairScoringMode: context.pairScoringMode,
+        }),
+        afterData: toJson({
+          pairModeEnabled: Boolean(input.enabled),
+          pairScoringMode: scoringMode,
+        }),
+      },
+    });
+  });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/parejas');
+  revalidatePath('/admin/clasificacion');
+  revalidatePath('/clasificacion');
+  return {
+    ok: true,
+    message: input.enabled
+      ? 'Modo parejas activado y modalidad guardada.'
+      : 'Modo parejas desactivado. Las asignaciones se conservan.',
+  };
+}
+
+export async function createPair(
+  firstPlayerId: string,
+  secondPlayerId: string,
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+  if (!firstPlayerId || !secondPlayerId || firstPlayerId === secondPlayerId) {
+    return { ok: false, error: 'Elige dos jugadores distintos.' };
+  }
+
+  const players = await prisma.competitionPlayer.findMany({
+    where: {
+      id: { in: [firstPlayerId, secondPlayerId] },
+      competitionId: context.competitionId,
+      isActive: true,
+    },
+    include: { user: { select: { displayName: true } } },
+  });
+  if (players.length !== 2) {
+    return { ok: false, error: 'Alguno de los jugadores no existe o esta dado de baja.' };
+  }
+  if (players.some((player) => player.pairNumber !== null)) {
+    return { ok: false, error: 'Uno de los jugadores ya pertenece a una pareja.' };
+  }
+
+  let pairNumber = 0;
+  await prisma.$transaction(async (tx) => {
+    const maximum = await tx.competitionPlayer.aggregate({
+      where: { competitionId: context.competitionId },
+      _max: { pairNumber: true },
+    });
+    pairNumber = (maximum._max.pairNumber ?? 0) + 1;
+
+    await tx.competitionPlayer.updateMany({
+      where: { id: { in: [firstPlayerId, secondPlayerId] } },
+      data: { pairNumber },
+    });
+    await tx.auditLog.create({
+      data: {
+        competitionId: context.competitionId,
+        actorId: admin.userId,
+        action: 'PAIR_CREATED',
+        entityType: 'CompetitionPair',
+        entityId: `${context.competitionId}:${pairNumber}`,
+        afterData: toJson({
+          pairNumber,
+          members: players.map((player) => ({
+            competitionPlayerId: player.id,
+            displayName: player.user.displayName,
+          })),
+        }),
+      },
+    });
+  });
+
+  revalidatePath('/admin/parejas');
+  revalidatePath('/admin/jugadores');
+  revalidatePath('/admin/clasificacion');
+  revalidatePath('/clasificacion');
+  return {
+    ok: true,
+    message: `Pareja ${pairNumber} creada: ${players.map((player) => player.user.displayName).join(' / ')}.`,
+  };
+}
+
+export async function removePair(pairNumber: number): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+  if (!Number.isInteger(pairNumber) || pairNumber < 1) {
+    return { ok: false, error: 'Pareja no valida.' };
+  }
+
+  const members = await prisma.competitionPlayer.findMany({
+    where: { competitionId: context.competitionId, pairNumber },
+    include: { user: { select: { displayName: true } } },
+  });
+  if (members.length === 0) return { ok: false, error: 'Pareja no encontrada.' };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.competitionPlayer.updateMany({
+      where: { competitionId: context.competitionId, pairNumber },
+      data: { pairNumber: null },
+    });
+    await tx.auditLog.create({
+      data: {
+        competitionId: context.competitionId,
+        actorId: admin.userId,
+        action: 'PAIR_REMOVED',
+        entityType: 'CompetitionPair',
+        entityId: `${context.competitionId}:${pairNumber}`,
+        beforeData: toJson({
+          pairNumber,
+          members: members.map((member) => ({
+            competitionPlayerId: member.id,
+            displayName: member.user.displayName,
+          })),
+        }),
+      },
+    });
+  });
+
+  revalidatePath('/admin/parejas');
+  revalidatePath('/admin/jugadores');
+  revalidatePath('/admin/clasificacion');
+  revalidatePath('/clasificacion');
+  return { ok: true, message: `Pareja ${pairNumber} disuelta.` };
 }
 
 // ===========================================================================
