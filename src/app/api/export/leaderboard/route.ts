@@ -28,6 +28,7 @@ export async function GET(request: Request) {
       role: user.role,
       classificationStatus: context.classificationStatus,
     },
+    flightDrawSeed: context.flightDrawSeed,
   };
 
   try {

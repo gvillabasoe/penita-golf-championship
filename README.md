@@ -6,12 +6,31 @@ Individual Stableford · Club de Golf Ulzama (4401) · recorrido Ulzama · barra
 Estado: **completa**, version 1.4.0. Lista para subir a GitHub y desplegar en Vercel.
 Empieza por `docs/primer-despliegue.md`.
 
-> **Actualizando desde la 1.1.0**: aplica primero
-> `prisma/sql/migrations/002-limite-hcp-y-vaciado.sql` en Neon y **despues**
-> despliega el codigo. Al reves, la aplicacion arranca y falla en la primera
-> lectura, porque `appliedHandicapIndexTenths` todavia no existiria.
+> **Actualización de base de datos**: aplica las migraciones incrementales en
+> orden antes de desplegar el código. Si la base ya incorpora el modo parejas y
+> los sorteos en dos fases, basta con ejecutar
+> `prisma/sql/migrations/005-semillas-y-exportacion-pdf.sql` y después
+> `npx prisma generate`. Desde una instalación anterior, el orden completo es
+> `002` → `003` → `004` → `005`.
 
 ---
+
+## Actualización: documentos oficiales y semillas reproducibles
+
+- Centro de exportación reorganizado con cinco PDF independientes: clasificación
+  individual, clasificación por parejas, tarjetas individuales, tarjetas de
+  parejas y dossier completo.
+- Maquetación A4 específica, basada en el sistema visual Escudo, con logotipo,
+  paleta, tarjetas, tablas, cabeceras, pies y saltos de página controlados.
+- Tarjetas de mejor bola con el jugador que aporta cada hoyo; modalidad por suma
+  con las dos tarjetas originales; participante individual identificado como x2.
+- Semillas de partidos y parejas persistidas por separado, visibles al final de
+  cada sorteo y reproducibles desde el panel administrativo.
+- Dos PDF adicionales para conservar la trazabilidad del sorteo de partidos y
+  del sorteo de parejas.
+
+Consulta `docs/exports.md` para el contrato de maquetación, permisos y
+verificación.
 
 ## Novedades de la version 1.4.0
 
@@ -73,7 +92,9 @@ src/lib/sync/
   apply.ts        Aplicación idempotente y conflictos por hoyo.
 
 src/lib/admin/
-  draw.ts         Sorteo con semilla reproducible, horas y validaciones.
+  draw.ts         Sorteo de partidos con semilla reproducible y equilibrio.
+  pair-draw.ts    Sorteo de parejas sobre partidos confirmados.
+  draw-seed.ts    Normalización y límites de las semillas persistidas.
 
 src/lib/reveal/
   controller.ts   Máquina de estados de la revelación progresiva.
@@ -81,7 +102,7 @@ src/lib/reveal/
 src/lib/export/
   text.ts         Saneado WinAnsi: un emoji no tumba el PDF.
   guards.ts       Permisos: la clasificación completa solo publicada.
-  pdf.ts          PDF de clasificación y de tarjeta, con pdf-lib.
+  pdf.ts          Documentos A4 oficiales: sorteos, clasificaciones y tarjetas.
   svg.ts          Imagen SVG sin dependencias, rasterizado opcional a PNG.
 
 src/lib/pwa/
@@ -121,7 +142,6 @@ prisma/sql/migrations/      Migraciones incrementales, re-ejecutables, para Neon
 data/ulzama.snapshot.json   Datos del campo con procedencia de las dos fuentes.
 src/styles/tokens.css       Tokens del sistema "Escudo": color, luz, tipo, movimiento.
 src/components/ui/          Sistema de componentes: botones, insignias, estados.
-docs/design-system.md       Dirección visual, paleta, tipografía y patrones.
 docs/design-system.md       Dirección visual, paleta, tipografía y patrones.
 docs/guia-administrativa.md Límite de HCP, borrado de hoyo y vaciado de tarjetas.
 docs/offline-sync.md        Cola offline, conflictos y generación de resultados.

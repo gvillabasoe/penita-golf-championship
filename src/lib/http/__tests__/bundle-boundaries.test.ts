@@ -203,7 +203,7 @@ describe('las rutas que usan pdf-lib o sharp declaran runtime nodejs', () => {
     const missing: string[] = [];
     for (const file of routeFiles) {
       const source = readFileSync(file, 'utf8');
-      const usesNodeOnly = /export\/(pdf|svg)|buildLeaderboardPdf|buildScorecardPdf|rasterizeSvgToPng|getAuditLog/.test(
+      const usesNodeOnly = /export\/(pdf|svg)|build[A-Za-z]+Pdf|rasterizeSvgToPng|getAuditLog/.test(
         source,
       );
       if (usesNodeOnly && !/export const runtime = 'nodejs'/.test(source)) {

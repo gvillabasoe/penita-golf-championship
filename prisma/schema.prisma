@@ -201,6 +201,12 @@ model Competition {
   // Solo se habilita el sorteo de parejas despues de confirmar los partidos.
   // Un nuevo sorteo de partidos vuelve este campo a null e invalida las parejas.
   flightsConfirmedAt       DateTime?
+  // Semillas de los dos sorteos. Se guardan de forma independiente para poder
+  // regenerar exactamente la misma composicion mientras no cambie el roster.
+  // La de partidos solo representa una composicion CONFIRMADA; la de parejas se
+  // borra si se retoca manualmente cualquier equipo.
+  flightDrawSeed           String?
+  pairDrawSeed             String?
   // Generacion de resultados. La incrementa el vaciado de tarjetas, y sirve
   // para que una operacion offline creada ANTES del vaciado no pueda resucitar
   // un resultado borrado al recuperar cobertura (ver lib/sync/generation.ts).

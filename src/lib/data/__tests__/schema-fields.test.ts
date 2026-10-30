@@ -72,6 +72,8 @@ const REQUIRED: Record<string, Record<string, string>> = {
     pairModeEnabled: 'Boolean',
     pairScoringMode: 'String',
     flightsConfirmedAt: 'DateTime?',
+    flightDrawSeed: 'String?',
+    pairDrawSeed: 'String?',
     scoreResetVersion: 'Int',
     status: 'CompetitionStatus',
     classificationStatus: 'ClassificationStatus',

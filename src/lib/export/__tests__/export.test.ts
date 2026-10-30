@@ -12,10 +12,20 @@ import {
   truncate,
 } from '../text';
 import {
+  buildCompletePdf,
+  buildFlightDrawPdf,
+  buildIndividualScorecardsPdf,
   buildLeaderboardPdf,
+  buildPairDrawPdf,
+  buildPairLeaderboardPdf,
+  buildPairScorecardsPdf,
   buildScorecardPdf,
   type CompetitionHeader,
+  type FlightDrawDocument,
   type LeaderboardExportRow,
+  type PairLeaderboardExportRow,
+  type PairScorecardDocument,
+  type ScorecardDocument,
 } from '../pdf';
 import { buildLeaderboardSvg, rasterizeSvgToPng } from '../svg';
 
@@ -41,6 +51,14 @@ async function extractPdfText(bytes: Uint8Array): Promise<string> {
   return chunks.join('\n');
 }
 
+async function countPdfPages(bytes: Uint8Array): Promise<number> {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const doc = await pdfjs.getDocument({ data: bytes, useSystemFonts: false }).promise;
+  const count = doc.numPages;
+  await doc.destroy();
+  return count;
+}
+
 const HEADER: CompetitionHeader = {
   name: 'Peñita Golf Championship',
   edition: 'I Peñita Golf Championship – Ulzama-Bariain 2026',
@@ -62,6 +80,98 @@ const ROWS: LeaderboardExportRow[] = [
   { position: 2, isSharedPosition: false, displayName: 'Pacho Rodríguez-Rey', handicapIndexTenths: 207, playingHandicap: 25, points: 37, numericStrokes: 95, adjustedStrokes: 102, pickups: 1 },
   { position: 3, isSharedPosition: true, displayName: 'Tomás Molina', handicapIndexTenths: 240, playingHandicap: 29, points: 34, numericStrokes: 99, adjustedStrokes: 99, pickups: 0 },
   { position: 3, isSharedPosition: true, displayName: 'Alfonso Zabala', handicapIndexTenths: 240, playingHandicap: 29, points: 34, numericStrokes: 99, adjustedStrokes: 99, pickups: 0 },
+];
+
+const PAIR_ROWS: PairLeaderboardExportRow[] = [
+  {
+    pairNumber: 1,
+    position: 1,
+    isSharedPosition: false,
+    displayName: 'Gonzalo Suárez / Pacho Rodríguez-Rey',
+    colors: ['#2D4767', '#1F7A4D'],
+    scoringMode: 'BEST_BALL',
+    isSolo: false,
+    handicapIndexTenths: 325,
+    playingHandicap: 39,
+    points: 44,
+    numericStrokes: 79,
+    adjustedStrokes: 79,
+    pickups: 0,
+    holesCompleted: 18,
+    holesAvailable: 18,
+    progressPercent: 100,
+  },
+  {
+    pairNumber: 2,
+    position: 2,
+    isSharedPosition: false,
+    displayName: 'Tomás Molina / Alfonso Zabala',
+    colors: ['#A85F00', '#C8322C'],
+    scoringMode: 'BEST_BALL',
+    isSolo: false,
+    handicapIndexTenths: 480,
+    playingHandicap: 58,
+    points: 39,
+    numericStrokes: 84,
+    adjustedStrokes: 91,
+    pickups: 1,
+    holesCompleted: 18,
+    holesAvailable: 18,
+    progressPercent: 89,
+  },
+];
+
+const FLIGHTS: FlightDrawDocument[] = [
+  {
+    id: 'flight-1',
+    name: 'Partido 1',
+    order: 1,
+    teeTime: '2026-06-13T07:00:00Z',
+    status: 'CONFIRMED',
+    members: [
+      {
+        competitionPlayerId: 'p1',
+        displayName: 'Gonzalo Suárez',
+        color: '#2D4767',
+        handicapIndexTenths: 118,
+        playingHandicap: 14,
+        knowsCourse: true,
+      },
+      {
+        competitionPlayerId: 'p3',
+        displayName: 'Tomás Molina',
+        color: '#A85F00',
+        handicapIndexTenths: 240,
+        playingHandicap: 29,
+        knowsCourse: false,
+      },
+    ],
+  },
+  {
+    id: 'flight-2',
+    name: 'Partido 2',
+    order: 2,
+    teeTime: '2026-06-13T07:10:00Z',
+    status: 'CONFIRMED',
+    members: [
+      {
+        competitionPlayerId: 'p2',
+        displayName: 'Pacho Rodríguez-Rey',
+        color: '#1F7A4D',
+        handicapIndexTenths: 207,
+        playingHandicap: 25,
+        knowsCourse: false,
+      },
+      {
+        competitionPlayerId: 'p4',
+        displayName: 'Alfonso Zabala',
+        color: '#C8322C',
+        handicapIndexTenths: 240,
+        playingHandicap: 29,
+        knowsCourse: true,
+      },
+    ],
+  },
 ];
 
 const PUBLISHED: ExportRequest = {
@@ -234,12 +344,12 @@ describe('PDF de clasificacion', () => {
     assert.match(text, /Club de Golf Ulzama/);
     assert.match(text, /amarillas/);
     assert.match(text, /caballeros/);
-    assert.match(text, /individual stableford/);
+    assert.match(text, /individual stableford/i);
     assert.match(text, /13 de junio de 2026/);
     assert.match(text, /Slope 139/);
     assert.match(text, /Par 72/);
     assert.match(text, /95 %/);
-    assert.match(text, /Clasificacion final/);
+    assert.match(text, /Clasificación individual final/);
   });
 
   test('incluye posicion, nombre, hándicap, HJ, puntos y golpes de cada jugador', async () => {
@@ -251,8 +361,8 @@ describe('PDF de clasificacion', () => {
       assert.match(text, new RegExp(formatHandicap(row.handicapIndexTenths).replace(',', ',')));
     }
     assert.match(text, /39/);
-    assert.match(text, /Pos/);
-    assert.match(text, /Puntos/);
+    assert.match(text, /Clasificación individual final/);
+    assert.match(text, /pts/);
   });
 
   test('marca las posiciones compartidas con el signo igual', async () => {
@@ -270,7 +380,7 @@ describe('PDF de clasificacion', () => {
     const text = await extractPdfText(bytes);
     assert.match(text, /PROVISIONAL/);
     assert.match(text, /NO ES LA CLASIFICACION DEFINITIVA/);
-    assert.match(text, /Clasificacion provisional/);
+    assert.match(text, /Clasificación individual provisional/);
   });
 
   test('el definitivo NO lleva la marca de provisional', async () => {
@@ -324,6 +434,19 @@ describe('PDF de clasificacion', () => {
       assert.match(text, new RegExp(row.displayName), `falta ${row.displayName}`);
     }
   });
+
+  test('incluye de forma discreta la seed confirmada del sorteo de partidos', async () => {
+    const seed = 'partidos-oficiales-2026';
+    const bytes = await buildLeaderboardPdf({
+      header: HEADER,
+      rows: ROWS,
+      request: PUBLISHED,
+      flightDrawSeed: seed,
+    });
+    const text = await extractPdfText(bytes);
+    assert.match(text, /Semilla de los partidos de esta clasificación/);
+    assert.match(text, new RegExp(seed));
+  });
 });
 
 describe('PDF de tarjeta', () => {
@@ -359,6 +482,92 @@ describe('PDF de tarjeta', () => {
     targetPlayerId: 'p1',
   };
 
+  function officialDocuments(): {
+    cards: ScorecardDocument[];
+    pairs: PairScorecardDocument[];
+  } {
+    const firstPlayed: Record<number, number> = {};
+    const secondPlayed: Record<number, number> = {};
+    for (const hole of ULZAMA_HOLES) {
+      firstPlayed[hole.holeNumber] = hole.par;
+      secondPlayed[hole.holeNumber] = hole.par + 1;
+    }
+    const first = build(firstPlayed);
+    const second = build(secondPlayed);
+    const cards: ScorecardDocument[] = [
+      {
+        player: {
+          displayName: 'Gonzalo Suárez',
+          color: '#2D4767',
+          handicapIndexTenths: 118,
+          playingHandicap: 14,
+          flightName: 'Partido 1',
+          teeTime: '2026-06-13T07:00:00Z',
+          status: 'LOCKED',
+        },
+        results: first.results,
+        totals: first.totals,
+      },
+      {
+        player: {
+          displayName: 'Pacho Rodríguez-Rey',
+          color: '#1F7A4D',
+          handicapIndexTenths: 207,
+          playingHandicap: 25,
+          flightName: 'Partido 2',
+          teeTime: '2026-06-13T07:10:00Z',
+          status: 'LOCKED',
+        },
+        results: second.results,
+        totals: second.totals,
+      },
+    ];
+    const pair: PairScorecardDocument = {
+      pairNumber: 1,
+      displayName: 'Gonzalo Suárez / Pacho Rodríguez-Rey',
+      colors: ['#2D4767', '#1F7A4D'],
+      scoringMode: 'BEST_BALL',
+      isSolo: false,
+      handicapIndexTenths: 325,
+      playingHandicap: 39,
+      points: first.totals.total.points,
+      members: [
+        {
+          competitionPlayerId: 'p1',
+          displayName: 'Gonzalo Suárez',
+          color: '#2D4767',
+          handicapIndexTenths: 118,
+          playingHandicap: 14,
+          flightName: 'Partido 1',
+          status: 'LOCKED',
+          results: first.results,
+          totals: first.totals,
+        },
+        {
+          competitionPlayerId: 'p2',
+          displayName: 'Pacho Rodríguez-Rey',
+          color: '#1F7A4D',
+          handicapIndexTenths: 207,
+          playingHandicap: 25,
+          flightName: 'Partido 2',
+          status: 'LOCKED',
+          results: second.results,
+          totals: second.totals,
+        },
+      ],
+      results: first.results,
+      totals: first.totals,
+      sources: first.results.map((result) => ({
+        holeNumber: result.holeNumber,
+        competitionPlayerId: 'p1',
+        displayName: 'Gonzalo Suárez',
+        shortLabel: 'GS',
+        color: '#2D4767',
+      })),
+    };
+    return { cards, pairs: [pair] };
+  }
+
   test('incluye los 18 hoyos con par, SI, distancia, recibidos, bruto, neto y puntos', async () => {
     const played: Record<number, number> = {};
     for (const h of ULZAMA_HOLES) played[h.holeNumber] = h.par + 1;
@@ -381,11 +590,11 @@ describe('PDF de tarjeta', () => {
     assert.match(text, /Hoyo/);
     assert.match(text, /Metros/);
     assert.match(text, /Recibe/);
-    assert.match(text, /Puntos/);
+    assert.match(text, /Puntos|puntos/);
     assert.match(text, /523/); // distancia del hoyo 5
-    assert.match(text, /Ida:/);
-    assert.match(text, /Vuelta:/);
-    assert.match(text, /TOTAL/);
+    assert.match(text, /IDA/);
+    assert.match(text, /VUELTA/);
+    assert.match(text, /18\/18/);
   });
 
   test('vuelta limpia: imprime el resultado bruto respecto al par', async () => {
@@ -411,7 +620,7 @@ describe('PDF de tarjeta', () => {
     assert.match(text, /1 raya\b/);
     assert.equal(/1 rayas/.test(text), false);
     assert.equal(text.includes('Resultado bruto: '), false);
-    assert.match(text, /Raya/);
+    assert.match(text, /raya/i);
   });
 
   test('no se exporta la tarjeta de otro partido antes de publicar', async () => {
@@ -436,6 +645,155 @@ describe('PDF de tarjeta', () => {
         }),
       ExportNotAllowedError,
     );
+  });
+
+  test('las tarjetas individuales se maquetan una por pagina A4', async () => {
+    const { cards } = officialDocuments();
+    const bytes = await buildIndividualScorecardsPdf({
+      header: HEADER,
+      cards,
+      distances,
+      generatedAt: new Date('2026-06-13T18:00:00Z'),
+    });
+    assert.equal(await countPdfPages(bytes), cards.length);
+    const text = await extractPdfText(bytes);
+    assert.match(text, /Gonzalo Suárez/);
+    assert.match(text, /Pacho Rodríguez-Rey/);
+  });
+
+  test('la tarjeta de mejor bola es unica e identifica quien aporta cada hoyo', async () => {
+    const { pairs } = officialDocuments();
+    const bytes = await buildPairScorecardsPdf({
+      header: HEADER,
+      pairs,
+      distances,
+      generatedAt: new Date('2026-06-13T18:00:00Z'),
+    });
+    assert.equal(await countPdfPages(bytes), 1);
+    const text = await extractPdfText(bytes);
+    assert.match(text, /Pareja 1 · mejor bola/);
+    assert.match(text, /Jugador/);
+    assert.match(text, /GS/);
+  });
+
+  test('la modalidad por suma conserva las dos tarjetas, una por pagina', async () => {
+    const { pairs } = officialDocuments();
+    const combined: PairScorecardDocument = {
+      ...pairs[0],
+      scoringMode: 'COMBINED_POINTS',
+      points: pairs[0].members.reduce((sum, member) => sum + member.totals.total.points, 0),
+      results: null,
+      totals: null,
+      sources: [],
+    };
+    const bytes = await buildPairScorecardsPdf({
+      header: HEADER,
+      pairs: [combined],
+      distances,
+      generatedAt: new Date('2026-06-13T18:00:00Z'),
+    });
+    assert.equal(await countPdfPages(bytes), 2);
+    const text = await extractPdfText(bytes);
+    assert.match(text, /Pareja 1 · integrante 1 de 2/);
+    assert.match(text, /Pareja 1 · integrante 2 de 2/);
+    assert.match(text, /Gonzalo Suárez/);
+    assert.match(text, /Pacho Rodríguez-Rey/);
+    assert.match(text, /Suma de puntos individuales/);
+  });
+
+  test('el participante individual x2 genera una unica tarjeta derivada', async () => {
+    const { pairs } = officialDocuments();
+    const member = pairs[0].members[0];
+    const doubledResults = member.results.map((result) => ({
+      ...result,
+      stablefordPoints: result.stablefordPoints * 2,
+    }));
+    const doubledTotals = computeTotals(doubledResults);
+    const solo: PairScorecardDocument = {
+      pairNumber: 7,
+      displayName: member.displayName,
+      colors: [member.color],
+      scoringMode: 'COMBINED_POINTS',
+      isSolo: true,
+      handicapIndexTenths:
+        member.handicapIndexTenths === null ? null : member.handicapIndexTenths * 2,
+      playingHandicap: member.playingHandicap === null ? null : member.playingHandicap * 2,
+      points: doubledTotals.total.points,
+      members: [member],
+      results: doubledResults,
+      totals: doubledTotals,
+      sources: [],
+    };
+    const bytes = await buildPairScorecardsPdf({
+      header: HEADER,
+      pairs: [solo],
+      distances,
+      generatedAt: new Date('2026-06-13T18:00:00Z'),
+    });
+    assert.equal(await countPdfPages(bytes), 1);
+    const text = await extractPdfText(bytes);
+    assert.match(text, /Equipo 7 · individual x2/);
+    assert.match(text, /puntos x2/);
+    assert.match(text, /Suma de puntos individuales/);
+  });
+
+  test('el PDF del sorteo de partidos deja la seed despues de todos los partidos', async () => {
+    const seed = 'seed-partidos-123';
+    const bytes = await buildFlightDrawPdf({ header: HEADER, flights: FLIGHTS, seed });
+    const text = await extractPdfText(bytes);
+    assert.ok(text.lastIndexOf(seed) > text.lastIndexOf('Partido 2'));
+    assert.match(text, /Semilla del sorteo de partidos/);
+  });
+
+  test('clasificacion y sorteo de parejas conservan su seed independiente', async () => {
+    const seed = 'seed-parejas-456';
+    const leaderboard = await buildPairLeaderboardPdf({
+      header: HEADER,
+      rows: PAIR_ROWS,
+      scoringMode: 'BEST_BALL',
+      request: PUBLISHED,
+      pairDrawSeed: seed,
+    });
+    const leaderboardText = await extractPdfText(leaderboard);
+    assert.match(leaderboardText, /Clasificación por parejas final/);
+    assert.match(leaderboardText, /Dobles · mejor bola Stableford/);
+    assert.match(leaderboardText, new RegExp(seed));
+
+    const { pairs } = officialDocuments();
+    const draw = await buildPairDrawPdf({ header: HEADER, pairs, seed });
+    const drawText = await extractPdfText(draw);
+    assert.ok(drawText.lastIndexOf(seed) > drawText.lastIndexOf('Pareja 1'));
+  });
+
+  test('el dossier completo ordena secciones y coloca cada seed en su sorteo', async () => {
+    const { cards, pairs } = officialDocuments();
+    const flightSeed = 'flight-seed-complete';
+    const pairSeed = 'pair-seed-complete';
+    const bytes = await buildCompletePdf({
+      header: HEADER,
+      request: PUBLISHED,
+      individualRows: ROWS,
+      individualCards: cards,
+      flights: FLIGHTS,
+      flightDrawSeed: flightSeed,
+      pairRows: PAIR_ROWS,
+      pairs,
+      pairScoringMode: 'BEST_BALL',
+      pairDrawSeed: pairSeed,
+      distances,
+      generatedAt: new Date('2026-06-13T18:00:00Z'),
+    });
+    const text = await extractPdfText(bytes);
+    assert.match(text, /Dossier oficial del campeonato/);
+    assert.match(text, /Sorteo de partidos/);
+    assert.match(text, /Clasificación individual final/);
+    assert.match(text, /Tarjetas individuales/);
+    assert.match(text, /Sorteo de parejas/);
+    assert.match(text, /Clasificación por parejas final/);
+    assert.match(text, /Tarjetas de parejas/);
+    assert.ok(text.indexOf(flightSeed) > text.indexOf('Sorteo de partidos'));
+    assert.ok(text.indexOf(pairSeed) > text.indexOf('Sorteo de parejas'));
+    assert.ok((await countPdfPages(bytes)) >= 8);
   });
 });
 

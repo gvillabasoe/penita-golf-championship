@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { previewDraw, saveDraw } from '@/lib/actions/admin';
 import { formatTenths } from '@/lib/golf/decimal';
 import { AdminSection, Alert, StatusBadge } from '@/components/ui';
+import { DRAW_SEED_MAX_LENGTH } from '@/lib/admin/draw-seed';
 
 interface PreviewMember {
   competitionPlayerId: string;
@@ -114,6 +115,7 @@ export function DrawPanel({ isConfirmed }: { isConfirmed: boolean }) {
         <input
           id="seed"
           type="text"
+          maxLength={DRAW_SEED_MAX_LENGTH}
           value={seed}
           disabled={preview !== null || busy}
           onChange={(event) => setSeed(event.target.value)}
@@ -155,10 +157,6 @@ export function DrawPanel({ isConfirmed }: { isConfirmed: boolean }) {
               </button>
             </div>
           </div>
-
-          <p className="muted">
-            Semilla <code>{seed}</code>. El algoritmo equilibra HCP, separa los cuatro HCP más altos siempre que sea posible y reparte a quienes conocen el campo.
-          </p>
 
           {missingHandicapCount > 0 ? (
             <Alert tone="warning" role="status">
@@ -208,6 +206,14 @@ export function DrawPanel({ isConfirmed }: { isConfirmed: boolean }) {
                 </ul>
               </section>
             ))}
+          </div>
+
+          <div className="draw-seed" role="note" aria-label="Semilla de la propuesta de partidos">
+            <span>Semilla de esta propuesta</span>
+            <code>{seed}</code>
+            <small>
+              Reutilízala para regenerar exactamente esta distribución mientras no cambien los participantes, sus HCP ni “Conoce el campo”.
+            </small>
           </div>
 
           <div className="field">

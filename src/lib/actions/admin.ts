@@ -54,6 +54,7 @@ import {
   ScheduleInputError,
 } from '../admin/schedule';
 import { hashPassword } from '../auth/password';
+import { normalizeDrawSeed } from '../admin/draw-seed';
 import {
   drawPairs as buildPairDraw,
   worstPairHandicapPlayerIds,
@@ -65,10 +66,15 @@ import { rankingFingerprint } from '../golf/ranking';
 import { createHash, randomBytes } from 'node:crypto';
 
 export type AdminResult = { ok: true; message?: string } | { ok: false; error: string };
+export type PairDrawResult =
+  | { ok: true; message?: string; seed: string }
+  | { ok: false; error: string };
 
 interface LockedDrawState {
   pairModeEnabled: boolean;
   flightsConfirmedAt: Date | null;
+  flightDrawSeed: string | null;
+  pairDrawSeed: string | null;
 }
 
 /**
@@ -84,7 +90,7 @@ async function lockCompetitionDrawState(
   competitionId: string,
 ): Promise<LockedDrawState> {
   const rows = await tx.$queryRaw<LockedDrawState[]>(Prisma.sql`
-    SELECT "pairModeEnabled", "flightsConfirmedAt"
+    SELECT "pairModeEnabled", "flightsConfirmedAt", "flightDrawSeed", "pairDrawSeed"
     FROM "Competition"
     WHERE "id" = ${competitionId}
     FOR UPDATE
@@ -125,7 +131,11 @@ async function invalidateDrawSequence(
   await lockCompetitionDrawState(tx, competitionId);
   await tx.competition.update({
     where: { id: competitionId },
-    data: { flightsConfirmedAt: null },
+    data: {
+      flightsConfirmedAt: null,
+      flightDrawSeed: null,
+      pairDrawSeed: null,
+    },
   });
   const cleared = await tx.competitionPlayer.updateMany({
     where: {
@@ -409,7 +419,15 @@ export async function previewDraw(seed?: string): Promise<
   const context = await getCompetition();
   if (!context) return { ok: false, error: 'No hay competicion configurada.' };
 
-  const usedSeed = seed?.trim() || randomBytes(8).toString('hex');
+  let usedSeed: string;
+  try {
+    usedSeed = normalizeDrawSeed(seed) || randomBytes(8).toString('hex');
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'La semilla no es valida.',
+    };
+  }
 
   try {
     const outcome = await prisma.$transaction(async (tx) => {
@@ -438,6 +456,8 @@ export async function previewDraw(seed?: string): Promise<
           entityId: context.competitionId,
           beforeData: toJson({
             flightsConfirmedAt: lockedState.flightsConfirmedAt?.toISOString() ?? null,
+            flightDrawSeed: lockedState.flightDrawSeed,
+            pairDrawSeed: lockedState.pairDrawSeed,
           }),
           afterData: toJson({
             seed: proposal.seed,
@@ -456,7 +476,7 @@ export async function previewDraw(seed?: string): Promise<
     const byId = new Map(active.map((player) => [player.competitionPlayerId, player]));
     const worstIds = worstHandicapPlayerIds(active);
 
-    for (const path of ['/admin', '/admin/partidos', '/admin/parejas', '/admin/clasificacion', '/clasificacion']) {
+    for (const path of ['/admin', '/admin/partidos', '/admin/parejas', '/admin/clasificacion', '/admin/exportacion', '/clasificacion']) {
       revalidatePath(path);
     }
 
@@ -511,7 +531,15 @@ export async function saveDraw(
   const admin = await requireAdmin();
   const context = await getCompetition();
   if (!context) return { ok: false, error: 'No hay competicion configurada.' };
-  const normalizedSeed = seed.trim();
+  let normalizedSeed: string;
+  try {
+    normalizedSeed = normalizeDrawSeed(seed);
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'La semilla no es valida.',
+    };
+  }
   if (normalizedSeed === '') {
     return { ok: false, error: 'Primero genera y revisa una propuesta de partidos.' };
   }
@@ -596,7 +624,11 @@ export async function saveDraw(
       }
       await tx.competition.update({
         where: { id: context.competitionId },
-        data: { flightsConfirmedAt: confirmedAt },
+        data: {
+          flightsConfirmedAt: confirmedAt,
+          flightDrawSeed: normalizedSeed,
+          pairDrawSeed: null,
+        },
       });
       if (confirmation.audit) {
         await tx.auditLog.create({
@@ -610,6 +642,8 @@ export async function saveDraw(
               ...(confirmation.audit.afterData as Record<string, unknown>),
               rosterFingerprint: currentRosterFingerprint,
               flightsConfirmedAt: confirmedAt.toISOString(),
+              flightDrawSeed: normalizedSeed,
+              pairDrawSeed: null,
               pairDrawEnabled: true,
             }),
           },
@@ -630,6 +664,7 @@ export async function saveDraw(
     '/admin/parejas',
     '/admin/jugadores',
     '/admin/clasificacion',
+    '/admin/exportacion',
     '/clasificacion',
     '/partido',
     '/tarjeta',
@@ -1380,6 +1415,7 @@ export async function setPlayerActive(
     '/admin/partidos',
     '/admin/tarjetas',
     '/admin/clasificacion',
+    '/admin/exportacion',
     '/clasificacion',
     '/partido',
     '/tarjeta',
@@ -1439,6 +1475,7 @@ export async function updatePairSettings(input: {
   revalidatePath('/admin');
   revalidatePath('/admin/parejas');
   revalidatePath('/admin/clasificacion');
+  revalidatePath('/admin/exportacion');
   revalidatePath('/clasificacion');
   return {
     ok: true,
@@ -1449,7 +1486,7 @@ export async function updatePairSettings(input: {
 }
 
 /** Sortea todas las parejas sobre la composicion de partidos confirmada. */
-export async function drawPairs(): Promise<AdminResult> {
+export async function drawPairs(rawSeed?: string): Promise<PairDrawResult> {
   const admin = await requireAdmin();
   const context = await getCompetition();
   if (!context) return { ok: false, error: 'No hay competicion configurada.' };
@@ -1462,7 +1499,15 @@ export async function drawPairs(): Promise<AdminResult> {
       error: 'Primero debes sortear, revisar y confirmar los partidos.',
     };
   }
-  const seed = randomBytes(8).toString('hex');
+  let seed: string;
+  try {
+    seed = normalizeDrawSeed(rawSeed) || randomBytes(8).toString('hex');
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'La semilla no es valida.',
+    };
+  }
   let proposal: ReturnType<typeof buildPairDraw>;
   let playerData = new Map<string, { displayName: string; flightOrder: number }>();
 
@@ -1530,6 +1575,11 @@ export async function drawPairs(): Promise<AdminResult> {
         }
       }
 
+      await tx.competition.update({
+        where: { id: context.competitionId },
+        data: { pairDrawSeed: seed },
+      });
+
       await tx.auditLog.create({
         data: {
           competitionId: context.competitionId,
@@ -1583,6 +1633,7 @@ export async function drawPairs(): Promise<AdminResult> {
     '/admin/parejas',
     '/admin/jugadores',
     '/admin/clasificacion',
+    '/admin/exportacion',
     '/clasificacion',
     '/tarjeta',
     '/partido',
@@ -1595,6 +1646,7 @@ export async function drawPairs(): Promise<AdminResult> {
     : null;
   return {
     ok: true,
+    seed,
     message: solo
       ? `${proposal.pairs.length} equipos sorteados. ${solo} juega individual y sus puntos cuentan x2. Semilla: ${seed}`
       : `${proposal.pairs.length} parejas sorteadas. Semilla: ${seed}`,
@@ -1683,6 +1735,14 @@ export async function createPair(
         throw new Error('La composición de parejas ha cambiado. Vuelve a intentarlo.');
       }
 
+      // Un ajuste manual deja de ser reproducible a partir de la semilla del
+      // sorteo automatico. La composicion se conserva, pero ya no se presenta
+      // una seed que no reconstruiria exactamente el estado visible.
+      await tx.competition.update({
+        where: { id: context.competitionId },
+        data: { pairDrawSeed: null },
+      });
+
       await tx.auditLog.create({
         data: {
           competitionId: context.competitionId,
@@ -1716,6 +1776,7 @@ export async function createPair(
   revalidatePath('/admin/parejas');
   revalidatePath('/admin/jugadores');
   revalidatePath('/admin/clasificacion');
+  revalidatePath('/admin/exportacion');
   revalidatePath('/clasificacion');
   return {
     ok: true,
@@ -1742,6 +1803,10 @@ export async function removePair(pairNumber: number): Promise<AdminResult> {
       await tx.competitionPlayer.updateMany({
         where: { competitionId: context.competitionId, pairNumber },
         data: { pairNumber: null, pairSoloMultiplier: false },
+      });
+      await tx.competition.update({
+        where: { id: context.competitionId },
+        data: { pairDrawSeed: null },
       });
       await tx.auditLog.create({
         data: {
@@ -1771,6 +1836,7 @@ export async function removePair(pairNumber: number): Promise<AdminResult> {
   revalidatePath('/admin/parejas');
   revalidatePath('/admin/jugadores');
   revalidatePath('/admin/clasificacion');
+  revalidatePath('/admin/exportacion');
   revalidatePath('/clasificacion');
   return { ok: true, message: `Equipo ${pairNumber} disuelto.` };
 }

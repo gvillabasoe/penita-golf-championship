@@ -55,6 +55,8 @@ export interface CompetitionContext {
   pairModeEnabled: boolean;
   pairScoringMode: PairScoringMode;
   flightsConfirmedAt: Date | null;
+  flightDrawSeed: string | null;
+  pairDrawSeed: string | null;
   snapshot: CourseSnapshot & { snapshotId: string };
   distances: Map<number, number>;
 }
@@ -102,6 +104,8 @@ export async function getCompetition(): Promise<CompetitionContext | null> {
       ? competition.pairScoringMode
       : 'BEST_BALL',
     flightsConfirmedAt: competition.flightsConfirmedAt,
+    flightDrawSeed: competition.flightDrawSeed,
+    pairDrawSeed: competition.pairDrawSeed,
     snapshot: {
       snapshotId: snapshot.id,
       teeName: snapshot.teeName,
@@ -255,8 +259,9 @@ export interface PairCompetitionView {
  */
 export async function getPairCompetition(
   context: CompetitionContext,
+  cardsInput?: PlayerScorecard[],
 ): Promise<PairCompetitionView> {
-  const cards = await getAllScorecards(context);
+  const cards = cardsInput ?? (await getAllScorecards(context));
   const grouped = new Map<number, PlayerScorecard[]>();
 
   for (const card of cards) {

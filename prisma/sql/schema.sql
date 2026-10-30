@@ -147,6 +147,8 @@ CREATE TABLE IF NOT EXISTS "Competition" (
     "pairModeEnabled" BOOLEAN NOT NULL DEFAULT false,
     "pairScoringMode" TEXT NOT NULL DEFAULT 'BEST_BALL',
     "flightsConfirmedAt" TIMESTAMP(3),
+    "flightDrawSeed" TEXT,
+    "pairDrawSeed" TEXT,
     "scoreResetVersion" INTEGER NOT NULL DEFAULT 0,
     "status" "CompetitionStatus" NOT NULL DEFAULT 'DRAFT'::"CompetitionStatus",
     "classificationStatus" "ClassificationStatus" NOT NULL DEFAULT 'HIDDEN'::"ClassificationStatus",

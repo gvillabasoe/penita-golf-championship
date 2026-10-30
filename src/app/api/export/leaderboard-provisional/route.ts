@@ -28,6 +28,7 @@ export async function GET() {
         role: admin.role,
         classificationStatus: context.classificationStatus,
       },
+      flightDrawSeed: context.flightDrawSeed,
     });
     return new NextResponse(Buffer.from(pdf), {
       headers: {

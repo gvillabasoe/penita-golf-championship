@@ -91,6 +91,20 @@ export default async function AdminPairsPage() {
           }))}
         />
       </AdminSection>
+
+      {context.pairDrawSeed && pairs.length > 0 ? (
+        <div className="draw-seed draw-seed--saved" role="note" aria-label="Semilla del sorteo de parejas">
+          <span>Semilla del sorteo de parejas</span>
+          <code>{context.pairDrawSeed}</code>
+          <small>
+            Pégala en el campo de sorteo para reconstruir estas parejas con los mismos partidos y HCP.
+          </small>
+        </div>
+      ) : pairs.length > 0 ? (
+        <p className="muted draw-seed-note">
+          La composición incluye ajustes manuales; por eso no existe una semilla que pueda reproducirla exactamente.
+        </p>
+      ) : null}
     </div>
   );
 }

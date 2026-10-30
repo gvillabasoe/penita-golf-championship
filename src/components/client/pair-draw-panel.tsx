@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { drawPairs } from '@/lib/actions/admin';
 import { Alert } from '@/components/ui';
+import { DRAW_SEED_MAX_LENGTH } from '@/lib/admin/draw-seed';
 
 export function PairDrawPanel({
   pairModeEnabled,
@@ -16,6 +17,7 @@ export function PairDrawPanel({
   hasPairs: boolean;
 }) {
   const router = useRouter();
+  const [seed, setSeed] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
   const enabled = pairModeEnabled && flightsConfirmed;
@@ -23,14 +25,20 @@ export function PairDrawPanel({
   async function runDraw() {
     setBusy(true);
     setFeedback(null);
-    const result = await drawPairs();
+    const result = await drawPairs(seed);
     setBusy(false);
     setFeedback(
       result.ok
         ? { ok: true, text: result.message ?? 'Parejas sorteadas.' }
         : { ok: false, text: result.error },
     );
-    if (result.ok) router.refresh();
+    if (result.ok) {
+      // La seed confirmada queda guardada y se muestra al final de la pagina.
+      // Dejamos el campo vacio para que un clic posterior genere otra al azar;
+      // para reproducir un sorteo basta con volver a pegar la seed guardada.
+      setSeed('');
+      router.refresh();
+    }
   }
 
   return (
@@ -56,6 +64,21 @@ export function PairDrawPanel({
           Un nuevo sorteo sustituirá todas las parejas actuales por otra combinación válida.
         </Alert>
       ) : null}
+
+      <div className="field">
+        <label htmlFor="pair-seed">Semilla (vacía para generar una aleatoria)</label>
+        <input
+          id="pair-seed"
+          type="text"
+          maxLength={DRAW_SEED_MAX_LENGTH}
+          value={seed}
+          disabled={!enabled || busy}
+          onChange={(event) => setSeed(event.target.value)}
+        />
+        <p className="field__help">
+          Pega una semilla anterior para reconstruir exactamente las mismas parejas mientras no cambien los partidos confirmados ni los HCP.
+        </p>
+      </div>
 
       <button
         type="button"

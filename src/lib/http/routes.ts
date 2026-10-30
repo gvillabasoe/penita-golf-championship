@@ -227,7 +227,8 @@ export const ROUTES: readonly RouteRule[] = [
     description: 'API de administracion',
   },
   {
-    pattern: /^\/api\/export\/(audit|course-config|leaderboard-provisional)$/,
+    pattern:
+      /^\/api\/export\/(audit|course-config|leaderboard-provisional|flight-draw|pair-draw|pair-leaderboard|individual-scorecards|pair-scorecards|full)$/,
     methods: READ_ONLY,
     access: { kind: 'ADMIN' },
     description: 'Exportaciones reservadas al administrador',

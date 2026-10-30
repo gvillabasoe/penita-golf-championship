@@ -113,9 +113,25 @@ describe('acceso a administracion', () => {
   });
 
   test('las exportaciones reservadas son solo del admin', () => {
-    assert.equal(ask('/api/export/audit').outcome, 'NOT_FOUND');
-    assert.equal(ask('/api/export/leaderboard-provisional').outcome, 'NOT_FOUND');
-    assert.equal(authorizeRequest({ path: '/api/export/audit', method: 'GET', session: ADMIN }).outcome, 'ALLOW');
+    const reservedExports = [
+      '/api/export/audit',
+      '/api/export/leaderboard-provisional',
+      '/api/export/pair-leaderboard',
+      '/api/export/individual-scorecards',
+      '/api/export/pair-scorecards',
+      '/api/export/full',
+      '/api/export/flight-draw',
+      '/api/export/pair-draw',
+    ];
+
+    for (const path of reservedExports) {
+      assert.equal(ask(path).outcome, 'NOT_FOUND', `${path} no debe revelarse a un jugador`);
+      assert.equal(
+        authorizeRequest({ path, method: 'GET', session: ADMIN }).outcome,
+        'ALLOW',
+        `${path} debe estar disponible para el administrador`,
+      );
+    }
   });
 
   test('toda regla bajo /admin exige rol de administrador', () => {

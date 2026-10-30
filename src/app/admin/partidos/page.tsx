@@ -134,6 +134,20 @@ export default async function AdminFlightsPage() {
           />
         </AdminSection>
       ))}
+
+      {confirmed && context.flightDrawSeed ? (
+        <div className="draw-seed draw-seed--saved" role="note" aria-label="Semilla del sorteo de partidos confirmado">
+          <span>Semilla del sorteo de partidos</span>
+          <code>{context.flightDrawSeed}</code>
+          <small>
+            Guárdala para regenerar esta misma composición con la configuración actual de participantes.
+          </small>
+        </div>
+      ) : confirmed ? (
+        <p className="muted draw-seed-note">
+          Esta composición confirmada procede de una versión anterior y no tiene una semilla guardada. Un nuevo sorteo confirmado sí conservará la suya.
+        </p>
+      ) : null}
     </div>
   );
 }
