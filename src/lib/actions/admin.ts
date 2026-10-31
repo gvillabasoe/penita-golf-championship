@@ -56,6 +56,7 @@ import {
 } from '../admin/schedule';
 import { hashPassword } from '../auth/password';
 import { normalizeDrawSeed } from '../admin/draw-seed';
+import { buildClassificationPublicationTransition } from '../admin/classification-publication';
 import {
   drawPairs as buildPairDraw,
   type PairDrawPlayer,
@@ -984,8 +985,105 @@ export async function setScorecardLock(scorecardId: string, locked: boolean, rea
   return { ok: true };
 }
 
+/**
+ * Publica o retira la clasificacion oficial mediante un unico interruptor.
+ *
+ * Esta accion no depende de haber recorrido la presentacion progresiva. Al
+ * publicar abre todas las posiciones de una sola vez; al volver a provisional
+ * las oculta para los jugadores y deja el panel listo para otra revelacion.
+ */
+export async function setClassificationOfficial(official: boolean): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  if (typeof official !== 'boolean') {
+    return { ok: false, error: 'El estado de publicacion no es valido.' };
+  }
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+
+  const { rows, order } = await getRanking(context);
+  if (official && rows.length === 0) {
+    return { ok: false, error: 'No hay ninguna clasificacion que publicar.' };
+  }
+
+  let transition: ReturnType<typeof buildClassificationPublicationTransition>;
+  try {
+    transition = buildClassificationPublicationTransition({
+      official,
+      totalGroups: order.length,
+      actorId: admin.userId,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'El estado solicitado no es valido.',
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const competition = await tx.competition.findUnique({
+        where: { id: context.competitionId },
+        select: { classificationStatus: true },
+      });
+      if (!competition) throw new Error('No hay competicion configurada.');
+
+      await tx.classificationReveal.upsert({
+        where: { competitionId: context.competitionId },
+        create: {
+          competitionId: context.competitionId,
+          ...transition.reveal,
+        },
+        update: transition.reveal,
+      });
+
+      await tx.competition.update({
+        where: { id: context.competitionId },
+        data: { classificationStatus: transition.classificationStatus },
+      });
+
+      if (competition.classificationStatus !== transition.classificationStatus) {
+        await tx.auditLog.create({
+          data: {
+            competitionId: context.competitionId,
+            actorId: admin.userId,
+            action: transition.auditAction,
+            entityType: 'Competition',
+            entityId: context.competitionId,
+            beforeData: toJson({ classificationStatus: competition.classificationStatus }),
+            afterData: toJson({ classificationStatus: transition.classificationStatus }),
+          },
+        });
+      }
+    });
+  } catch (error) {
+    console.error('No se pudo cambiar la publicacion de la clasificacion.', error);
+    return {
+      ok: false,
+      error: 'No se ha podido guardar el estado de la clasificacion. Vuelve a intentarlo.',
+    };
+  }
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/clasificacion');
+  revalidatePath('/admin/revelacion');
+  revalidatePath('/admin/exportacion');
+  revalidatePath('/clasificacion');
+  revalidatePath('/partido');
+
+  return {
+    ok: true,
+    message: official
+      ? 'Clasificacion publicada como oficial.'
+      : 'Clasificacion devuelta a provisional.',
+  };
+}
+
 /** Controla la revelacion progresiva. */
 export async function controlReveal(action: RevealAction): Promise<AdminResult> {
+  // Compatibilidad con clientes antiguos que aun muestren el boton de publicar.
+  // La publicacion pasa por la misma ruta directa y atomica que usa el switch.
+  if (action === 'PUBLISH') return setClassificationOfficial(true);
+
   const admin = await requireAdmin();
   const context = await getCompetition();
   if (!context) return { ok: false, error: 'No hay competicion configurada.' };

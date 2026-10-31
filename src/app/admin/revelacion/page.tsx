@@ -1,5 +1,6 @@
 import { getCompetition, getRanking } from '@/lib/data/queries';
 import { RevealControls } from '@/components/client/reveal-controls';
+import { ClassificationPublicationSwitch } from '@/components/client/classification-publication-switch';
 import { availableActions } from '@/lib/reveal/controller';
 import { rankingFingerprint } from '@/lib/golf/ranking';
 import { AdminSection, StateBlock, StatTile } from '@/components/ui';
@@ -19,6 +20,8 @@ export default async function AdminRevealPage() {
 
   const { rows, order, state } = await getRanking(context);
   const fingerprint = rankingFingerprint(rows);
+  const isOfficial =
+    state.status === 'PUBLISHED' && context.classificationStatus === 'PUBLISHED';
 
   const actions = availableActions(state, {
     actorId: 'preview',
@@ -34,19 +37,24 @@ export default async function AdminRevealPage() {
         <h1>Revelacion</h1>
       </div>
 
+      <ClassificationPublicationSwitch official={isOfficial} />
+
       <div className="dashboard-grid">
         <StatTile
           label="Reveladas"
           value={`${state.revealedCount}/${order.length}`}
           ariaLabel={`${state.revealedCount} de ${order.length} posiciones reveladas`}
         />
-        <StatTile label="Estado" value={state.status} />
+        <StatTile
+          label="Publicacion"
+          value={isOfficial ? 'Oficial' : 'Provisional'}
+        />
         <StatTile label="Pausa" value={state.isPaused ? 'Si' : 'No'} />
       </div>
 
       <AdminSection
-        title="Como funciona"
-        description="Se revela desde la ultima posicion hacia la primera, sin saltos y con una pausa minima entre posiciones. Si se corrige una tarjeta a mitad, la presentacion se bloquea sola y hay que reiniciarla con una clasificacion actualizada."
+        title="Presentacion progresiva opcional"
+        description="Puedes revelar desde la ultima posicion hacia la primera. Esta presentacion no es necesaria para publicar: el paso de provisional a oficial se controla exclusivamente con el interruptor superior."
       >
         <RevealControls
           actions={actions.map((a) => ({

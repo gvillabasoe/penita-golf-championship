@@ -3172,6 +3172,133 @@ a.hole-row:active {
   justify-content: space-between;
 }
 
+/* Interruptor de publicacion. Es una decision binaria y reversible, no una
+   accion de espera: por eso se representa como switch y no como boton de
+   envio. Las dos mitades mantienen visible en todo momento el estado destino. */
+.publication-switch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+  box-shadow: var(--rim);
+}
+
+.publication-switch--official {
+  border-color: rgba(31, 122, 77, 0.34);
+  background: var(--fairway-wash);
+}
+
+.publication-switch__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.publication-switch__copy strong {
+  color: var(--navy-900);
+  font-size: var(--fs-md);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.publication-switch--official .publication-switch__copy strong {
+  color: var(--fairway-deep);
+}
+
+.publication-switch__copy span,
+.publication-switch__busy {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.publication-toggle {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 248px;
+  min-height: 52px;
+  padding: 4px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  box-shadow: inset 0 1px 3px rgba(13, 24, 38, 0.1);
+  cursor: pointer;
+}
+
+.publication-toggle__thumb {
+  position: absolute;
+  z-index: 0;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: var(--r-pill);
+  background: var(--navy-700);
+  box-shadow: var(--rim-dark), var(--elev-1);
+  transform: translateX(0);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.publication-toggle[aria-checked='true'] .publication-toggle__thumb {
+  background: var(--fairway);
+  transform: translateX(100%);
+}
+
+.publication-toggle__label {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-height: 42px;
+  padding-inline: var(--space-2);
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.publication-toggle[aria-checked='false'] .publication-toggle__label--provisional,
+.publication-toggle[aria-checked='true'] .publication-toggle__label--official {
+  color: var(--ink-inverse);
+}
+
+.publication-toggle:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.publication-switch__busy {
+  grid-column: 1 / -1;
+  font-weight: 700;
+}
+
+@media (max-width: 639px) {
+  .publication-switch {
+    grid-template-columns: 1fr;
+  }
+
+  .publication-toggle {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .publication-toggle__thumb,
+  .publication-toggle__label {
+    transition: none;
+  }
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
