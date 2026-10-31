@@ -3,14 +3,13 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { createPair, removePair } from '@/lib/actions/admin';
+import { clearPairs, createPair, removePair } from '@/lib/actions/admin';
 import { Alert, FormField, StatusBadge } from '@/components/ui';
 
 interface AvailablePlayer {
   competitionPlayerId: string;
   displayName: string;
   color: string;
-  flightId: string | null;
   flightName: string | null;
 }
 
@@ -34,24 +33,24 @@ export function PairManager({
   const router = useRouter();
   const [first, setFirst] = useState('');
   const [second, setSecond] = useState('');
+  const [solo, setSolo] = useState(false);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const firstPlayer = availablePlayers.find((player) => player.competitionPlayerId === first);
   const secondOptions = useMemo(
     () =>
       availablePlayers.filter(
-        (player) =>
-          player.competitionPlayerId !== first &&
-          (!firstPlayer?.flightId || player.flightId !== firstPlayer.flightId),
+        (player) => player.competitionPlayerId !== first,
       ),
-    [availablePlayers, first, firstPlayer?.flightId],
+    [availablePlayers, first],
   );
+  const hasSolo = pairs.some((pair) => pair.isSolo);
+  const canAdd = enabled && !busy && first !== '' && (solo || second !== '');
 
   async function add() {
     setBusy(true);
     setFeedback(null);
-    const result = await createPair(first, second);
+    const result = await createPair(first, solo ? '' : second, solo);
     setBusy(false);
 
     setFeedback({
@@ -61,6 +60,7 @@ export function PairManager({
     if (result.ok) {
       setFirst('');
       setSecond('');
+      setSolo(false);
       router.refresh();
     }
   }
@@ -78,8 +78,40 @@ export function PairManager({
     if (result.ok) router.refresh();
   }
 
+  async function clearAll() {
+    if (!window.confirm('Se disolverán todas las parejas actuales. ¿Continuar?')) return;
+    setBusy(true);
+    setFeedback(null);
+    const result = await clearPairs();
+    setBusy(false);
+    setFeedback({
+      ok: result.ok,
+      text: result.ok ? result.message ?? 'Parejas vaciadas.' : result.error,
+    });
+    if (result.ok) {
+      setFirst('');
+      setSecond('');
+      setSolo(false);
+      router.refresh();
+    }
+  }
+
   return (
     <div className="stack">
+      {pairs.length > 0 ? (
+        <div className="button-row--split pair-manual-toolbar">
+          <p className="muted">Puedes disolver equipos uno a uno o vaciar toda la composición para empezar de cero.</p>
+          <button
+            type="button"
+            className="button button--danger button--sm"
+            disabled={!enabled || busy}
+            onClick={clearAll}
+          >
+            Vaciar todas las parejas
+          </button>
+        </div>
+      ) : null}
+
       <div className="pair-builder">
         <FormField id="pair-first-player" label="Jugador 1">
           <select
@@ -101,11 +133,15 @@ export function PairManager({
           </select>
         </FormField>
 
-        <FormField id="pair-second-player" label="Jugador 2 · otro partido">
+        <FormField
+          id="pair-second-player"
+          label="Jugador 2"
+          help={solo ? 'No se utiliza porque el equipo será individual x2.' : 'Puede pertenecer a cualquier partido.'}
+        >
           <select
             id="pair-second-player"
             value={second}
-            disabled={!enabled || busy || first === ''}
+            disabled={!enabled || busy || first === '' || solo}
             onChange={(event) => setSecond(event.target.value)}
           >
             <option value="">Selecciona un jugador</option>
@@ -117,13 +153,32 @@ export function PairManager({
           </select>
         </FormField>
 
+        <label className="course-knowledge-toggle pair-solo-toggle">
+          <span className="course-knowledge-toggle__copy">
+            <strong>Individual x2</strong>
+            <small>Un solo jugador forma el equipo y sus puntos cuentan por dos.</small>
+          </span>
+          <span className="course-knowledge-toggle__control">
+            <input
+              type="checkbox"
+              checked={solo}
+              disabled={!enabled || busy || hasSolo}
+              onChange={(event) => {
+                setSolo(event.target.checked);
+                if (event.target.checked) setSecond('');
+              }}
+            />
+            <span>{solo ? 'Sí' : 'No'}</span>
+          </span>
+        </label>
+
         <button
           type="button"
-          className="button button--primary"
-          disabled={!enabled || busy || first === '' || second === ''}
+          className="button button--primary pair-builder__submit"
+          disabled={!canAdd}
           onClick={add}
         >
-          {busy ? 'Guardando...' : 'Crear pareja'}
+          {busy ? 'Guardando...' : solo ? 'Crear individual x2' : 'Crear pareja'}
         </button>
       </div>
 
@@ -131,9 +186,13 @@ export function PairManager({
         <p className="muted">Los ajustes manuales se habilitan después de confirmar los partidos y activar el modo parejas.</p>
       ) : (
         <p className="muted">
-          Solo se muestran como segundo integrante jugadores de otro partido. El servidor también impide emparejar entre sí a los cuatro HCP más altos.
+          En configuración manual decides libremente los integrantes, aunque compartan partido o estén entre los HCP más altos. Cada jugador solo puede pertenecer a un equipo y solo puede existir un individual x2. Cualquier cambio manual elimina la seed del sorteo anterior.
         </p>
       )}
+
+      {hasSolo ? (
+        <p className="muted">Ya existe un equipo individual x2. Disuélvelo antes de asignar otro.</p>
+      ) : null}
 
       {feedback ? (
         <Alert tone={feedback.ok ? 'success' : 'danger'} role={feedback.ok ? 'status' : 'alert'}>
@@ -142,7 +201,7 @@ export function PairManager({
       ) : null}
 
       {pairs.length === 0 ? (
-        <p className="muted">Todavía no hay parejas sorteadas.</p>
+        <p className="muted">Todavía no hay parejas ni equipos individuales.</p>
       ) : (
         <ol className="pair-admin-list">
           {pairs.map((pair) => (

@@ -40,7 +40,7 @@ export default async function AdminPairsPage() {
       </div>
 
       <p className="muted">
-        El orden es obligatorio: primero se configuran y confirman los partidos; después se sortean las parejas sobre esa composición. La clasificación individual no se modifica.
+        El orden es obligatorio: primero se configuran y confirman los partidos; después puedes sortear las parejas automáticamente o construirlas manualmente. La clasificación individual no se modifica.
       </p>
 
       {!flightsConfirmed ? (
@@ -66,8 +66,8 @@ export default async function AdminPairsPage() {
       </AdminSection>
 
       <AdminSection
-        title="Revisión y ajustes manuales"
-        description="Cada pareja debe unir jugadores de partidos distintos. Disolver un equipo no borra ninguna tarjeta."
+        title="Configuración manual"
+        description="Crea las parejas exactamente como quieras o asigna un participante individual x2. Disolver un equipo no borra ninguna tarjeta."
       >
         <PairManager
           enabled={pairActionsEnabled}
@@ -75,7 +75,6 @@ export default async function AdminPairsPage() {
             competitionPlayerId: player.competitionPlayerId,
             displayName: player.displayName,
             color: player.color,
-            flightId: player.flightId,
             flightName: player.flightName,
           }))}
           pairs={pairs.map((pair) => ({

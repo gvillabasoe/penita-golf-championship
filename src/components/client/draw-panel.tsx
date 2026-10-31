@@ -89,9 +89,9 @@ export function DrawPanel({ isConfirmed }: { isConfirmed: boolean }) {
 
   return (
     <AdminSection
-      title="Sorteo de partidos"
-      description="Primera fase obligatoria: genera una distribución equilibrada, revísala y confírmala antes de sortear parejas."
-      ariaLabel="Sorteo de partidos"
+      title="Sorteo automático"
+      description="Genera una distribución equilibrada, revísala y confírmala antes de crear o sortear las parejas."
+      ariaLabel="Sorteo automático de partidos"
     >
       <ol className="draw-workflow" aria-label="Orden del proceso">
         <li data-done="true">Configurar participantes</li>

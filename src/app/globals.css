@@ -3677,6 +3677,14 @@ table.data td {
   gap: var(--space-3);
 }
 
+.pair-solo-toggle {
+  min-height: 72px;
+}
+
+.pair-builder__submit {
+  justify-self: start;
+}
+
 .pair-admin-list {
   display: grid;
   gap: 0;
@@ -3724,12 +3732,208 @@ table.data td {
 
 @media (min-width: 700px) {
   .pair-builder {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: end;
   }
 
-  .pair-builder > .button {
+  .pair-solo-toggle,
+  .pair-builder__submit {
+    grid-column: 1 / -1;
+  }
+
+  .pair-builder__submit {
     min-height: 48px;
+  }
+}
+
+/* Configuración manual de partidos: misma tarjeta visual que el sorteo, pero
+   con controles de edición y una bolsa visible de jugadores pendientes. */
+.manual-flight-toolbar,
+.manual-flight-summary,
+.manual-flight-card__header,
+.manual-flight-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.manual-flight-toolbar,
+.manual-flight-card__header {
+  justify-content: space-between;
+}
+
+.manual-flight-summary {
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-row);
+  background: var(--surface-2);
+}
+
+.manual-flight-unassigned {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-row);
+  background: var(--tee-wash);
+}
+
+.manual-flight-unassigned ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manual-flight-unassigned li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.manual-flight-unassigned li > span {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.manual-flight-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.manual-flight-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.manual-flight-card__header {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.manual-flight-card__title {
+  display: grid;
+  grid-template-columns: 32px minmax(140px, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-width: min(100%, 280px);
+  flex: 1;
+}
+
+.manual-flight-card__order {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--navy-800);
+  color: white;
+  font-family: var(--font-narrow);
+  font-weight: 800;
+}
+
+.manual-flight-card__title input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 750;
+}
+
+.manual-flight-card__members {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manual-flight-card__members li {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 58px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.manual-flight-card__members li + li {
+  border-top: 1px solid var(--line);
+}
+
+.manual-flight-card__members li > span:nth-child(2) {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.manual-flight-card__members strong,
+.manual-flight-card__members small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manual-flight-card__members small {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.manual-flight-card__empty {
+  margin: 0;
+  padding: var(--space-4) var(--space-3);
+  color: var(--ink-2);
+  text-align: center;
+}
+
+.manual-flight-card__add {
+  padding: var(--space-3);
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+@media (min-width: 900px) {
+  .manual-flight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 699px) {
+  .manual-flight-toolbar {
+    align-items: stretch;
+  }
+
+  .manual-flight-toolbar > .button-row,
+  .manual-flight-toolbar > .button,
+  .manual-flight-toolbar .button {
+    width: 100%;
+  }
+
+  .manual-flight-card__actions {
+    width: 100%;
+  }
+
+  .manual-flight-card__actions .button--danger {
+    margin-left: auto;
   }
 }
 

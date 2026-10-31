@@ -37,6 +37,7 @@ import {
   validateFlights,
   worstHandicapPlayerIds,
   type DrawPlayer,
+  type ProposedFlight,
 } from '../admin/draw';
 import {
   MAX_PASSWORD_LENGTH,
@@ -57,7 +58,6 @@ import { hashPassword } from '../auth/password';
 import { normalizeDrawSeed } from '../admin/draw-seed';
 import {
   drawPairs as buildPairDraw,
-  worstPairHandicapPlayerIds,
   type PairDrawPlayer,
 } from '../admin/pair-draw';
 import { isPairScoringMode, type PairScoringMode } from '../golf/pairs';
@@ -69,6 +69,13 @@ export type AdminResult = { ok: true; message?: string } | { ok: false; error: s
 export type PairDrawResult =
   | { ok: true; message?: string; seed: string }
   | { ok: false; error: string };
+
+export interface ManualFlightInput {
+  name: string;
+  memberIds: string[];
+  /** Instante ISO que se conserva al editar partidos existentes. */
+  teeTime: string | null;
+}
 
 interface LockedDrawState {
   pairModeEnabled: boolean;
@@ -677,6 +684,215 @@ export async function saveDraw(
       ? `${confirmedFlightCount} partidos confirmados. Ya puedes sortear las parejas. Semilla: ${normalizedSeed}`
       : `${confirmedFlightCount} partidos confirmados sin hora. Ya puedes sortear las parejas y fijar despues las horas. Semilla: ${normalizedSeed}`,
   };
+}
+
+function normalizeManualFlights(rawFlights: ManualFlightInput[]): ProposedFlight[] {
+  if (!Array.isArray(rawFlights) || rawFlights.length === 0) {
+    throw new Error('Crea al menos un partido antes de confirmar.');
+  }
+  if (rawFlights.length > 30) {
+    throw new Error('La configuración contiene demasiados partidos.');
+  }
+
+  return rawFlights.map((rawFlight, index) => {
+    if (!rawFlight || typeof rawFlight !== 'object') {
+      throw new Error(`El partido ${index + 1} no es válido.`);
+    }
+
+    const name = typeof rawFlight.name === 'string' ? rawFlight.name.trim() : '';
+    if (name.length > 80) {
+      throw new Error(`El nombre del partido ${index + 1} es demasiado largo.`);
+    }
+    if (!Array.isArray(rawFlight.memberIds)) {
+      throw new Error(`La lista de jugadores del partido ${index + 1} no es válida.`);
+    }
+
+    const memberIds = rawFlight.memberIds.map((memberId) => {
+      if (typeof memberId !== 'string' || memberId.trim() === '') {
+        throw new Error(`El partido ${index + 1} contiene un jugador no válido.`);
+      }
+      return memberId.trim();
+    });
+
+    let teeTime: string | null = null;
+    if (rawFlight.teeTime !== null && rawFlight.teeTime !== '') {
+      if (typeof rawFlight.teeTime !== 'string') {
+        throw new Error(`La hora del partido ${index + 1} no es válida.`);
+      }
+      const parsed = new Date(rawFlight.teeTime);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new Error(`La hora del partido ${index + 1} no es válida.`);
+      }
+      teeTime = parsed.toISOString();
+    }
+
+    return {
+      order: index + 1,
+      name: name || `Partido ${index + 1}`,
+      memberIds,
+      teeTime,
+    };
+  });
+}
+
+/**
+ * Confirma una composición decidida por el administrador.
+ *
+ * El modo manual comparte las garantías estructurales del sorteo: cada jugador
+ * activo aparece exactamente una vez y ningún partido supera cuatro integrantes.
+ * No aplica criterios de equilibrio y no guarda seed, porque no hay azar que
+ * reproducir. Al cambiar la primera fase se invalidan siempre las parejas.
+ */
+export async function saveManualFlights(rawFlights: ManualFlightInput[]): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+
+  let manualFlights: ProposedFlight[];
+  try {
+    manualFlights = normalizeManualFlights(rawFlights);
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'La configuración manual no es válida.',
+    };
+  }
+
+  let outcome: {
+    flightCount: number;
+    clearedPairPlayers: number;
+    warnings: string[];
+  };
+
+  try {
+    outcome = await prisma.$transaction(async (tx) => {
+      const lockedState = await lockCompetitionDrawState(tx, context.competitionId);
+      const players = await tx.competitionPlayer.findMany({
+        where: { competitionId: context.competitionId },
+        include: { user: { select: { displayName: true } } },
+      });
+      const drawPlayers: DrawPlayer[] = players.map((player) => ({
+        competitionPlayerId: player.id,
+        displayName: player.user.displayName,
+        isActive: player.isActive,
+        handicapIndexTenths: player.handicapIndexTenths,
+        knowsCourse: player.knowsCourse,
+        color: player.color,
+      }));
+      if (drawPlayers.every((player) => !player.isActive)) {
+        throw new Error('No hay participantes activos para crear los partidos.');
+      }
+
+      const issues = validateFlights({
+        flights: manualFlights,
+        players: drawPlayers,
+        requireTeeTimes: false,
+      });
+      const errors = issues.filter((issue) => issue.severity === 'ERROR');
+      if (errors.length > 0) {
+        throw new Error(errors.map((issue) => issue.message).join(' '));
+      }
+
+      const invalidation = await invalidateDrawSequence(tx, context.competitionId);
+      await tx.flight.deleteMany({ where: { competitionId: context.competitionId } });
+
+      for (const flight of manualFlights) {
+        await tx.flight.create({
+          data: {
+            competitionId: context.competitionId,
+            name: flight.name,
+            order: flight.order,
+            teeTime: flight.teeTime ? new Date(flight.teeTime) : null,
+            status: 'CONFIRMED',
+            members: {
+              create: flight.memberIds.map((competitionPlayerId, index) => ({
+                competitionPlayerId,
+                position: index + 1,
+              })),
+            },
+          },
+        });
+      }
+
+      const confirmedAt = new Date();
+      await tx.competition.update({
+        where: { id: context.competitionId },
+        data: {
+          flightsConfirmedAt: confirmedAt,
+          flightDrawSeed: null,
+          pairDrawSeed: null,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          competitionId: context.competitionId,
+          actorId: admin.userId,
+          action: 'FLIGHTS_MANUALLY_CONFIRMED',
+          entityType: 'Flight',
+          entityId: context.competitionId,
+          beforeData: toJson({
+            flightsConfirmedAt: lockedState.flightsConfirmedAt?.toISOString() ?? null,
+            flightDrawSeed: lockedState.flightDrawSeed,
+            pairDrawSeed: lockedState.pairDrawSeed,
+          }),
+          afterData: toJson({
+            source: 'MANUAL',
+            flightsConfirmedAt: confirmedAt.toISOString(),
+            distribution: manualFlights.map((flight) => flight.memberIds.length),
+            pairPlayersCleared: invalidation.clearedPairPlayers,
+            warnings: issues
+              .filter((issue) => issue.severity === 'WARNING')
+              .map((issue) => issue.message),
+            flights: manualFlights.map((flight) => ({
+              order: flight.order,
+              name: flight.name,
+              teeTime: flight.teeTime,
+              memberIds: flight.memberIds,
+            })),
+          }),
+        },
+      });
+
+      return {
+        flightCount: manualFlights.length,
+        clearedPairPlayers: invalidation.clearedPairPlayers,
+        warnings: issues
+          .filter((issue) => issue.severity === 'WARNING')
+          .map((issue) => issue.message),
+      };
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'No se han podido confirmar los partidos manuales.',
+    };
+  }
+
+  for (const path of [
+    '/admin',
+    '/admin/partidos',
+    '/admin/parejas',
+    '/admin/jugadores',
+    '/admin/clasificacion',
+    '/admin/exportacion',
+    '/clasificacion',
+    '/partido',
+    '/tarjeta',
+  ]) {
+    revalidatePath(path);
+  }
+
+  const details = [
+    `${outcome.flightCount} partido${outcome.flightCount === 1 ? '' : 's'} confirmado${outcome.flightCount === 1 ? '' : 's'} manualmente.`,
+    outcome.clearedPairPlayers > 0
+      ? `Se han retirado las parejas de ${outcome.clearedPairPlayers} participante(s).`
+      : '',
+    ...outcome.warnings,
+    'Ya puedes crear o sortear las parejas.',
+  ].filter(Boolean);
+
+  return { ok: true, message: details.join(' ') };
 }
 
 /** Corrige un hoyo. Exige motivo y queda marcado como correccion. */
@@ -1656,14 +1872,19 @@ export async function drawPairs(rawSeed?: string): Promise<PairDrawResult> {
 export async function createPair(
   firstPlayerId: string,
   secondPlayerId: string,
+  solo = false,
 ): Promise<AdminResult> {
   const admin = await requireAdmin();
   const context = await getCompetition();
   if (!context) return { ok: false, error: 'No hay competicion configurada.' };
-  if (!firstPlayerId || !secondPlayerId || firstPlayerId === secondPlayerId) {
+  const isSolo = Boolean(solo);
+  if (!firstPlayerId) {
+    return { ok: false, error: 'Elige al menos un jugador.' };
+  }
+  if (!isSolo && (!secondPlayerId || firstPlayerId === secondPlayerId)) {
     return { ok: false, error: 'Elige dos jugadores distintos.' };
   }
-  let outcome: { pairNumber: number; memberNames: string[] };
+  let outcome: { pairNumber: number; memberNames: string[]; isSolo: boolean };
   try {
     outcome = await prisma.$transaction(async (tx) => {
       const latestCompetition = await lockCompetitionDrawState(tx, context.competitionId);
@@ -1691,30 +1912,22 @@ export async function createPair(
         throw new Error('Todos los participantes deben tener un partido confirmado.');
       }
 
-      const players = roster.filter(
-        (player) => player.id === firstPlayerId || player.id === secondPlayerId,
-      );
-      if (players.length !== 2) {
+      const selectedIds = isSolo ? [firstPlayerId] : [firstPlayerId, secondPlayerId];
+      const players = roster.filter((player) => selectedIds.includes(player.id));
+      if (players.length !== selectedIds.length) {
         throw new Error('Alguno de los jugadores no existe o esta dado de baja.');
       }
       if (players.some((player) => player.pairNumber !== null)) {
-        throw new Error('Uno de los jugadores ya pertenece a una pareja.');
+        throw new Error('Uno de los jugadores ya pertenece a un equipo.');
       }
-      if (players[0].flightMember!.flight.id === players[1].flightMember!.flight.id) {
-        throw new Error('Los integrantes de una pareja deben pertenecer a partidos distintos.');
-      }
-
-      const pairDrawRoster: PairDrawPlayer[] = roster.map((player) => ({
-        competitionPlayerId: player.id,
-        displayName: player.user.displayName,
-        isActive: true,
-        handicapIndexTenths: player.handicapIndexTenths,
-        flightId: player.flightMember!.flight.id,
-        flightOrder: player.flightMember!.flight.order,
-      }));
-      const worstIds = worstPairHandicapPlayerIds(pairDrawRoster);
-      if (players.every((player) => worstIds.has(player.id))) {
-        throw new Error('Los cuatro jugadores con peor HCP no pueden formar pareja entre ellos.');
+      if (isSolo) {
+        const existingSolo = await tx.competitionPlayer.findFirst({
+          where: { competitionId: context.competitionId, pairSoloMultiplier: true },
+          select: { id: true },
+        });
+        if (existingSolo) {
+          throw new Error('Ya existe un participante individual con puntos x2.');
+        }
       }
 
       const maximum = await tx.competitionPlayer.aggregate({
@@ -1725,14 +1938,14 @@ export async function createPair(
       const updated = await tx.competitionPlayer.updateMany({
         where: {
           competitionId: context.competitionId,
-          id: { in: [firstPlayerId, secondPlayerId] },
+          id: { in: selectedIds },
           isActive: true,
           pairNumber: null,
         },
-        data: { pairNumber, pairSoloMultiplier: false },
+        data: { pairNumber, pairSoloMultiplier: isSolo },
       });
-      if (updated.count !== 2) {
-        throw new Error('La composición de parejas ha cambiado. Vuelve a intentarlo.');
+      if (updated.count !== selectedIds.length) {
+        throw new Error('La composición de equipos ha cambiado. Vuelve a intentarlo.');
       }
 
       // Un ajuste manual deja de ser reproducible a partir de la semilla del
@@ -1747,11 +1960,13 @@ export async function createPair(
         data: {
           competitionId: context.competitionId,
           actorId: admin.userId,
-          action: 'PAIR_CREATED',
+          action: isSolo ? 'PAIR_SOLO_CREATED_MANUALLY' : 'PAIR_CREATED_MANUALLY',
           entityType: 'CompetitionPair',
           entityId: `${context.competitionId}:${pairNumber}`,
           afterData: toJson({
             pairNumber,
+            source: 'MANUAL',
+            isSolo,
             members: players.map((player) => ({
               competitionPlayerId: player.id,
               displayName: player.user.displayName,
@@ -1764,6 +1979,7 @@ export async function createPair(
       return {
         pairNumber,
         memberNames: players.map((player) => player.user.displayName),
+        isSolo,
       };
     });
   } catch (error) {
@@ -1780,7 +1996,9 @@ export async function createPair(
   revalidatePath('/clasificacion');
   return {
     ok: true,
-    message: `Pareja ${outcome.pairNumber} creada: ${outcome.memberNames.join(' / ')}.`,
+    message: outcome.isSolo
+      ? `Equipo ${outcome.pairNumber} creado: ${outcome.memberNames[0]} jugará individual y sus puntos contarán x2.`
+      : `Pareja ${outcome.pairNumber} creada: ${outcome.memberNames.join(' / ')}.`,
   };
 }
 
@@ -1839,6 +2057,88 @@ export async function removePair(pairNumber: number): Promise<AdminResult> {
   revalidatePath('/admin/exportacion');
   revalidatePath('/clasificacion');
   return { ok: true, message: `Equipo ${pairNumber} disuelto.` };
+}
+
+/** Vacía toda la segunda fase para poder reconstruirla manualmente desde cero. */
+export async function clearPairs(): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const context = await getCompetition();
+  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
+
+  let cleared = 0;
+  try {
+    cleared = await prisma.$transaction(async (tx) => {
+      await lockCompetitionDrawState(tx, context.competitionId);
+      const members = await tx.competitionPlayer.findMany({
+        where: {
+          competitionId: context.competitionId,
+          OR: [{ pairNumber: { not: null } }, { pairSoloMultiplier: true }],
+        },
+        include: { user: { select: { displayName: true } } },
+      });
+      if (members.length === 0) {
+        await tx.competition.update({
+          where: { id: context.competitionId },
+          data: { pairDrawSeed: null },
+        });
+        return 0;
+      }
+
+      await tx.competitionPlayer.updateMany({
+        where: { competitionId: context.competitionId },
+        data: { pairNumber: null, pairSoloMultiplier: false },
+      });
+      await tx.competition.update({
+        where: { id: context.competitionId },
+        data: { pairDrawSeed: null },
+      });
+      await tx.auditLog.create({
+        data: {
+          competitionId: context.competitionId,
+          actorId: admin.userId,
+          action: 'PAIRS_CLEARED_MANUALLY',
+          entityType: 'CompetitionPair',
+          entityId: context.competitionId,
+          beforeData: toJson({
+            members: members.map((member) => ({
+              competitionPlayerId: member.id,
+              displayName: member.user.displayName,
+              pairNumber: member.pairNumber,
+              wasSolo: member.pairSoloMultiplier,
+            })),
+          }),
+          afterData: toJson({ source: 'MANUAL', pairDrawSeed: null }),
+        },
+      });
+      return members.length;
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'No se han podido vaciar las parejas.',
+    };
+  }
+
+  for (const path of [
+    '/admin',
+    '/admin/parejas',
+    '/admin/jugadores',
+    '/admin/clasificacion',
+    '/admin/exportacion',
+    '/clasificacion',
+    '/tarjeta',
+    '/partido',
+  ]) {
+    revalidatePath(path);
+  }
+
+  return {
+    ok: true,
+    message:
+      cleared === 0
+        ? 'No había equipos asignados.'
+        : `Se han retirado las asignaciones de ${cleared} participante(s). Ya puedes crear las parejas manualmente.`,
+  };
 }
 
 // ===========================================================================

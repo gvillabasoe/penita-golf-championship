@@ -1,7 +1,8 @@
 import Link from 'next/link';
 
-import { getCompetition, getFlights } from '@/lib/data/queries';
+import { getAllScorecards, getCompetition, getFlights } from '@/lib/data/queries';
 import { DrawPanel } from '@/components/client/draw-panel';
+import { ManualFlightManager } from '@/components/client/manual-flight-manager';
 import { TeeTimeForm } from '@/components/client/tee-time-form';
 import { AdminSection, Alert, StateBlock, StatusBadge } from '@/components/ui';
 import { timeInputInMadrid } from '@/lib/admin/schedule';
@@ -21,13 +22,17 @@ export default async function AdminFlightsPage() {
   if (!context) {
     return (
       <StateBlock title="No hay competicion configurada" icon={<IconUsers />}>
-        Confirma el campo e inscribe a los jugadores antes de sortear los partidos.
+        Confirma el campo e inscribe a los jugadores antes de configurar los partidos.
       </StateBlock>
     );
   }
 
-  const flights = await getFlights(context);
+  const [flights, players] = await Promise.all([
+    getFlights(context),
+    getAllScorecards(context),
+  ]);
   const confirmed = context.flightsConfirmedAt !== null;
+  const hasPairs = players.some((player) => player.pairNumber !== null);
 
   return (
     <div className="stack">
@@ -42,7 +47,7 @@ export default async function AdminFlightsPage() {
       </div>
 
       <p className="muted">
-        El sorteo combina aleatoriedad y equilibrio: reparte niveles de HCP, separa los cuatro HCP más altos siempre que sea posible y distribuye a quienes conocen el campo para acompañar a jugadores que no lo conocen.
+        Puedes utilizar el sorteo equilibrado o construir los partidos manualmente. En ambos casos debes revisar y confirmar la composición antes de crear o sortear las parejas.
       </p>
 
       {context.date === null ? (
@@ -54,6 +59,35 @@ export default async function AdminFlightsPage() {
 
       <DrawPanel isConfirmed={confirmed} />
 
+      <ManualFlightManager
+        key={flights
+          .map((flight) =>
+            [
+              flight.id,
+              flight.name,
+              flight.teeTime?.toISOString() ?? '',
+              ...flight.members.map((member) => member.competitionPlayerId),
+            ].join(':'),
+          )
+          .join('|')}
+        isConfirmed={confirmed}
+        hasPairs={hasPairs}
+        players={players.map((player) => ({
+          competitionPlayerId: player.competitionPlayerId,
+          displayName: player.displayName,
+          color: player.color,
+          handicapIndexTenths: player.handicapIndexTenths,
+          knowsCourse: player.knowsCourse,
+        }))}
+        savedFlights={flights.map((flight) => ({
+          id: flight.id,
+          name: flight.name,
+          order: flight.order,
+          memberIds: flight.members.map((member) => member.competitionPlayerId),
+          teeTime: flight.teeTime?.toISOString() ?? null,
+        }))}
+      />
+
       {confirmed ? (
         <Alert tone="success" role="status">
           Los partidos están confirmados. Ya puedes ir a <Link href="/admin/parejas">Parejas</Link> y realizar la segunda fase.
@@ -62,7 +96,7 @@ export default async function AdminFlightsPage() {
 
       {flights.length === 0 ? (
         <StateBlock title="Todavía no hay partidos" icon={<IconUsers />}>
-          Usa el sorteo para repartir a los participantes. Las parejas permanecerán bloqueadas hasta confirmar la propuesta.
+          Usa el sorteo automático o la configuración manual. Las parejas permanecerán bloqueadas hasta confirmar los partidos.
         </StateBlock>
       ) : null}
 
@@ -145,7 +179,7 @@ export default async function AdminFlightsPage() {
         </div>
       ) : confirmed ? (
         <p className="muted draw-seed-note">
-          Esta composición confirmada procede de una versión anterior y no tiene una semilla guardada. Un nuevo sorteo confirmado sí conservará la suya.
+          Esta composición se creó o ajustó manualmente. No tiene semilla porque no procede de un sorteo aleatorio.
         </p>
       ) : null}
     </div>
