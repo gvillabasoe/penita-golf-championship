@@ -21,7 +21,7 @@ export function PairLeaderboard({
   if (!visible) {
     return (
       <div className="leaderboard leaderboard--hidden" role="status">
-        <p>La clasificacion de parejas se publicara al cerrar la revelacion individual.</p>
+        <p>La clasificacion de parejas se publicara cuando el administrador active el estado Oficial.</p>
       </div>
     );
   }
@@ -52,8 +52,7 @@ export function PairLeaderboard({
           return (
             <li
               key={row.pairNumber}
-              className={`leaderboard-card pair-leaderboard-card reveal-card ${PODIUM_CLASS[row.position] ?? ''}`}
-              data-revealed="true"
+              className={`leaderboard-card pair-leaderboard-card ${PODIUM_CLASS[row.position] ?? ''}`}
             >
               <div className="leaderboard-card__rank">
                 <span className="leaderboard-card__position" aria-label={positionLabel}>

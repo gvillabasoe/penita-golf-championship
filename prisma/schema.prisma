@@ -49,7 +49,6 @@ enum CompetitionStatus {
 
 enum ClassificationStatus {
   HIDDEN
-  REVEALING
   PUBLISHED
 }
 
@@ -219,8 +218,6 @@ model Competition {
   courseSnapshots CompetitionCourseSnapshot[]
   players         CompetitionPlayer[]
   flights         Flight[]
-  rankingSnapshots RankingSnapshot[]
-  reveal          ClassificationReveal?
   auditLogs       AuditLog[]
 }
 
@@ -342,7 +339,6 @@ model CompetitionPlayer {
   snapshot      CompetitionCourseSnapshot? @relation(fields: [snapshotId], references: [id])
   scorecard     Scorecard?
   flightMember  FlightMember?
-  rankingRows   RankingSnapshotRow[]
 
   @@unique([competitionId, userId])
   @@index([competitionId, isActive])
@@ -481,63 +477,6 @@ model SyncConflict {
   scorecard Scorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
-}
-
-// Clasificacion congelada al iniciar la revelacion (seccion 48).
-model RankingSnapshot {
-  id             String   @id @default(cuid())
-  competitionId  String
-  // Huella de los datos deportivos de origen. Si cambia, el snapshot queda obsoleto.
-  sourceRevision String
-  status         String   @default("ACTIVE")
-  isOutdated     Boolean  @default(false)
-  createdById    String
-  createdAt      DateTime @default(now())
-
-  competition Competition            @relation(fields: [competitionId], references: [id], onDelete: Cascade)
-  rows        RankingSnapshotRow[]
-  reveals     ClassificationReveal[]
-
-  @@index([competitionId, createdAt])
-}
-
-model RankingSnapshotRow {
-  id                  String @id @default(cuid())
-  snapshotId          String
-  competitionPlayerId String
-  position            Int
-  isSharedPosition    Boolean @default(false)
-  points              Int
-  handicapIndexTenths Int
-  playingHandicap     Int
-  numericStrokes      Int
-  pickups             Int
-  displayName         String
-  color               String
-  sortOrder           Int
-
-  snapshot RankingSnapshot   @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
-  player   CompetitionPlayer @relation(fields: [competitionPlayerId], references: [id])
-
-  @@unique([snapshotId, competitionPlayerId])
-  @@unique([snapshotId, sortOrder])
-}
-
-model ClassificationReveal {
-  id                    String               @id @default(cuid())
-  competitionId         String               @unique
-  snapshotId            String?
-  status                ClassificationStatus @default(HIDDEN)
-  revealedCount         Int                  @default(0)
-  isPaused              Boolean              @default(false)
-  currentIndex          Int                  @default(0)
-  nextActionAvailableAt DateTime?
-  publishedAt           DateTime?
-  updatedById           String?
-  updatedAt             DateTime             @updatedAt
-
-  competition Competition      @relation(fields: [competitionId], references: [id], onDelete: Cascade)
-  snapshot    RankingSnapshot? @relation(fields: [snapshotId], references: [id])
 }
 
 model AuditLog {

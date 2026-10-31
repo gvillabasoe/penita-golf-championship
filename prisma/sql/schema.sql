@@ -37,7 +37,7 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  CREATE TYPE "ClassificationStatus" AS ENUM ('HIDDEN', 'REVEALING', 'PUBLISHED');
+  CREATE TYPE "ClassificationStatus" AS ENUM ('HIDDEN', 'PUBLISHED');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
@@ -92,7 +92,7 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 -- ----------------------------------------------------------------------------
--- Tablas (20)
+-- Tablas (17)
 -- ----------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS "User" (
@@ -336,49 +336,6 @@ CREATE TABLE IF NOT EXISTS "SyncConflict" (
     CONSTRAINT "SyncConflict_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE IF NOT EXISTS "RankingSnapshot" (
-    "id" TEXT NOT NULL,
-    "competitionId" TEXT NOT NULL,
-    "sourceRevision" TEXT NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
-    "isOutdated" BOOLEAN NOT NULL DEFAULT false,
-    "createdById" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "RankingSnapshot_pkey" PRIMARY KEY ("id")
-);
-
-CREATE TABLE IF NOT EXISTS "RankingSnapshotRow" (
-    "id" TEXT NOT NULL,
-    "snapshotId" TEXT NOT NULL,
-    "competitionPlayerId" TEXT NOT NULL,
-    "position" INTEGER NOT NULL,
-    "isSharedPosition" BOOLEAN NOT NULL DEFAULT false,
-    "points" INTEGER NOT NULL,
-    "handicapIndexTenths" INTEGER NOT NULL,
-    "playingHandicap" INTEGER NOT NULL,
-    "numericStrokes" INTEGER NOT NULL,
-    "pickups" INTEGER NOT NULL,
-    "displayName" TEXT NOT NULL,
-    "color" TEXT NOT NULL,
-    "sortOrder" INTEGER NOT NULL,
-    CONSTRAINT "RankingSnapshotRow_pkey" PRIMARY KEY ("id")
-);
-
-CREATE TABLE IF NOT EXISTS "ClassificationReveal" (
-    "id" TEXT NOT NULL,
-    "competitionId" TEXT NOT NULL,
-    "snapshotId" TEXT,
-    "status" "ClassificationStatus" NOT NULL DEFAULT 'HIDDEN'::"ClassificationStatus",
-    "revealedCount" INTEGER NOT NULL DEFAULT 0,
-    "isPaused" BOOLEAN NOT NULL DEFAULT false,
-    "currentIndex" INTEGER NOT NULL DEFAULT 0,
-    "nextActionAvailableAt" TIMESTAMP(3),
-    "publishedAt" TIMESTAMP(3),
-    "updatedById" TEXT,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "ClassificationReveal_pkey" PRIMARY KEY ("id")
-);
-
 CREATE TABLE IF NOT EXISTS "AuditLog" (
     "id" TEXT NOT NULL,
     "competitionId" TEXT,
@@ -420,10 +377,6 @@ CREATE INDEX IF NOT EXISTS "CardReview_scorecardId_createdAt_idx" ON "CardReview
 CREATE UNIQUE INDEX IF NOT EXISTS "SyncMutation_clientMutationId_key" ON "SyncMutation"("clientMutationId");
 CREATE INDEX IF NOT EXISTS "SyncMutation_userId_createdAt_idx" ON "SyncMutation"("userId", "createdAt");
 CREATE INDEX IF NOT EXISTS "SyncConflict_status_createdAt_idx" ON "SyncConflict"("status", "createdAt");
-CREATE INDEX IF NOT EXISTS "RankingSnapshot_competitionId_createdAt_idx" ON "RankingSnapshot"("competitionId", "createdAt");
-CREATE UNIQUE INDEX IF NOT EXISTS "RankingSnapshotRow_snapshotId_competitionPlayerId_key" ON "RankingSnapshotRow"("snapshotId", "competitionPlayerId");
-CREATE UNIQUE INDEX IF NOT EXISTS "RankingSnapshotRow_snapshotId_sortOrder_key" ON "RankingSnapshotRow"("snapshotId", "sortOrder");
-CREATE UNIQUE INDEX IF NOT EXISTS "ClassificationReveal_competitionId_key" ON "ClassificationReveal"("competitionId");
 CREATE INDEX IF NOT EXISTS "AuditLog_competitionId_createdAt_idx" ON "AuditLog"("competitionId", "createdAt");
 CREATE INDEX IF NOT EXISTS "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
 
@@ -532,36 +485,6 @@ END $$;
 DO $$ BEGIN
   ALTER TABLE "SyncConflict" ADD CONSTRAINT "SyncConflict_scorecardId_fkey"
     FOREIGN KEY ("scorecardId") REFERENCES "Scorecard"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  ALTER TABLE "RankingSnapshot" ADD CONSTRAINT "RankingSnapshot_competitionId_fkey"
-    FOREIGN KEY ("competitionId") REFERENCES "Competition"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  ALTER TABLE "RankingSnapshotRow" ADD CONSTRAINT "RankingSnapshotRow_snapshotId_fkey"
-    FOREIGN KEY ("snapshotId") REFERENCES "RankingSnapshot"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  ALTER TABLE "RankingSnapshotRow" ADD CONSTRAINT "RankingSnapshotRow_competitionPlayerId_fkey"
-    FOREIGN KEY ("competitionPlayerId") REFERENCES "CompetitionPlayer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  ALTER TABLE "ClassificationReveal" ADD CONSTRAINT "ClassificationReveal_competitionId_fkey"
-    FOREIGN KEY ("competitionId") REFERENCES "Competition"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  ALTER TABLE "ClassificationReveal" ADD CONSTRAINT "ClassificationReveal_snapshotId_fkey"
-    FOREIGN KEY ("snapshotId") REFERENCES "RankingSnapshot"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 

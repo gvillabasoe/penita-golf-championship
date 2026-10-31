@@ -2683,12 +2683,6 @@ a.hole-row:active {
   border-bottom: 0;
 }
 
-/* Posicion recien revelada: amarillo tee, "aqui estamos". */
-.leaderboard-card--latest {
-  background: var(--tee-wash);
-  box-shadow: inset 4px 0 0 var(--tee);
-}
-
 .leaderboard--hidden {
   display: grid;
   justify-items: center;
@@ -2714,26 +2708,6 @@ a.hole-row:active {
 .leaderboard--hidden .muted {
   color: var(--ivory-soft);
   max-width: 36ch;
-}
-
-/* Revelacion: es el unico momento de la aplicacion que ocurre una vez por
-   torneo, asi que es el unico que se permite algo de ceremonia. La fila llega
-   desenfocada y se asienta: el ojo lo lee como algo que "aparece", no como dos
-   estados superpuestos. */
-.reveal-card {
-  opacity: 0;
-  transform: translateY(10px);
-  filter: blur(4px);
-  transition:
-    opacity 420ms var(--ease-out),
-    transform 420ms var(--ease-out),
-    filter 420ms var(--ease-out);
-}
-
-.reveal-card[data-revealed='true'] {
-  opacity: 1;
-  transform: none;
-  filter: none;
 }
 
 @media (max-width: 400px) {
@@ -3610,12 +3584,6 @@ table.data td {
   .player-list__item:active,
   .hole-step-nav__link:active {
     transform: none;
-  }
-
-  .reveal-card {
-    transform: none;
-    filter: none;
-    transition: opacity 200ms ease;
   }
 
   .sheet-overlay > .sheet,

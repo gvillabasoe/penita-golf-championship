@@ -18,9 +18,8 @@ const AREA_LINKS: Record<string, string> = {
 };
 
 const CLASSIFICATION_LABEL: Record<string, string> = {
-  HIDDEN: 'Oculta',
-  REVEALING: 'En revelacion',
-  PUBLISHED: 'Publicada',
+  HIDDEN: 'Provisional',
+  PUBLISHED: 'Oficial',
 };
 
 /**

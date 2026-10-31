@@ -150,10 +150,10 @@ Los resultados y todo lo derivado de ellos:
 - hoyos completados y número de rayas;
 - revisiones asociadas y confirmaciones finales;
 - bloqueos de tarjeta;
-- snapshots de clasificación, estado de revelación y publicación.
+- estado de publicación de la clasificación, que vuelve a Provisional.
 
 Cada tarjeta afectada queda en **Sin comenzar**: 0 hoyos, 0 puntos, 0 golpes, 0
-rayas, sin revisión activa y sin bloqueo. La clasificación vuelve a **oculta**.
+rayas, sin revisión activa y sin bloqueo. La clasificación vuelve a **Provisional**.
 
 ### Qué se conserva
 

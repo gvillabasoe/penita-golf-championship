@@ -94,7 +94,7 @@ describe('sin sesion', () => {
 describe('acceso a administracion', () => {
   test('un jugador que escribe /admin a mano recibe 404, no 403', () => {
     // Un 403 confirmaria que la ruta existe.
-    for (const path of ['/admin', '/admin/jugadores', '/admin/revelacion']) {
+    for (const path of ['/admin', '/admin/jugadores', '/admin/clasificacion']) {
       const result = ask(path);
       assert.equal(result.outcome, 'NOT_FOUND', path);
       if (result.outcome === 'NOT_FOUND') assert.equal(result.reason, 'HIDDEN_ADMIN_ROUTE');

@@ -2,9 +2,8 @@
  * Permisos de exportacion (secciones 61, 63 y 66).
  *
  * La regla de la seccion 63 es tajante: "La clasificacion completa solo se
- * exporta cuando esta publicada". Se aplica **tambien al administrador**. Un PDF
- * de la clasificacion definitiva circulando por WhatsApp media hora antes de la
- * entrega de premios arruina la revelacion, y eso no se puede deshacer.
+ * exporta cuando esta publicada". Se aplica **tambien al administrador**. Antes
+ * de hacerla oficial, el documento disponible es siempre el provisional.
  *
  * Lo que el administrador si necesita antes de publicar es poder revisar el
  * provisional. Eso existe como tipo de exportacion distinto y el documento sale
@@ -12,7 +11,7 @@
  */
 
 export type Role = 'PLAYER' | 'ADMIN';
-export type ClassificationStatus = 'HIDDEN' | 'REVEALING' | 'PUBLISHED';
+export type ClassificationStatus = 'HIDDEN' | 'PUBLISHED';
 
 export type ExportKind =
   | 'LEADERBOARD_FINAL'

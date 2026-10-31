@@ -112,24 +112,10 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- --- Clasificacion y revelacion --------------------------------------------
+-- --- Clasificacion ---------------------------------------------------------
 
-DO $$ BEGIN
-  ALTER TABLE "RankingSnapshotRow"
-    ADD CONSTRAINT "position_positive" CHECK ("position" >= 1),
-    ADD CONSTRAINT "row_points_non_negative" CHECK ("points" >= 0);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  ALTER TABLE "ClassificationReveal"
-    ADD CONSTRAINT "revealed_count_non_negative" CHECK ("revealedCount" >= 0),
-    ADD CONSTRAINT "current_index_non_negative" CHECK ("currentIndex" >= 0),
-    -- No se puede publicar sin snapshot: publicar exige una clasificacion congelada.
-    ADD CONSTRAINT "published_requires_snapshot"
-      CHECK ("status" <> 'PUBLISHED' OR "snapshotId" IS NOT NULL);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+-- La publicacion se representa unicamente en Competition.classificationStatus.
+-- No necesita tablas auxiliares ni restricciones adicionales.
 
 -- --- Sesiones ---------------------------------------------------------------
 

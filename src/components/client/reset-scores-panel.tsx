@@ -31,9 +31,8 @@ import {
 } from '@/lib/admin/reset';
 
 const CLASSIFICATION_LABEL: Record<string, string> = {
-  HIDDEN: 'oculta',
-  REVEALING: 'en revelacion',
-  PUBLISHED: 'publicada',
+  HIDDEN: 'provisional',
+  PUBLISHED: 'oficial',
 };
 
 interface Preview {
@@ -174,7 +173,7 @@ export function ResetScoresPanel() {
                   {CLASSIFICATION_LABEL[preview.classificationStatus] ??
                     preview.classificationStatus}
                 </strong>{' '}
-                → vuelve a oculta
+                → vuelve a provisional
               </li>
             </ul>
 

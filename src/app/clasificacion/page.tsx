@@ -6,19 +6,12 @@ import { Leaderboard } from '@/components/leaderboard';
 import { PairLeaderboard } from '@/components/pair-leaderboard';
 import { PairScorecards } from '@/components/pair-scorecards';
 import { BottomNav } from '@/components/client/bottom-nav';
-import { AutoRefresh } from '@/components/client/auto-refresh';
 import { AppHeader } from '@/components/ui/app-header';
 import { StateBlock, StatusBadge } from '@/components/ui';
 import { IconTrophy } from '@/components/ui/icons';
 import { PAIR_SCORING_LABELS } from '@/lib/golf/pairs';
 
 export const metadata = { title: 'Clasificacion · Peñita Golf' };
-
-const REVEAL_LABEL: Record<string, { label: string; tone: 'neutral' | 'gold' | 'green' }> = {
-  HIDDEN: { label: 'Sin publicar', tone: 'neutral' },
-  REVEALING: { label: 'En revelacion', tone: 'gold' },
-  PUBLISHED: { label: 'Publicada', tone: 'green' },
-};
 
 /** Clasificacion individual y, cuando esta activado, vista paralela por parejas. */
 export default async function LeaderboardPage({
@@ -46,17 +39,22 @@ export default async function LeaderboardPage({
 
   const params = await searchParams;
   const pairView = context.pairModeEnabled && params.vista === 'parejas';
-  const [{ rows, order, state }, pairCompetition] = await Promise.all([
+  const [{ rows }, pairCompetition] = await Promise.all([
     getRanking(context),
     pairView ? getPairCompetition(context) : Promise.resolve(null),
   ]);
-  const status = REVEAL_LABEL[state.status] ?? REVEAL_LABEL.HIDDEN;
+  const isOfficial = context.classificationStatus === 'PUBLISHED';
+  const canSeeFullClassification = user.role === 'ADMIN' || isOfficial;
 
   return (
     <>
       <AppHeader
         screen="Clasificacion"
-        action={<StatusBadge tone="onGreen">{status.label}</StatusBadge>}
+        action={
+          <StatusBadge tone="onGreen">
+            {isOfficial ? 'Oficial' : 'Provisional'}
+          </StatusBadge>
+        }
       />
 
       <main className="container stack page-content classification-page">
@@ -98,13 +96,11 @@ export default async function LeaderboardPage({
           </div>
         </section>
 
-        {state.status === 'REVEALING' ? <AutoRefresh intervalMs={4000} /> : null}
-
         {pairView && pairCompetition ? (
           <>
             <PairLeaderboard
               rows={pairCompetition.ranking}
-              visible={user.role === 'ADMIN' || state.status === 'PUBLISHED'}
+              visible={canSeeFullClassification}
               role={user.role}
             />
 
@@ -113,10 +109,10 @@ export default async function LeaderboardPage({
               holes={context.snapshot.holes}
               currentCompetitionPlayerId={user.competitionPlayerId}
               role={user.role}
-              classificationPublished={state.status === 'PUBLISHED'}
+              classificationPublished={isOfficial}
             />
 
-            {state.status === 'PUBLISHED' || user.role === 'ADMIN' ? (
+            {canSeeFullClassification ? (
               <p className="muted">
                 Desempates de parejas: mas puntos, menor suma de hándicap exacto y menor suma de
                 golpes ajustados. En mejor bola, cada hoyo usa los puntos Stableford del mejor
@@ -126,9 +122,13 @@ export default async function LeaderboardPage({
           </>
         ) : (
           <>
-            <Leaderboard rows={rows} revealOrder={order} state={state} role={user.role} />
+            <Leaderboard
+              rows={rows}
+              visible={canSeeFullClassification}
+              role={user.role}
+            />
 
-            {state.status === 'PUBLISHED' ? (
+            {canSeeFullClassification ? (
               <p className="muted">
                 Criterios de desempate, en orden: mas puntos, menor hándicap exacto y menor suma de
                 golpes ajustada. Las rayas se cuentan como doble bogey neto, para que levantar la

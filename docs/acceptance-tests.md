@@ -28,7 +28,7 @@ bien.
 | 41, 42 | `cola sin conexion`, `estado de guardado`, `idempotencia en el servidor` | Ningún hoyo se pierde; reenviar es seguro |
 | 43 | `conflictos`, `resolucion de conflictos` | Conflicto por hoyo, no por tarjeta; el jugador no pisa una corrección |
 | 46 | `clasificacion` | Tres criterios, posiciones compartidas, sin desempate inventado |
-| 48, 49 | `clasificacion` (orden de revelación, huella de snapshot) | Orden correcto, snapshot invalidado si cambia un resultado |
+| 48, 49 | `clasificacion` (publicación) | El provisional no se filtra y el oficial se muestra completo |
 | 66 | `rechazos` | Autorización por sesión, no por el payload del cliente |
 
 ### Lo que la cobertura automática **no** cubre todavía
@@ -65,9 +65,8 @@ no existe.
 - [ ] Que un jugador revise la tarjeta de un compañero y comprobar que al
       corregir un hoyo después la revisión queda marcada como desactualizada.
 - [ ] Corregir un hoyo desde el panel y comprobar que el jugador no puede pisarlo.
-- [ ] Revelar la clasificación de prueba completa, incluido el podio.
-- [ ] Corregir una tarjeta **a mitad de la revelación** y comprobar que se bloquea
-      «revelar siguiente» y pide reiniciar con un snapshot actualizado.
+- [ ] Cambiar la clasificación de Provisional a Oficial y comprobar que aparece completa, incluido el podio.
+- [ ] Volver a Provisional y comprobar que los jugadores dejan de recibir nombres, posiciones y puntos.
 - [ ] Exportar clasificación y tarjetas, y comprobar que la clasificación completa
       no se puede exportar antes de publicar.
 - [ ] Borrar la vuelta de prueba y comprobar que la auditoría lo registra.

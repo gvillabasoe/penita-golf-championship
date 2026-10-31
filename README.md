@@ -7,11 +7,10 @@ Estado: **completa**, version 1.4.0. Lista para subir a GitHub y desplegar en Ve
 Empieza por `docs/primer-despliegue.md`.
 
 > **Actualización de base de datos**: aplica las migraciones incrementales en
-> orden antes de desplegar el código. Si la base ya incorpora el modo parejas y
-> los sorteos en dos fases, basta con ejecutar
-> `prisma/sql/migrations/005-semillas-y-exportacion-pdf.sql` y después
-> `npx prisma generate`. Desde una instalación anterior, el orden completo es
-> `002` → `003` → `004` → `005`.
+> orden antes de desplegar el código. Para esta versión es obligatoria
+> `prisma/sql/migrations/006-publicacion-directa-clasificacion.sql` y,
+> después, `npx prisma generate`. Desde una instalación anterior, el orden
+> completo es `002` → `003` → `004` → `005` → `006`.
 
 ---
 
@@ -73,7 +72,7 @@ src/lib/golf/
   handicap.ts             Hándicap de campo y de juego. Dos políticas de redondeo.
   strokes.ts              Reparto de golpes por hoyo, incluidos hándicaps plus.
   stableford.ts           Puntos, categorías de bruto, totales y estados de tarjeta.
-  ranking.ts              Clasificación, desempates, revelación, huella de snapshot.
+  ranking.ts              Clasificación, desempates y posiciones compartidas.
   course.ts               Datos de Ulzama + validación completa de la sección 24.
   competition-config.ts   Confirmación de fuentes, congelado de reglas, arranque.
 
@@ -95,9 +94,6 @@ src/lib/admin/
   draw.ts         Sorteo de partidos con semilla reproducible y equilibrio.
   pair-draw.ts    Sorteo de parejas sobre partidos confirmados.
   draw-seed.ts    Normalización y límites de las semillas persistidas.
-
-src/lib/reveal/
-  controller.ts   Máquina de estados de la revelación progresiva.
 
 src/lib/export/
   text.ts         Saneado WinAnsi: un emoji no tumba el PDF.
@@ -125,7 +121,7 @@ src/components/
   score.tsx       Celdas de bruto y puntos. La forma informa, no el color.
   scorecard.tsx   Tarjeta como lista de hoyos, totales sin bruto falso.
   keypad.tsx      Teclado 1-9 y raya, hoja de confirmación previa.
-  leaderboard.tsx Clasificación con revelación y estado de guardado.
+  leaderboard.tsx Clasificación provisional/oficial y estado de guardado.
 
 public/
   sw.js                 Service worker.
@@ -135,7 +131,7 @@ src/lib/seed/
   roster.ts       Los 13 jugadores. Sin ninguna contraseña.
   plan.ts         Planificador idempotente del seed.
 
-prisma/schema.prisma        Modelo de datos completo (24 modelos, 11 enums).
+prisma/schema.prisma        Modelo de datos completo.
 prisma/seed.ts              Seed conectado a Prisma.
 prisma/sql/constraints.sql  Restricciones CHECK que Prisma no puede expresar.
 prisma/sql/migrations/      Migraciones incrementales, re-ejecutables, para Neon.
@@ -231,14 +227,11 @@ base de datos o navegador, y está detallado paso a paso en
 3. El seed, con las credenciales fuera del repositorio.
 4. Desplegar en Vercel.
 
-**Aviso honesto sobre el primer build.** Todo lo que hay en `src/lib` (salvo
-`db.ts`, `data/`, `actions/` y `auth/server.ts`) está type-checkeado y con 427
-tests pasando. Las 26 rutas y las pantallas **no se han compilado**: el entorno
-donde se generaron no tiene red. Espera errores de tipos en el primer
-`npm run typecheck`, casi todos por nombres de campos de Prisma. Son de arreglar
-en minutos y `tsc` los señala con archivo y línea.
-
-Lo que no va a fallar es la lógica, porque está probada aparte.
+**Aviso sobre el primer build.** La lógica de `src/lib` dispone de una suite
+automatizada amplia, pero las rutas y pantallas no se han compilado en este
+entorno porque no están instaladas las dependencias del proyecto. Antes de
+desplegar, ejecuta `npx prisma generate`, `npm run typecheck`, `npm test` y
+`npm run build` en el entorno de destino.
 
 Dos cosas que he decidido **no** entregar por ese motivo:
 

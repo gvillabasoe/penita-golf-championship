@@ -84,13 +84,6 @@ const SECTIONS: readonly AdminSectionLink[] = [
     icon: IconTrophy,
   },
   {
-    href: '/admin/revelacion',
-    label: 'Revelacion',
-    shortLabel: 'Revelacion',
-    description: 'Presentacion puesto a puesto',
-    icon: IconTrophy,
-  },
-  {
     href: '/admin/historial',
     label: 'Historial',
     shortLabel: 'Historial',

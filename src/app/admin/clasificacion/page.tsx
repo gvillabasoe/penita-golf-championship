@@ -17,12 +17,11 @@ export default async function AdminRankingPage() {
     );
   }
 
-  const [{ rows, order, state }, pairCompetition] = await Promise.all([
+  const [{ rows }, pairCompetition] = await Promise.all([
     getRanking(context),
     context.pairModeEnabled ? getPairCompetition(context) : Promise.resolve(null),
   ]);
-  const isOfficial =
-    state.status === 'PUBLISHED' && context.classificationStatus === 'PUBLISHED';
+  const isOfficial = context.classificationStatus === 'PUBLISHED';
 
   return (
     <div className="stack">
@@ -41,7 +40,7 @@ export default async function AdminRankingPage() {
         desempate usa el hándicap exacto ORIGINAL, tambien cuando hay limite de HCP.
       </p>
 
-      <Leaderboard rows={rows} revealOrder={order} state={state} role="ADMIN" />
+      <Leaderboard rows={rows} visible role="ADMIN" />
 
       {pairCompetition ? (
         <>

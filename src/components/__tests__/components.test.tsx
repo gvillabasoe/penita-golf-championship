@@ -10,9 +10,8 @@ import { Leaderboard, LeaderboardCard, SaveStatusBadge } from '../leaderboard';
 import { ULZAMA_HOLES } from '@/lib/golf/course';
 import { allocateStrokes } from '@/lib/golf/strokes';
 import { computeTotals, resolveHole, resolveScorecard, type HoleScoreInput } from '@/lib/golf/stableford';
-import { buildRanking, revealOrder } from '@/lib/golf/ranking';
+import { buildRanking } from '@/lib/golf/ranking';
 import { buildConfirmationSummary, deriveSaveStatus } from '@/lib/scorecard/session';
-import { initialRevealState, type RevealState } from '@/lib/reveal/controller';
 import type { RankingInput } from '@/lib/golf/types';
 
 const render = (element: React.ReactElement) => renderToStaticMarkup(element);
@@ -361,7 +360,7 @@ describe('estado de guardado', () => {
   });
 });
 
-describe('clasificacion y revelacion', () => {
+describe('clasificacion provisional y oficial', () => {
   const player = (id: string, name: string, points: number, hcp: number): RankingInput => ({
     competitionPlayerId: id,
     displayName: name,
@@ -383,55 +382,17 @@ describe('clasificacion y revelacion', () => {
     player('p4', 'Cuatro', 34, 130),
     player('p5', 'Cinco', 32, 140),
   ]);
-  const order = revealOrder(rows);
 
-  const revealing = (revealedCount: number): RevealState => ({
-    status: 'REVEALING',
-    snapshotId: 'snap1',
-    snapshotFingerprint: 'abc',
-    revealedCount,
-    totalGroups: order.length,
-    isPaused: false,
-    nextActionAvailableAt: 0,
-    publishedAt: null,
-    updatedById: 'admin',
-  });
-
-  test('oculta: el jugador ve el mensaje y NINGUN nombre', () => {
-    const html = render(
-      <Leaderboard rows={rows} revealOrder={order} state={initialRevealState()} role="PLAYER" />,
-    );
-    assert.match(html, /Clasificacion pendiente de publicacion/);
+  test('provisional: el jugador ve el mensaje y NINGUN nombre', () => {
+    const html = render(<Leaderboard rows={rows} visible={false} role="PLAYER" />);
+    assert.match(html, /Clasificacion provisional/);
     for (const row of rows) {
       assert.equal(html.includes(row.displayName), false, `se filtra ${row.displayName}`);
     }
   });
 
-  test('revelando: el jugador solo ve lo revelado, y el lider NO se filtra', () => {
-    const html = render(
-      <Leaderboard rows={rows} revealOrder={order} state={revealing(2)} role="PLAYER" />,
-    );
-    // Se revela de la ultima posicion hacia la primera: 5 y 4.
-    assert.match(html, /Cinco/);
-    assert.match(html, /Cuatro/);
-    assert.equal(html.includes('Uno'), false, 'el ganador no puede aparecer antes de tiempo');
-    assert.equal(html.includes('Dos'), false);
-    assert.equal(html.includes('Tres'), false);
-  });
-
-  test('el administrador ve el provisional completo, marcado como tal', () => {
-    const html = render(
-      <Leaderboard rows={rows} revealOrder={order} state={revealing(2)} role="ADMIN" />,
-    );
-    assert.match(html, /Clasificacion provisional/);
-    assert.match(html, /Uno/);
-  });
-
-  test('publicada: se ven los cinco y el podio lleva su clase', () => {
-    const publicada: RevealState = { ...revealing(order.length), status: 'PUBLISHED', publishedAt: 'x' };
-    const html = render(
-      <Leaderboard rows={rows} revealOrder={order} state={publicada} role="PLAYER" />,
-    );
+  test('oficial: se ven todos y el podio lleva su clase', () => {
+    const html = render(<Leaderboard rows={rows} visible role="PLAYER" />);
     for (const row of rows) assert.match(html, new RegExp(row.displayName));
     assert.match(html, /podium--1/);
     assert.match(html, /podium--2/);
@@ -443,48 +404,39 @@ describe('clasificacion y revelacion', () => {
       player('a', 'Ana', 36, 200),
       player('b', 'Beto', 36, 200),
     ]);
-    const html = render(<LeaderboardCard row={empatados[0]} isRevealed />);
+    const html = render(<LeaderboardCard row={empatados[0]} />);
     assert.match(html, /aria-label="Posicion 1 compartida"/);
     assert.match(html, /=1/);
   });
 
   test('la barra de progreso es decorativa y no se lee', () => {
-    const html = render(<LeaderboardCard row={rows[0]} isRevealed />);
+    const html = render(<LeaderboardCard row={rows[0]} />);
     assert.match(html, /leaderboard-card__bar[^>]*aria-hidden="true"/);
   });
 
-  test('una tarjeta no revelada queda oculta al lector de pantalla', () => {
-    const html = render(<LeaderboardCard row={rows[0]} isRevealed={false} />);
-    assert.match(html, /data-revealed="false"/);
-    assert.match(html, /aria-hidden="true"/);
-  });
-
-  test('la nota de desempate solo la ve el administrador', () => {
+  test('la nota de desempate solo se muestra cuando se solicita', () => {
     const conNota = buildRanking([
       { ...player('a', 'Limpia', 36, 200), numericStrokes: 95, adjustedStrokes: 95, pickups: 0 },
       { ...player('b', 'ConRayas', 36, 200), numericStrokes: 88, adjustedStrokes: 109, pickups: 3 },
     ]);
     const fila = conNota.find((r) => r.tieBreakNote !== null);
     assert.ok(fila, 'deberia haber una fila con nota');
-    assert.match(render(<LeaderboardCard row={fila} isRevealed showTieNote />), /doble bogey neto/);
-    assert.equal(
-      render(<LeaderboardCard row={fila} isRevealed />).includes('doble bogey neto'),
-      false,
-    );
+    assert.match(render(<LeaderboardCard row={fila} showTieNote />), /doble bogey neto/);
+    assert.equal(render(<LeaderboardCard row={fila} />).includes('doble bogey neto'), false);
   });
 
   test('con rayas se muestran los golpes escritos Y los ajustados', () => {
     const conRayas = buildRanking([
       { ...player('b', 'ConRayas', 36, 200), numericStrokes: 88, adjustedStrokes: 109, pickups: 3 },
     ]);
-    const html = render(<LeaderboardCard row={conRayas[0]} isRevealed />);
+    const html = render(<LeaderboardCard row={conRayas[0]} />);
     assert.match(html, /88/);
     assert.match(html, /aj\. 109/);
     assert.match(html, /aria-label="[^"]*88 golpes escritos[^"]*109 golpes ajustados"/);
   });
 
   test('sin rayas no se ensucia la fila con el ajustado', () => {
-    const html = render(<LeaderboardCard row={rows[0]} isRevealed />);
+    const html = render(<LeaderboardCard row={rows[0]} />);
     assert.equal(html.includes('aj.'), false);
     assert.match(html, /aria-label="90 golpes"/);
   });

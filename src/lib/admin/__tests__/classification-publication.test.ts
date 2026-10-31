@@ -1,52 +1,48 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { buildClassificationPublicationTransition } from '../classification-publication';
 
 describe('interruptor de publicacion de la clasificacion', () => {
-  test('oficial publica todas las posiciones de una sola vez', () => {
-    const now = new Date('2026-10-31T18:00:00.000Z');
-    const transition = buildClassificationPublicationTransition({
-      official: true,
-      totalGroups: 11,
-      actorId: 'admin-1',
-      now,
+  test('oficial usa exclusivamente el estado PUBLISHED', () => {
+    assert.deepEqual(buildClassificationPublicationTransition(true), {
+      classificationStatus: 'PUBLISHED',
+      auditAction: 'CLASSIFICATION_PUBLISHED',
     });
-
-    assert.equal(transition.classificationStatus, 'PUBLISHED');
-    assert.equal(transition.reveal.status, 'PUBLISHED');
-    assert.equal(transition.reveal.revealedCount, 11);
-    assert.equal(transition.reveal.currentIndex, 11);
-    assert.equal(transition.reveal.isPaused, false);
-    assert.equal(transition.reveal.publishedAt, now);
-    assert.equal(transition.auditAction, 'CLASSIFICATION_PUBLISHED');
   });
 
-  test('provisional vuelve a ocultarla para los jugadores y reinicia la revelacion', () => {
-    const transition = buildClassificationPublicationTransition({
-      official: false,
-      totalGroups: 11,
-      actorId: 'admin-1',
+  test('provisional usa exclusivamente el estado HIDDEN', () => {
+    assert.deepEqual(buildClassificationPublicationTransition(false), {
+      classificationStatus: 'HIDDEN',
+      auditAction: 'CLASSIFICATION_RETURNED_TO_PROVISIONAL',
     });
-
-    assert.equal(transition.classificationStatus, 'HIDDEN');
-    assert.equal(transition.reveal.status, 'HIDDEN');
-    assert.equal(transition.reveal.revealedCount, 0);
-    assert.equal(transition.reveal.currentIndex, 0);
-    assert.equal(transition.reveal.publishedAt, null);
-    assert.equal(transition.reveal.snapshotId, null);
-    assert.equal(transition.auditAction, 'CLASSIFICATION_RETURNED_TO_PROVISIONAL');
   });
 
-  test('no permite publicar una clasificacion vacia', () => {
-    assert.throws(
-      () =>
-        buildClassificationPublicationTransition({
-          official: true,
-          totalGroups: 0,
-          actorId: 'admin-1',
-        }),
-      /No hay ninguna posicion/,
-    );
+  test('la transicion solo contiene el estado y la auditoria', () => {
+    const keys = Object.keys(buildClassificationPublicationTransition(true)).sort();
+    assert.deepEqual(keys, ['auditAction', 'classificationStatus']);
+  });
+});
+
+
+describe('accion de servidor del interruptor', () => {
+  const source = readFileSync(join(process.cwd(), 'src/lib/actions/admin.ts'), 'utf8');
+  const start = source.indexOf('export async function setClassificationOfficial');
+  const end = source.indexOf('/**', start + 1);
+  const action = source.slice(start, end === -1 ? undefined : end);
+
+  test('solo usa Competition y AuditLog dentro de la transaccion', () => {
+    assert.ok(start >= 0, 'no se encontro setClassificationOfficial');
+    assert.match(action, /tx\.competition\.update/);
+    assert.match(action, /classificationStatus: transition\.classificationStatus/);
+    const accessors = [...action.matchAll(/tx\.(\w+)\./g)].map((match) => match[1]);
+    assert.deepEqual([...new Set(accessors)].sort(), ['auditLog', 'competition']);
+  });
+
+  test('la peticion repetida es idempotente', () => {
+    assert.match(action, /competition\.classificationStatus === transition\.classificationStatus/);
+    assert.match(action, /return;/);
   });
 });

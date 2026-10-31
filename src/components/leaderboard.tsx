@@ -3,13 +3,13 @@
  *
  * La clasificacion se presenta como un leaderboard deportivo compacto: posicion
  * a la izquierda, identidad y datos en el centro, y puntos claramente separados
- * a la derecha. La barra sigue siendo puramente informativa.
+ * a la derecha. La publicacion es binaria: provisional u oficial.
  */
 
 import type { SaveStatus } from '@/lib/scorecard/session';
 import type { RankingRow } from '@/lib/golf/types';
-import type { RevealState, Role } from '@/lib/reveal/controller';
-import { playerFacingMessage, visibleGroupCount } from '@/lib/reveal/controller';
+
+export type LeaderboardRole = 'PLAYER' | 'ADMIN';
 
 export interface SaveStatusBadgeProps {
   status: SaveStatus;
@@ -42,25 +42,12 @@ const PODIUM_LABEL: Record<number, string> = {
 
 export interface LeaderboardCardProps {
   row: RankingRow;
-  isRevealed: boolean;
-  /** Enfasis temporal en la tarjeta que acaba de aparecer. */
-  isLatest?: boolean;
   /** Muestra la nota de desempate. Solo para el administrador. */
   showTieNote?: boolean;
 }
 
-export function LeaderboardCard({
-  row,
-  isRevealed,
-  isLatest = false,
-  showTieNote = false,
-}: LeaderboardCardProps) {
-  const classNames = [
-    'leaderboard-card',
-    'reveal-card',
-    PODIUM_CLASS[row.position] ?? '',
-    isLatest ? 'leaderboard-card--latest' : '',
-  ]
+export function LeaderboardCard({ row, showTieNote = false }: LeaderboardCardProps) {
+  const classNames = ['leaderboard-card', PODIUM_CLASS[row.position] ?? '']
     .filter(Boolean)
     .join(' ');
 
@@ -75,11 +62,7 @@ export function LeaderboardCard({
       : `${row.numericStrokes} golpes`;
 
   return (
-    <li
-      className={classNames}
-      data-revealed={isRevealed ? 'true' : 'false'}
-      aria-hidden={isRevealed ? undefined : 'true'}
-    >
+    <li className={classNames}>
       <div className="leaderboard-card__rank">
         <span className="leaderboard-card__position" aria-label={positionLabel}>
           {row.isSharedPosition ? '=' : ''}
@@ -145,54 +128,34 @@ export function LeaderboardCard({
 export interface LeaderboardProps {
   /** Filas ya ordenadas por `buildRanking`. */
   rows: RankingRow[];
-  /** Grupos de posicion en el orden de revelacion, cada uno con indices de `rows`. */
-  revealOrder: number[][];
-  state: RevealState;
-  role: Role;
+  /** El servidor decide la visibilidad antes de renderizar nombres o puntos. */
+  visible: boolean;
+  role: LeaderboardRole;
 }
 
-/**
- * Clasificacion con revelacion progresiva.
- *
- * La visibilidad se obtiene de la misma maquina de estados de la revelacion; la
- * interfaz nunca decide por su cuenta que posiciones pueden mostrarse.
- */
-export function Leaderboard({ rows, revealOrder, state, role }: LeaderboardProps) {
-  const visibleGroups = visibleGroupCount(state, role);
-  const message = playerFacingMessage(state);
-
-  const revealedIndices = new Set<number>(revealOrder.slice(0, visibleGroups).flat());
-  const latestGroup = visibleGroups > 0 ? revealOrder[visibleGroups - 1] : [];
-  const latestIndices = new Set<number>(state.status === 'PUBLISHED' ? [] : latestGroup);
-
-  if (message !== null && visibleGroups === 0) {
+/** Clasificacion binaria: completa para admin; para jugadores, solo si es oficial. */
+export function Leaderboard({ rows, visible, role }: LeaderboardProps) {
+  if (!visible) {
     return (
       <div className="leaderboard leaderboard--hidden" role="status">
-        <p>{message}</p>
+        <p>Clasificacion provisional</p>
+        <p className="muted">
+          El administrador publicara la clasificacion oficial cuando termine la revision.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="leaderboard">
-      {state.status === 'REVEALING' && role === 'ADMIN' ? (
-        <p className="leaderboard__provisional alert" role="note">
-          Clasificacion provisional: solo visible para el administrador
-        </p>
-      ) : null}
-
       <ol className="leaderboard__rows" aria-label="Clasificacion">
-        {rows.map((row, index) =>
-          revealedIndices.has(index) ? (
-            <LeaderboardCard
-              key={row.competitionPlayerId}
-              row={row}
-              isRevealed
-              isLatest={latestIndices.has(index)}
-              showTieNote={role === 'ADMIN'}
-            />
-          ) : null,
-        )}
+        {rows.map((row) => (
+          <LeaderboardCard
+            key={row.competitionPlayerId}
+            row={row}
+            showTieNote={role === 'ADMIN'}
+          />
+        ))}
       </ol>
     </div>
   );

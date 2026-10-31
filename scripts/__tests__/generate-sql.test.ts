@@ -113,8 +113,8 @@ describe('enums', () => {
 });
 
 describe('tablas y columnas', () => {
-  test('las 20 tablas estan', () => {
-    assert.equal(schema.models.length, 20);
+  test('las 17 tablas estan', () => {
+    assert.equal(schema.models.length, 17);
     for (const model of schema.models) {
       assert.ok(tableBody(model.name), `falta la tabla ${model.name}`);
     }

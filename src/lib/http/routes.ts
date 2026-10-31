@@ -186,7 +186,7 @@ export const ROUTES: readonly RouteRule[] = [
     pattern: /^\/api\/ranking$/,
     methods: READ_ONLY,
     access: { kind: 'AUTHENTICATED' },
-    description: 'Clasificacion segun el estado de revelacion',
+    description: 'Clasificacion segun el estado provisional u oficial',
   },
   {
     pattern: /^\/api\/flights$/,

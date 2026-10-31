@@ -49,9 +49,9 @@ npm run typecheck
 **Aquí es donde va a salir trabajo, y conviene saberlo de antemano.**
 
 Todo lo que hay bajo `src/lib/golf`, `src/lib/auth` (salvo `server.ts`),
-`src/lib/sync`, `src/lib/scorecard`, `src/lib/admin`, `src/lib/reveal`,
-`src/lib/export`, `src/lib/pwa`, `src/lib/http` y `src/lib/storage` está
-**type-checkeado y con 427 tests pasando**. Esa parte no debería dar sorpresas.
+`src/lib/sync`, `src/lib/scorecard`, `src/lib/admin`,
+`src/lib/export`, `src/lib/pwa`, `src/lib/http` y `src/lib/storage` dispone de
+pruebas automatizadas. Ejecuta la suite completa después de instalar dependencias.
 
 Lo que **no** se ha podido comprobar en el entorno donde se generó, porque no
 tiene red ni base de datos:
@@ -199,8 +199,7 @@ Comprueba, en este orden:
   envían solos. No hay que hacer nada.
 - Si un jugador ve «Error al sincronizar», sus resultados **siguen en su móvil**.
   No cierre sesión: eso avisa antes de borrar nada, pero mejor no tentar.
-- Si la clasificación se bloquea a mitad de la revelación es porque se corrigió
-  una tarjeta. Reinicia la presentación desde `/admin/revelacion`; los datos
-  deportivos no se tocan.
+- Si el switch de clasificación falla, comprueba que la migración `006` se ha
+  aplicado y vuelve a cargar `/admin/clasificacion`. Los datos deportivos no se tocan.
 - Como respaldo, siempre se puede exportar el PDF de cada tarjeta y hacer la
   clasificación a mano. Todo está en `/admin/exportacion`.

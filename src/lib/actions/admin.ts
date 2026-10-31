@@ -62,8 +62,6 @@ import {
   type PairDrawPlayer,
 } from '../admin/pair-draw';
 import { isPairScoringMode, type PairScoringMode } from '../golf/pairs';
-import { applyRevealAction, type RevealAction } from '../reveal/controller';
-import { rankingFingerprint } from '../golf/ranking';
 import { createHash, randomBytes } from 'node:crypto';
 
 export type AdminResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -988,36 +986,27 @@ export async function setScorecardLock(scorecardId: string, locked: boolean, rea
 /**
  * Publica o retira la clasificacion oficial mediante un unico interruptor.
  *
- * Esta accion no depende de haber recorrido la presentacion progresiva. Al
- * publicar abre todas las posiciones de una sola vez; al volver a provisional
- * las oculta para los jugadores y deja el panel listo para otra revelacion.
+ * La unica fuente de verdad es `Competition.classificationStatus`. La operacion
+ * se limita a actualizar ese campo y registrar la auditoria, de forma atomica e
+ * idempotente.
  */
 export async function setClassificationOfficial(official: boolean): Promise<AdminResult> {
   const admin = await requireAdmin();
   if (typeof official !== 'boolean') {
     return { ok: false, error: 'El estado de publicacion no es valido.' };
   }
+
   const context = await getCompetition();
   if (!context) return { ok: false, error: 'No hay competicion configurada.' };
 
-  const { rows, order } = await getRanking(context);
-  if (official && rows.length === 0) {
-    return { ok: false, error: 'No hay ninguna clasificacion que publicar.' };
+  if (official) {
+    const { rows } = await getRanking(context);
+    if (rows.length === 0) {
+      return { ok: false, error: 'No hay ninguna clasificacion que publicar.' };
+    }
   }
 
-  let transition: ReturnType<typeof buildClassificationPublicationTransition>;
-  try {
-    transition = buildClassificationPublicationTransition({
-      official,
-      totalGroups: order.length,
-      actorId: admin.userId,
-    });
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : 'El estado solicitado no es valido.',
-    };
-  }
+  const transition = buildClassificationPublicationTransition(official);
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -1027,45 +1016,37 @@ export async function setClassificationOfficial(official: boolean): Promise<Admi
       });
       if (!competition) throw new Error('No hay competicion configurada.');
 
-      await tx.classificationReveal.upsert({
-        where: { competitionId: context.competitionId },
-        create: {
-          competitionId: context.competitionId,
-          ...transition.reveal,
-        },
-        update: transition.reveal,
-      });
+      // Repetir la misma peticion no crea registros ni escrituras innecesarias.
+      if (competition.classificationStatus === transition.classificationStatus) return;
 
       await tx.competition.update({
         where: { id: context.competitionId },
         data: { classificationStatus: transition.classificationStatus },
       });
 
-      if (competition.classificationStatus !== transition.classificationStatus) {
-        await tx.auditLog.create({
-          data: {
-            competitionId: context.competitionId,
-            actorId: admin.userId,
-            action: transition.auditAction,
-            entityType: 'Competition',
-            entityId: context.competitionId,
-            beforeData: toJson({ classificationStatus: competition.classificationStatus }),
-            afterData: toJson({ classificationStatus: transition.classificationStatus }),
-          },
-        });
-      }
+      await tx.auditLog.create({
+        data: {
+          competitionId: context.competitionId,
+          actorId: admin.userId,
+          action: transition.auditAction,
+          entityType: 'Competition',
+          entityId: context.competitionId,
+          beforeData: toJson({ classificationStatus: competition.classificationStatus }),
+          afterData: toJson({ classificationStatus: transition.classificationStatus }),
+        },
+      });
     });
   } catch (error) {
     console.error('No se pudo cambiar la publicacion de la clasificacion.', error);
     return {
       ok: false,
-      error: 'No se ha podido guardar el estado de la clasificacion. Vuelve a intentarlo.',
+      error:
+        'No se ha podido guardar el estado de la clasificacion. Recarga la pagina y vuelve a intentarlo.',
     };
   }
 
   revalidatePath('/admin');
   revalidatePath('/admin/clasificacion');
-  revalidatePath('/admin/revelacion');
   revalidatePath('/admin/exportacion');
   revalidatePath('/clasificacion');
   revalidatePath('/partido');
@@ -1076,95 +1057,6 @@ export async function setClassificationOfficial(official: boolean): Promise<Admi
       ? 'Clasificacion publicada como oficial.'
       : 'Clasificacion devuelta a provisional.',
   };
-}
-
-/** Controla la revelacion progresiva. */
-export async function controlReveal(action: RevealAction): Promise<AdminResult> {
-  // Compatibilidad con clientes antiguos que aun muestren el boton de publicar.
-  // La publicacion pasa por la misma ruta directa y atomica que usa el switch.
-  if (action === 'PUBLISH') return setClassificationOfficial(true);
-
-  const admin = await requireAdmin();
-  const context = await getCompetition();
-  if (!context) return { ok: false, error: 'No hay competicion configurada.' };
-
-  const { rows, order, state } = await getRanking(context);
-  const fingerprint = rankingFingerprint(rows);
-
-  const stored = await prisma.classificationReveal.findUnique({
-    where: { competitionId: context.competitionId },
-  });
-
-  const currentState = {
-    ...state,
-    snapshotFingerprint: stored?.snapshotId ? (stored.snapshotId.split('#')[1] ?? null) : null,
-    totalGroups: order.length,
-  };
-
-  // Snapshot nuevo al iniciar o reiniciar.
-  const needsSnapshot = action === 'START' || action === 'RESTART';
-  const snapshotId = needsSnapshot
-    ? `${new Date().toISOString()}#${fingerprint}`
-    : (stored?.snapshotId ?? undefined);
-
-  const result = applyRevealAction(currentState, action, {
-    actorId: admin.userId,
-    actorRole: 'ADMIN',
-    currentFingerprint: fingerprint,
-    totalGroups: order.length,
-    snapshotId,
-  });
-
-  if (!result.ok) return { ok: false, error: result.errors.join(' ') };
-
-  await prisma.$transaction(async (tx) => {
-    await tx.classificationReveal.upsert({
-      where: { competitionId: context.competitionId },
-      create: {
-        competitionId: context.competitionId,
-        snapshotId: null,
-        status: result.state.status,
-        revealedCount: result.state.revealedCount,
-        isPaused: result.state.isPaused,
-        currentIndex: result.state.revealedCount,
-        nextActionAvailableAt: new Date(result.state.nextActionAvailableAt),
-        publishedAt: result.state.publishedAt ? new Date(result.state.publishedAt) : null,
-        updatedById: admin.userId,
-      },
-      update: {
-        status: result.state.status,
-        revealedCount: result.state.revealedCount,
-        isPaused: result.state.isPaused,
-        currentIndex: result.state.revealedCount,
-        nextActionAvailableAt: new Date(result.state.nextActionAvailableAt),
-        publishedAt: result.state.publishedAt ? new Date(result.state.publishedAt) : null,
-        updatedById: admin.userId,
-      },
-    });
-
-    await tx.competition.update({
-      where: { id: context.competitionId },
-      data: { classificationStatus: result.state.status },
-    });
-
-    if (result.audit) {
-      await tx.auditLog.create({
-        data: {
-          competitionId: context.competitionId,
-          actorId: admin.userId,
-          action: result.audit.action,
-          entityType: result.audit.entityType,
-          entityId: context.competitionId,
-          beforeData: toJson(result.audit.beforeData),
-          afterData: toJson(result.audit.afterData),
-        },
-      });
-    }
-  });
-
-  revalidatePath('/clasificacion');
-  revalidatePath('/admin/revelacion');
-  return { ok: true };
 }
 
 /**
@@ -2575,22 +2467,6 @@ export async function clearAllScores(confirmationText: string): Promise<AdminRes
       data: { status: 'REJECTED', rejectionReason: 'STALE_GENERATION' },
     });
 
-    // Clasificacion: snapshots congelados y estado de revelacion.
-    await tx.rankingSnapshot.deleteMany({ where: { competitionId: context.competitionId } });
-    await tx.classificationReveal.updateMany({
-      where: { competitionId: context.competitionId },
-      data: {
-        status: 'HIDDEN',
-        snapshotId: null,
-        revealedCount: 0,
-        currentIndex: 0,
-        isPaused: false,
-        publishedAt: null,
-        nextActionAvailableAt: null,
-        updatedById: admin.userId,
-      },
-    });
-
     await tx.auditLog.create({
       data: {
         competitionId: context.competitionId,
@@ -2611,7 +2487,6 @@ export async function clearAllScores(confirmationText: string): Promise<AdminRes
   revalidatePath('/admin');
   revalidatePath('/admin/tarjetas');
   revalidatePath('/admin/clasificacion');
-  revalidatePath('/admin/revelacion');
   revalidatePath('/admin/historial');
 
   return { ok: true, message: RESET_SUCCESS_MESSAGE };

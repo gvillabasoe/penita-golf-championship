@@ -10,7 +10,7 @@
 import type { ScorecardStatus } from '../golf/types';
 
 export type Role = 'PLAYER' | 'ADMIN';
-export type ClassificationStatus = 'HIDDEN' | 'REVEALING' | 'PUBLISHED';
+export type ClassificationStatus = 'HIDDEN' | 'PUBLISHED';
 export type Access = 'NONE' | 'READ' | 'READ_WRITE';
 
 export interface Viewer {

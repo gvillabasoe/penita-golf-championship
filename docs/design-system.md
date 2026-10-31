@@ -171,8 +171,8 @@ Curvas de la skill de Emil Kowalski:
   queda pegado tras tocar.
 - Hojas: suben desde su propia altura con `@starting-style`.
 - Lo que se ve a menudo apenas se anima: Mi tarjeta entra en 260 ms.
-- **La única ceremonia es la revelación**, que ocurre una vez por torneo: la fila
-  llega desenfocada y se asienta en 420 ms.
+- La publicación de la clasificación no añade animaciones ceremoniales: el cambio
+  de estado debe ser inmediato, inequívoco y accesible.
 - `prefers-reduced-motion`: se conservan opacidad y color, se quita todo
   desplazamiento.
 

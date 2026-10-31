@@ -12,7 +12,7 @@ import {
   type HoleScoreInput,
 } from '../golf/stableford';
 import { allocateStrokes } from '../golf/strokes';
-import { buildRanking, revealOrder } from '../golf/ranking';
+import { buildRanking } from '../golf/ranking';
 import {
   buildPairRanking,
   buildPairScore,
@@ -30,8 +30,6 @@ import type {
   ScorecardStatus,
   ScorecardTotals,
 } from '../golf/types';
-import type { RevealState } from '../reveal/controller';
-import { initialRevealState } from '../reveal/controller';
 
 export interface CompetitionContext {
   competitionId: string;
@@ -51,7 +49,7 @@ export interface CompetitionContext {
    */
   scoreGeneration: number;
   status: 'DRAFT' | 'CONFIGURED' | 'IN_PLAY' | 'CLOSED';
-  classificationStatus: 'HIDDEN' | 'REVEALING' | 'PUBLISHED';
+  classificationStatus: 'HIDDEN' | 'PUBLISHED';
   pairModeEnabled: boolean;
   pairScoringMode: PairScoringMode;
   flightsConfirmedAt: Date | null;
@@ -309,11 +307,9 @@ export async function getScorecard(
 
 export interface RankingView {
   rows: RankingRow[];
-  order: number[][];
-  state: RevealState;
 }
 
-/** Clasificacion completa mas el estado de la revelacion. */
+/** Clasificacion completa. La visibilidad depende solo del estado de Competition. */
 export async function getRanking(context: CompetitionContext): Promise<RankingView> {
   const cards = await getAllScorecards(context);
 
@@ -333,28 +329,7 @@ export async function getRanking(context: CompetitionContext): Promise<RankingVi
       scorecardStatus: card.status,
     }));
 
-  const rows = buildRanking(inputs);
-  const order = revealOrder(rows);
-
-  const reveal = await prisma.classificationReveal.findUnique({
-    where: { competitionId: context.competitionId },
-  });
-
-  const state: RevealState = reveal
-    ? {
-        status: reveal.status,
-        snapshotId: reveal.snapshotId,
-        snapshotFingerprint: null,
-        revealedCount: reveal.revealedCount,
-        totalGroups: order.length,
-        isPaused: reveal.isPaused,
-        nextActionAvailableAt: reveal.nextActionAvailableAt?.getTime() ?? 0,
-        publishedAt: reveal.publishedAt?.toISOString() ?? null,
-        updatedById: reveal.updatedById,
-      }
-    : { ...initialRevealState(), totalGroups: order.length };
-
-  return { rows, order, state };
+  return { rows: buildRanking(inputs) };
 }
 
 export interface FlightView {

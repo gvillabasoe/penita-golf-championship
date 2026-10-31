@@ -307,7 +307,7 @@ describe('visibilidad de tarjetas', () => {
 
   test('las de otro partido no se ven antes de publicar', () => {
     assert.equal(cardAccess(jugador, otroPartido, 'HIDDEN').access, 'NONE');
-    assert.equal(cardAccess(jugador, otroPartido, 'REVEALING').access, 'NONE');
+    assert.equal(cardAccess(jugador, otroPartido, 'HIDDEN').access, 'NONE');
   });
 
   test('al publicar se ven todas, en solo lectura', () => {

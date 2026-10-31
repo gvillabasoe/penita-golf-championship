@@ -124,11 +124,6 @@ export const RESET_CARD_STATE = {
 /** Estado en el que queda la clasificacion despues del vaciado. */
 export const RESET_CLASSIFICATION_STATE = {
   classificationStatus: 'HIDDEN' as const,
-  revealedCount: 0,
-  currentIndex: 0,
-  isPaused: false,
-  snapshotId: null,
-  publishedAt: null,
 } as const;
 
 export type ResetAuthorization =

@@ -2,14 +2,13 @@ import { NextResponse } from 'next/server';
 
 import { getCurrentUser } from '@/lib/auth/server';
 import { getCompetition, getRanking } from '@/lib/data/queries';
-import { visibleGroupCount } from '@/lib/reveal/controller';
 
 /**
- * Clasificacion segun el estado de la revelacion.
+ * Clasificacion segun el interruptor Provisional / Oficial.
  *
- * Lo importante: el recorte se hace EN EL SERVIDOR. Enviar la clasificacion
- * completa y ocultarla en el cliente filtraria el ganador a cualquiera que
- * abriese las herramientas de desarrollo.
+ * El recorte se hace en el servidor. Mientras sea provisional, un jugador no
+ * recibe nombres, posiciones ni puntos de la clasificacion completa; el admin
+ * si puede revisarla. Cuando es oficial se devuelve completa a todos.
  */
 export async function GET() {
   const user = await getCurrentUser();
@@ -18,16 +17,13 @@ export async function GET() {
   const context = await getCompetition();
   if (!context) return NextResponse.json({ error: 'Sin competicion' }, { status: 404 });
 
-  const { rows, order, state } = await getRanking(context);
-  const visibleGroups = visibleGroupCount(state, user.role);
-  const visibleIndices = new Set(order.slice(0, visibleGroups).flat());
+  const { rows } = await getRanking(context);
+  const visible = user.role === 'ADMIN' || context.classificationStatus === 'PUBLISHED';
 
   return NextResponse.json(
     {
-      status: state.status,
-      revealedCount: state.revealedCount,
-      totalGroups: order.length,
-      rows: rows.filter((_, index) => visibleIndices.has(index)),
+      status: context.classificationStatus,
+      rows: visible ? rows : [],
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );

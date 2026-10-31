@@ -6,7 +6,7 @@ Este documento dice, sin adornos, qué está hecho y qué no.
 
 El pliego pide una aplicación completa, funcional, con persistencia real,
 autenticación, PWA, sincronización offline, resolución de conflictos, panel de
-administración, revelación progresiva, exportaciones, pruebas y documentación. Son
+administración, publicación de clasificación, exportaciones, pruebas y documentación. Son
 unas 15.000–20.000 líneas de código de producción.
 
 Dos límites reales condicionan la entrega:
@@ -32,7 +32,7 @@ partes donde un error es más caro, porque decidirían una clasificación en sil
 | Reparto de golpes, incluidos plus | ✅ invariante comprobada |
 | Lógica Stableford y resultado bruto | ✅ |
 | Totales, estados de tarjeta y reglas de finalización | ✅ |
-| Clasificación, desempates, posiciones compartidas, orden de revelación | ✅ |
+| Clasificación, desempates y posiciones compartidas | ✅ |
 | Validación de datos del campo | ✅ |
 | Esquema Prisma completo | ✅ escrito, ⚠️ `prisma validate` no ejecutado (sin red) |
 | Tokens de diseño | ✅ |
@@ -119,20 +119,16 @@ IndexedDB. La lógica que van a usar ya está probada.
 
 Falta el panel en React y el historial de auditoría en pantalla.
 
-## Etapa 6 — Revelación (lógica completada)
+## Etapa 6 — Publicación de la clasificación
 
 | Entregable | Estado |
 |---|---|
-| Máquina de estados `HIDDEN` / `REVEALING` / `PUBLISHED` | ✅ verificado |
-| Huella del snapshot: corregir una tarjeta a mitad bloquea la presentación | ✅ verificado |
-| Sin saltos: pausa mínima obligatoria entre posiciones | ✅ verificado |
-| Pausar, reanudar, retroceder y reiniciar solo afectan a lo visual | ✅ verificado |
-| No se publica sin revelar todas las posiciones | ✅ verificado |
-| El jugador solo ve lo revelado; el admin ve el provisional | ✅ verificado |
-| Los botones del panel se calculan con la misma función que aplica las acciones | ✅ verificado |
-| Orden de revelación y podio (etapa 1) | ✅ verificado |
-
-Falta la animación, el podio en pantalla y las exportaciones a PDF e imagen.
+| Interruptor único `Provisional` / `Oficial` | ✅ verificado |
+| `Competition.classificationStatus` como única fuente de verdad | ✅ verificado |
+| El administrador ve siempre el provisional completo | ✅ verificado |
+| Los jugadores solo reciben la clasificación cuando es oficial | ✅ verificado |
+| Publicación y retirada registradas en auditoría | ✅ verificado |
+| Sin snapshots ni estados intermedios de presentación | ✅ verificado |
 
 ## Componentes de interfaz (verificados renderizando)
 
@@ -149,7 +145,7 @@ se comprueba el marcado.
 | Teclado de exactamente 1–9 y raya | ✅ verificado |
 | Hoja de confirmación previa con los siete datos de la sección 36 | ✅ verificado |
 | Insignia de estado de guardado con `aria-live` | ✅ verificado |
-| Clasificación con revelación progresiva sin filtrar al ganador | ✅ verificado |
+| Clasificación provisional sin filtrar datos y publicación oficial completa | ✅ verificado |
 | Estilos de todo lo anterior en la capa de tokens | ✅ |
 
 Limitación honesta: los `.tsx` **renderizan** pero no se **type-checkean**.

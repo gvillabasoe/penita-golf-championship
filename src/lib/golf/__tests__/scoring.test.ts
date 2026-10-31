@@ -12,7 +12,7 @@ import {
   resolveScorecard,
   stablefordPoints,
 } from '../stableford';
-import { buildRanking, revealOrder, rankingFingerprint } from '../ranking';
+import { buildRanking } from '../ranking';
 import { ULZAMA_HOLES } from '../course';
 import type { HoleScoreInput } from '../stableford';
 import type { RankingInput } from '../types';
@@ -342,43 +342,7 @@ describe('clasificacion (seccion 46)', () => {
     assert.equal(ranking[1].progressPercent, 50);
   });
 
-  test('orden de revelacion: ultima, penultima, resto, tercera, segunda, primera', () => {
-    const ranking = buildRanking([
-      player('p1', 'Uno', 40, 100, 80),
-      player('p2', 'Dos', 38, 110, 82),
-      player('p3', 'Tres', 36, 120, 84),
-      player('p4', 'Cuatro', 34, 130, 86),
-      player('p5', 'Cinco', 32, 140, 88),
-    ]);
-    const order = revealOrder(ranking);
-    const positions = order.map((group) => ranking[group[0]].position);
-    assert.deepEqual(positions, [5, 4, 3, 2, 1]);
-  });
-
-  test('las posiciones compartidas se revelan en el mismo paso', () => {
-    const ranking = buildRanking([
-      player('a', 'A', 36, 200, 90),
-      player('b', 'B', 36, 200, 90),
-      player('c', 'C', 20, 210, 95),
-    ]);
-    const order = revealOrder(ranking);
-    assert.equal(order.length, 2);
-    assert.equal(order[0].length, 1); // posicion 3
-    assert.equal(order[1].length, 2); // posicion 1 compartida
-  });
-
-  test('el fingerprint cambia si cambia un resultado (invalida el snapshot)', () => {
-    const base = [player('a', 'A', 36, 200, 90), player('b', 'B', 30, 210, 95)];
-    const before = rankingFingerprint(buildRanking(base));
-    const after = rankingFingerprint(
-      buildRanking([player('a', 'A', 37, 200, 90), player('b', 'B', 30, 210, 95)]),
-    );
-    assert.notEqual(before, after);
-    assert.equal(before, rankingFingerprint(buildRanking(base)), 'debe ser determinista');
-  });
-
   test('clasificacion vacia no rompe', () => {
     assert.deepEqual(buildRanking([]), []);
-    assert.deepEqual(revealOrder([]), []);
   });
 });

@@ -108,7 +108,7 @@ describe('recuento de lo que se destruye', () => {
         card({ competitionPlayerId: 'b', holeScoreCount: 9, holesPlayed: 8, points: 15, isLocked: true }),
         card({ competitionPlayerId: 'c', holeScoreCount: 0, holesPlayed: 0, points: 0, status: 'NOT_STARTED' }),
       ],
-      'REVEALING',
+      'PUBLISHED',
     );
 
     assert.equal(preview.totalCards, 3);
@@ -117,7 +117,7 @@ describe('recuento de lo que se destruye', () => {
     assert.equal(preview.playedHoles, 26);
     assert.equal(preview.points, 49);
     assert.equal(preview.lockedCards, 1);
-    assert.equal(preview.classificationStatus, 'REVEALING');
+    assert.equal(preview.classificationStatus, 'PUBLISHED');
     assert.equal(preview.isEmpty, false);
   });
 
@@ -182,9 +182,6 @@ describe('estado en el que quedan las tarjetas', () => {
 
   test('la clasificacion vuelve al estado inicial coherente', () => {
     assert.equal(RESET_CLASSIFICATION_STATE.classificationStatus, 'HIDDEN');
-    assert.equal(RESET_CLASSIFICATION_STATE.revealedCount, 0);
-    assert.equal(RESET_CLASSIFICATION_STATE.snapshotId, null);
-    assert.equal(RESET_CLASSIFICATION_STATE.publishedAt, null);
   });
 });
 
@@ -285,9 +282,7 @@ describe('la accion de servidor cumple las condiciones del vaciado', () => {
     assert.match(action, /syncConflict\.deleteMany/);
   });
 
-  test('restablece la clasificacion y su revelacion', () => {
-    assert.match(action, /rankingSnapshot\.deleteMany/);
-    assert.match(action, /classificationReveal\.updateMany/);
+  test('restablece la clasificacion al estado provisional', () => {
     assert.match(action, /classificationStatus: 'HIDDEN'/);
   });
 

@@ -251,11 +251,9 @@ describe('saneado de texto para PDF', () => {
 
 describe('permisos de exportacion', () => {
   test('la clasificacion completa NO se exporta antes de publicar, ni siendo admin', () => {
-    for (const status of ['HIDDEN', 'REVEALING'] as const) {
-      for (const role of ['PLAYER', 'ADMIN'] as const) {
-        const decision = canExport({ kind: 'LEADERBOARD_FINAL', role, classificationStatus: status });
-        assert.equal(decision.allowed, false, `${role} / ${status} deberia estar bloqueado`);
-      }
+    for (const role of ['PLAYER', 'ADMIN'] as const) {
+      const decision = canExport({ kind: 'LEADERBOARD_FINAL', role, classificationStatus: 'HIDDEN' });
+      assert.equal(decision.allowed, false, `${role} / HIDDEN deberia estar bloqueado`);
     }
   });
 
@@ -876,7 +874,7 @@ describe('imagen de la clasificacion', () => {
         buildLeaderboardSvg({
           header: HEADER,
           rows: ROWS,
-          request: { kind: 'LEADERBOARD_FINAL', role: 'ADMIN', classificationStatus: 'REVEALING' },
+          request: { kind: 'LEADERBOARD_FINAL', role: 'ADMIN', classificationStatus: 'HIDDEN' },
         }),
       ExportNotAllowedError,
     );

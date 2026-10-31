@@ -6,9 +6,9 @@
  * ---------------------------------------------------------------------------
  * Por que generado y no escrito a mano
  * ---------------------------------------------------------------------------
- * El esquema tiene 20 tablas, 255 campos, 23 claves foraneas, 14 indices unicos
- * y 13 enums. Transcribir eso a mano es garantizar una errata, y una errata en
- * un `CREATE TABLE` no se nota hasta que falta una columna en mitad del torneo.
+ * El esquema contiene muchas tablas, campos, relaciones, indices y enums.
+ * Transcribirlo a mano es garantizar una errata, y una errata en un
+ * `CREATE TABLE` no se nota hasta que falta una columna en mitad del torneo.
  *
  * Esto lo deriva mecanicamente, y `scripts/__tests__` comprueba que el SQL
  * generado cubre cada modelo, cada campo, cada enum, cada indice y cada relacion

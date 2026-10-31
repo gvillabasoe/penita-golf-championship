@@ -1,6 +1,6 @@
 # Lo que falta para estar al 100 %
 
-Estado a 17/09/2026. **427 tests, 83 suites, todos pasando.**
+Documento de puesta en marcha. La validación definitiva debe ejecutarse con las dependencias instaladas.
 
 **La aplicación está completa.** Lo que queda son cuatro pasos de puesta en
 marcha, no código, y todos están detallados en
@@ -23,10 +23,10 @@ marcha, no código, y todos están detallados en
 
 Conviene tenerlo claro antes del primer build.
 
-### Verificado: 427 tests y type-check estricto
+### Cubierto por pruebas automatizadas
 
 `src/lib/golf`, `src/lib/auth` (menos `server.ts`), `src/lib/seed`,
-`src/lib/scorecard`, `src/lib/sync`, `src/lib/admin`, `src/lib/reveal`,
+`src/lib/scorecard`, `src/lib/sync`, `src/lib/admin`,
 `src/lib/export`, `src/lib/pwa`, `src/lib/http`, `src/lib/storage`.
 
 Ahí está todo lo que decide algo: hándicaps, Stableford, desempates,

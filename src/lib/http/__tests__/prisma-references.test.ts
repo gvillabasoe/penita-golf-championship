@@ -179,7 +179,7 @@ const { calls, unknownModels } = findCalls();
 
 describe('el esquema se analiza bien', () => {
   test('tiene los modelos y enums que se esperan', () => {
-    assert.equal(schema.models.size, 20, `${schema.models.size} modelos`);
+    assert.equal(schema.models.size, 17, `${schema.models.size} modelos`);
     assert.ok(schema.enumValues.size > 30, `solo ${schema.enumValues.size} valores de enum`);
     assert.ok(schema.models.get('User')?.has('passwordHash'));
     assert.ok(schema.compoundKeys.has('scorecardId_holeNumber'));

@@ -68,9 +68,9 @@ Los dos van en una transacción y los dos son re-ejecutables: si algo falla no
 queda nada a medias, y pegarlos dos veces no rompe nada.
 
 `schema.sql` está **generado** desde el esquema por `npm run gen:sql`, no escrito
-a mano: son 20 tablas, 255 campos y 24 claves foráneas, y transcribir eso a mano
-es garantizar una errata. Hay 31 tests que comprueban que cubre cada modelo,
-campo, enum, índice y relación, y que no añade nada.
+a mano: se genera directamente desde `prisma/schema.prisma` para evitar errores
+de transcripción. Los tests comprueban que cubre cada modelo, campo, enum, índice
+y relación, y que no añade nada.
 
 Lo que esos tests **no** pueden comprobar es que PostgreSQL lo acepte: no hay
 base de datos donde se generó. Pruébalo primero en una **rama de desarrollo de
@@ -133,6 +133,6 @@ Si algo se rompe y no hay tiempo de arreglarlo:
 1. `/admin/exportacion` genera el PDF de cada tarjeta y de la clasificación.
 2. Con eso se puede terminar el torneo a mano.
 
-Y si la clasificación se bloquea a mitad de la revelación, es porque se corrigió
-una tarjeta: reinicia la presentación desde `/admin/revelacion`. Los datos
-deportivos no se tocan.
+Si el switch de la clasificación da error, confirma que la migración `006` está
+aplicada y vuelve a cargar `/admin/clasificacion`. Los resultados y puntos no se
+modifican al cambiar entre Provisional y Oficial.
