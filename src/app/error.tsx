@@ -40,9 +40,19 @@ interface Diagnosis {
   version?: string;
   ready?: boolean;
   nextStep?: string;
-  database?: { connected?: boolean };
-  loginPath?: { ok?: boolean; failedAt?: string | null; code?: string | null };
-  appPath?: { ok?: boolean; failedAt?: string | null; code?: string | null } | null;
+  database?: { state?: string };
+  loginPath?: {
+    ok?: boolean;
+    failedAt?: string | null;
+    code?: string | null;
+    detail?: string | null;
+  };
+  appPath?: {
+    ok?: boolean;
+    failedAt?: string | null;
+    code?: string | null;
+    detail?: string | null;
+  } | null;
 }
 
 export default function ErrorScreen({
@@ -107,6 +117,12 @@ export default function ErrorScreen({
         ? diagnosis.loginPath
         : null;
 
+  const legacyPublicationModel = ['Classification', 'Reveal'].join('');
+  const legacyPublicationMismatch =
+    failedStep?.code === 'P2021' &&
+    typeof failedStep.detail === 'string' &&
+    failedStep.detail.includes(legacyPublicationModel);
+
   return (
     <main className="container stack page-content">
       <div className="section-header">
@@ -155,7 +171,11 @@ export default function ErrorScreen({
                   </tr>
                   <tr>
                     <th>Base de datos</th>
-                    <td>{diagnosis.database?.connected ? 'conectada' : 'sin conexion'}</td>
+                    <td>
+                      {diagnosis.database?.state === 'OK'
+                        ? 'conectada'
+                        : diagnosis.database?.state ?? 'desconocida'}
+                    </td>
                   </tr>
                   {failedStep ? (
                     <tr>
@@ -184,7 +204,16 @@ export default function ErrorScreen({
               Prisma pide una columna que en Neon todavia no existe. P2021 es
               tabla que no existe, P2022 columna que no existe.
             */}
-            {failedStep?.code === 'P2022' || failedStep?.code === 'P2021' ? (
+            {legacyPublicationMismatch ? (
+              <p className="alert alert--danger" role="alert">
+                <span>
+                  No falta ninguna migracion. La tabla antigua se elimino correctamente,
+                  pero esta instancia sigue ejecutando un bundle anterior. Despliega el
+                  hotfix completo, ejecuta <code>npx prisma generate</code> y recompila sin
+                  cache. El diagnostico debe mostrar la version 2.0.1.
+                </span>
+              </p>
+            ) : failedStep?.code === 'P2022' || failedStep?.code === 'P2021' ? (
               <p className="alert alert--info" role="note">
                 <span>
                   Falta una tabla o una columna en la base de datos. Lo habitual es haber

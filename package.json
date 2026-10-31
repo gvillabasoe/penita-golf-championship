@@ -1,6 +1,6 @@
 {
   "name": "penita-golf-championship",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "I Peñita Golf Championship - Ulzama-Bariain 2026",
   "engines": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "node scripts/check-no-legacy-reveal.mjs && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
@@ -22,10 +22,11 @@
     "gen:divergence": "node --import tsx scripts/generate-divergence-table.ts",
     "gen:icons": "node --import tsx scripts/generate-icons.ts",
     "check:refs": "bash scripts/check-references.sh",
-    "verify": "npm run check:refs && npm run typecheck && npm test",
+    "verify": "npm run check:no-legacy-reveal && npm run check:refs && npm run typecheck && npm test",
     "gen:sql": "node --import tsx scripts/generate-sql.ts",
     "db:schema": "psql \"$DIRECT_URL\" -f prisma/sql/schema.sql",
-    "gen:seed-sql": "node --import tsx scripts/generate-seed-sql.ts"
+    "gen:seed-sql": "node --import tsx scripts/generate-seed-sql.ts",
+    "check:no-legacy-reveal": "node scripts/check-no-legacy-reveal.mjs"
   },
   "prisma": {
     "seed": "node --import tsx prisma/seed.ts"

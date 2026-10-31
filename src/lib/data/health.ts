@@ -120,6 +120,21 @@ export interface Diagnosis {
 
 class Rollback extends Error {}
 
+const LEGACY_PUBLICATION_MODEL = ['Classification', 'Reveal'].join('');
+
+/**
+ * Detecta el unico P2021 que no debe resolverse creando una tabla: significa
+ * que se ha desplegado un bundle antiguo despues de eliminar correctamente el
+ * sistema de presentacion progresiva de la base de datos.
+ */
+function isLegacyPublicationDeploymentMismatch(probe: AppProbe): boolean {
+  return (
+    probe.code === 'P2021' &&
+    typeof probe.detail === 'string' &&
+    probe.detail.includes(LEGACY_PUBLICATION_MODEL)
+  );
+}
+
 /**
  * Ejecuta exactamente lo que hace el inicio de sesion, en orden, y dice en que
  * paso falla.
@@ -362,6 +377,8 @@ export async function diagnose(): Promise<Diagnosis> {
   const appPath = data.players > 0 ? await probeAppPath() : null;
 
   if (appPath !== null && !appPath.ok) {
+    const legacyPublicationMismatch = isLegacyPublicationDeploymentMismatch(appPath);
+
     return {
       version: APP_VERSION,
       environment,
@@ -370,7 +387,9 @@ export async function diagnose(): Promise<Diagnosis> {
       loginPath,
       appPath,
       ready: false,
-      nextStep: `El login funciona, pero la aplicacion falla justo despues, en el paso ${appPath.failedAt}${appPath.code ? ` (${appPath.code})` : ''}: ${appPath.detail ?? 'sin detalle'}`,
+      nextStep: legacyPublicationMismatch
+        ? `La base de datos ya usa publicacion directa, pero el servidor esta ejecutando codigo antiguo. No apliques mas migraciones: despliega la version ${APP_VERSION} completa, regenera Prisma y recompila sin cache.`
+        : `El login funciona, pero la aplicacion falla justo despues, en el paso ${appPath.failedAt}${appPath.code ? ` (${appPath.code})` : ''}: ${appPath.detail ?? 'sin detalle'}`,
     };
   }
 
